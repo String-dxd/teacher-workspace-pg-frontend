@@ -1,6 +1,7 @@
 import { defineConfig } from '@rsbuild/core';
 import { pluginReact } from '@rsbuild/plugin-react';
 import { pluginModuleFederation } from '@module-federation/rsbuild-plugin';
+import tailwindcss from '@tailwindcss/postcss';
 
 export default defineConfig({
   plugins: [
@@ -13,6 +14,11 @@ export default defineConfig({
       shared: ['react', 'react-dom'],
     }),
   ],
+  tools: {
+    postcss: (_, { addPlugins }) => {
+      addPlugins([tailwindcss()]);
+    },
+  },
   server: {
     port: Number(process.env.PORT) || 3001,
   },
