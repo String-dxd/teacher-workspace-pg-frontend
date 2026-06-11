@@ -1,0 +1,1193 @@
+import {
+  AlertCircle,
+  ArrowLeft,
+  CalendarClock,
+  Eye,
+  EyeOff,
+  Lock,
+  Plus,
+  Save,
+  Send,
+} from 'lucide-react';
+import { useDeferredValue, useMemo, useReducer, useRef, useState } from 'react';
+import type { LoaderFunctionArgs } from 'react-router';
+import { Link, Navigate, useLoaderData, useNavigate, useParams } from 'react-router';
+
+import {
+  buildAnnouncementPayload,
+  buildConsentFormPayload,
+  type BuildPostPayloadInput,
+} from '~/features/posts/api/mappers';
+import {
+  createAnnouncement,
+  createConsentForm,
+  createConsentFormDraft,
+  createDraft,
+  fetchSchoolClasses,
+  fetchSchoolStaff,
+  fetchSchoolStaffGroups,
+  fetchSchoolStudents,
+  fetchSession,
+  getConfigs,
+  loadAnnouncementDraftDetail,
+  loadConsentFormDraftDetail,
+  loadConsentPostDetail,
+  loadPostDetail,
+  scheduleExistingAnnouncementDraft,
+  scheduleExistingConsentFormDraft,
+  scheduleNewAnnouncementDraft,
+  scheduleNewConsentFormDraft,
+  updateAnnouncementEnquiryEmail,
+  updateAnnouncementStaffInCharge,
+  updateConsentFormDraft,
+  updateConsentFormDueDate,
+  updateConsentFormEnquiryEmail,
+  updateConsentFormStaffInCharge,
+  updateDraft,
+} from '~/features/posts/api/client';
+import { AppError, ValidationError } from '~/features/posts/api/errors';
+import type {
+  ApiConfig,
+  ApiSchoolClass,
+  ApiSchoolStaff,
+  ApiSchoolStudent,
+  ApiSession,
+  ApiStaffGroups,
+} from '~/features/posts/api/types';
+import { AttachmentSection } from '~/features/posts/components/AttachmentSection';
+import { DueDateSection } from '~/features/posts/components/DueDateSection';
+import { EnquiryEmailSelector } from '~/features/posts/components/EnquiryEmailSelector';
+import { EventScheduleSection } from '~/features/posts/components/EventScheduleSection';
+import { PostPreview } from '~/features/posts/components/PostPreview';
+import { PostTypePicker, type PostKind } from '~/features/posts/components/PostTypePicker';
+import { MAX_QUESTIONS, QuestionBuilder } from '~/features/posts/components/QuestionBuilder';
+import { ReminderSection } from '~/features/posts/components/ReminderSection';
+import { ResponseTypeSelector } from '~/features/posts/components/ResponseTypeSelector';
+import { RichTextEditor } from '~/features/posts/components/RichTextEditor';
+import { SchedulePickerDialog, type ScheduleWindow } from '~/features/posts/components/SchedulePickerDialog';
+import { SendConfirmationDialog } from '~/features/posts/components/SendConfirmationDialog';
+import { ShortcutsSection } from '~/features/posts/components/ShortcutsSection';
+import { VenueSection } from '~/features/posts/components/VenueSection';
+import { WebsiteLinksSection } from '~/features/posts/components/WebsiteLinksSection';
+import { formReducer } from '~/features/posts/state/reducer';
+import { INITIAL_STATE, type SelectedEntity } from '~/features/posts/state/initial-state';
+import { useAutoSave, type AutoSaveStatus } from '~/features/posts/hooks/useAutoSave';
+import { useUnsavedChangesGuard } from '~/features/posts/hooks/useUnsavedChangesGuard';
+import {
+  computeInlineErrors,
+  hasPendingUploads,
+  isCreatePostFormValid,
+  type PostKind as ValidationPostKind,
+} from '~/features/posts/validation/create-post-validation';
+import {
+  Button,
+  Card,
+  CardContent,
+  Input,
+  Label,
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+  Separator,
+} from '~/components/ui';
+import {
+  describeScheduledSendFailure,
+  isAnnouncementDraftId,
+  isConsentFormDraftId,
+  isConsentFormId,
+  validatePostRoute,
+  type AnnouncementId,
+  type ConsentFormId,
+  type Post,
+} from '~/data/posts-registry';
+import { textToTiptapDoc } from '~/helpers/tiptap';
+import { notify } from '~/lib/notify';
+import { cn } from '~/lib/utils';
+import {
+  fieldForValidationError,
+  reportValidationError,
+  type PostFormField,
+} from '~/lib/validation-errors';
+
+// ─── Route loader ───────────────────────────────────────────────────────────
+
+interface CreatePostLoaderData {
+  detail: Post | null;
+  classes: ApiSchoolClass[];
+  staff: ApiSchoolStaff[];
+  staffGroups: ApiStaffGroups;
+  students: ApiSchoolStudent[];
+  session: ApiSession;
+  configs: ApiConfig;
+}
+
+async function loadPostByKind(rawId: string, kindParam: string | null): Promise<Post | null> {
+  const parsed = validatePostRoute(rawId, kindParam);
+  if (!parsed) return null;
+  if (isConsentFormDraftId(parsed)) return loadConsentFormDraftDetail(parsed);
+  if (isConsentFormId(parsed)) return loadConsentPostDetail(parsed);
+  if (isAnnouncementDraftId(parsed)) return loadAnnouncementDraftDetail(parsed);
+  return loadPostDetail(parsed as AnnouncementId);
+}
+
+export async function loader({
+  params,
+  request,
+}: LoaderFunctionArgs): Promise<CreatePostLoaderData> {
+  const url = new URL(request.url);
+  const kindParam = url.searchParams.get('kind');
+  const [detail, classes, staff, staffGroups, students, session, configs] = await Promise.all([
+    params.id ? loadPostByKind(params.id, kindParam) : Promise.resolve(null),
+    fetchSchoolClasses(),
+    fetchSchoolStaff(),
+    fetchSchoolStaffGroups().catch(() => ({ level: [], school: [] }) as ApiStaffGroups),
+    fetchSchoolStudents(),
+    fetchSession(),
+    getConfigs(),
+  ]);
+  return { detail, classes, staff, staffGroups, students, session, configs };
+}
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+function parseScheduleWindow(raw: unknown): ScheduleWindow | undefined {
+  if (!raw || typeof raw !== 'object') return undefined;
+  const maybe = raw as { start?: unknown; end?: unknown };
+  if (typeof maybe.start !== 'string' || typeof maybe.end !== 'string') return undefined;
+  if (!/^\d{2}:\d{2}$/.test(maybe.start) || !/^\d{2}:\d{2}$/.test(maybe.end)) return undefined;
+  return { start: maybe.start, end: maybe.end };
+}
+
+function sgtIsoToLocalDateTime(iso: string): string {
+  const d = new Date(iso);
+  const sgt = d.toLocaleString('sv-SE', {
+    timeZone: 'Asia/Singapore',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  });
+  return sgt.replace(' ', 'T');
+}
+
+function sgtIsoToLocalDate(iso: string): string {
+  const d = new Date(iso);
+  return d.toLocaleDateString('sv-SE', { timeZone: 'Asia/Singapore' });
+}
+
+const MAX_WEBSITE_LINKS = 3;
+
+function postToFormState(
+  post: Post,
+  staff: ApiSchoolStaff[],
+  classes: ApiSchoolClass[],
+  students: ApiSchoolStudent[],
+): typeof INITIAL_STATE {
+  // Build class-id → roster size lookup
+  const studentsByClass = new Map<string, number>();
+  for (const s of students) {
+    const stripped = s.className.replace(/ \(\d{4}\)$/, '');
+    studentsByClass.set(stripped, (studentsByClass.get(stripped) ?? 0) + 1);
+  }
+  const classRosterById = new Map<number, number>();
+  for (const c of classes) {
+    classRosterById.set(c.value, studentsByClass.get(c.label.replace(/ \(\d{4}\)$/, '')) ?? 0);
+  }
+
+  const selectedRecipients: SelectedEntity[] = (post.targets ?? []).map((t) => ({
+    id: t.id.toString(),
+    label: t.label,
+    type: 'group',
+    count: t.type === 'class' ? (classRosterById.get(t.id) ?? 0) : 0,
+    groupType:
+      t.type === 'class'
+        ? 'class'
+        : t.type === 'group'
+          ? 'custom'
+          : t.type === 'cca'
+            ? 'cca'
+            : 'level',
+  }));
+
+  const byStaffId = new Map(staff.map((s) => [s.staffId, s]));
+  const selectedStaff: SelectedEntity[] =
+    post.staffOwnerIds && post.staffOwnerIds.length > 0
+      ? post.staffOwnerIds.map((id) => {
+          const s = byStaffId.get(id);
+          return s
+            ? { id: s.staffId.toString(), label: s.name, type: 'individual', count: 1 }
+            : { id: id.toString(), label: 'Unknown staff', type: 'individual', count: 1 };
+        })
+      : post.staffInCharge
+        ? staff
+            .filter((s) => s.name === post.staffInCharge)
+            .map((s) => ({ id: s.staffId.toString(), label: s.name, type: 'individual', count: 1 }))
+        : [];
+
+  const common = {
+    title: post.title,
+    description: post.description,
+    descriptionDoc: post.richTextContent ?? textToTiptapDoc(post.description),
+    selectedRecipients,
+    selectedStaff,
+    enquiryEmail: post.enquiryEmail ?? '',
+    websiteLinks: (post.websiteLinks ?? []).slice(0, MAX_WEBSITE_LINKS),
+    shortcuts: [] as string[],
+    attachments: (post.attachments ?? []).map((f) => ({ ...f })) as typeof INITIAL_STATE['attachments'],
+    photos: (post.photos ?? []).map((p) => ({ ...p })) as typeof INITIAL_STATE['photos'],
+  };
+
+  if (post.kind === 'form') {
+    const dueDateRaw = post.consentByDate
+      ? new Date(post.consentByDate) < new Date()
+        ? ''
+        : sgtIsoToLocalDate(post.consentByDate)
+      : '';
+    return {
+      ...INITIAL_STATE,
+      ...common,
+      kind: 'form' as const,
+      responseType: post.responseType,
+      questions: post.questions,
+      dueDate: dueDateRaw,
+      reminder:
+        post.reminder.type === 'NONE'
+          ? { type: 'NONE' as const }
+          : { type: post.reminder.type, date: sgtIsoToLocalDate(post.reminder.date) },
+      event: post.event
+        ? {
+            start: sgtIsoToLocalDateTime(post.event.start),
+            end: sgtIsoToLocalDateTime(post.event.end),
+            ...(post.event.venue && { venue: post.event.venue }),
+          }
+        : undefined,
+      venue: post.event?.venue ?? '',
+    };
+  }
+
+  // announcement
+  return {
+    ...INITIAL_STATE,
+    ...common,
+    kind: 'announcement' as const,
+    responseType: post.responseType,
+    questions: post.questions ?? [],
+    dueDate: post.dueDate ?? '',
+    reminder: { type: 'NONE' as const },
+    event: undefined,
+    venue: '',
+  };
+}
+
+function editorHasContent(doc: typeof INITIAL_STATE.descriptionDoc): boolean {
+  if (!doc || typeof doc !== 'object') return false;
+  const content = (doc as { content?: unknown[] }).content;
+  return Array.isArray(content) && content.length > 0;
+}
+
+function staffHelperText(kind: 'announcement' | 'form'): string {
+  return kind === 'announcement'
+    ? 'These staff will be able to view read status, and delete the announcement.'
+    : 'These staff will be able to view and edit responses, and delete the form.';
+}
+
+/**
+ * Coerce `PostFormState` to `BuildPostPayloadInput`. The only mismatch is
+ * `SelectedEntity.id: string | number` vs the mapper's `id: string`, so we
+ * stringify ids at the boundary.
+ */
+function stateToPayloadInput(state: typeof INITIAL_STATE): BuildPostPayloadInput {
+  return {
+    ...state,
+    selectedRecipients: state.selectedRecipients.map((r) => ({
+      ...r,
+      id: String(r.id),
+    })),
+    selectedStaff: state.selectedStaff.map((s) => ({
+      ...s,
+      id: String(s.id),
+    })),
+  };
+}
+
+/**
+ * Narrow the PostTypePicker's `PostKind` to the ValidationPostKind shape.
+ * The picker uses 'post' | 'post-with-response'; validation uses
+ * 'announcement' | 'post-with-response'. Both accept null.
+ */
+function toValidationKind(kind: PostKind | null): ValidationPostKind | null {
+  if (kind === null) return null;
+  if (kind === 'post-with-response') return 'post-with-response';
+  // 'post' → 'announcement'
+  return 'announcement';
+}
+
+// ─── Inner component ─────────────────────────────────────────────────────────
+
+function CreatePostPageInner({ editId }: { editId?: string }) {
+  const navigate = useNavigate();
+  const { detail, classes, staff, session, configs } =
+    useLoaderData<CreatePostLoaderData>();
+
+  const scheduleEnabled = configs.flags.schedule_announcement_form_post?.enabled === true;
+  const declareTravelsEnabled = configs.flags.absence_submission?.enabled === true;
+  const editContactEnabled = true;
+  const scheduleWindow = parseScheduleWindow(configs.configs.schedule_window);
+
+  const [showSendDialog, setShowSendDialog] = useState(false);
+  const [showScheduleDialog, setShowScheduleDialog] = useState(false);
+  const [showPreview, setShowPreview] = useState(true);
+  const [focusSection, setFocusSection] = useState<
+    'header' | 'content' | 'attachments' | 'links' | 'questions' | 'response'
+  >('header');
+  const [focusedQuestionIndex, setFocusedQuestionIndex] = useState(0);
+  const [saveState, setSaveState] = useState<'idle' | 'submitting' | 'submitted'>('idle');
+  const [fieldErrors, setFieldErrors] = useState<Partial<Record<PostFormField, string>>>({});
+
+  const clearFieldError = (field: PostFormField) =>
+    setFieldErrors((prev) => {
+      if (!(field in prev)) return prev;
+      const { [field]: _removed, ...rest } = prev;
+      return rest;
+    });
+
+  const stampValidationError = (err: ValidationError): boolean => {
+    const field = fieldForValidationError(err);
+    if (!field) return false;
+    setFieldErrors((prev) => ({ ...prev, [field]: reportValidationError(err) }));
+    return true;
+  };
+
+  const isSaving = saveState !== 'idle';
+
+  const emailOptions = useMemo(
+    () =>
+      [session.staffEmailAdd, session.schoolEmailAddress].filter((e): e is string => Boolean(e)),
+    [session.staffEmailAdd, session.schoolEmailAddress],
+  );
+
+  const [selectedType, setSelectedType] = useState<PostKind | null>(() => {
+    if (!editId) return null;
+    if (detail?.kind === 'form') return 'post-with-response';
+    if (
+      detail &&
+      (detail.responseType === 'acknowledge' || detail.responseType === 'yes-no')
+    ) {
+      return 'post-with-response';
+    }
+    return 'post';
+  });
+
+  const editData = detail ? postToFormState(detail, staff, classes, []) : null;
+  const [state, dispatch] = useReducer(formReducer, editData ?? INITIAL_STATE);
+
+  const initialDescriptionDocRef = useRef(state.descriptionDoc);
+  const initialDescriptionDoc = initialDescriptionDocRef.current;
+
+  const deferredState = useDeferredValue(state);
+
+  const isFormValid = isCreatePostFormValid(state, toValidationKind(selectedType));
+  const uploadsPending = hasPendingUploads(state);
+
+  const [showValidationPopover, setShowValidationPopover] = useState(false);
+  const FIELD_LABELS: Record<PostFormField, string> = {
+    title: 'Add a title',
+    description: 'Write the post details',
+    enquiryEmail: 'Select an enquiry email',
+    recipients: 'Select at least one recipient',
+    dueDate: 'Set a due date for responses',
+  };
+  const missingFieldLabels = (Object.keys(fieldErrors) as PostFormField[]).map(
+    (k) => FIELD_LABELS[k],
+  );
+
+  const recipientCount = state.selectedRecipients.reduce((sum, r) => sum + (r.count ?? 1), 0);
+  const isEditing = Boolean(editId);
+  const isPostedEdit =
+    isEditing &&
+    Boolean(
+      detail &&
+        (detail.status === 'posted' ||
+          detail.status === 'open' ||
+          detail.status === 'closed' ||
+          detail.status === 'posting'),
+    );
+
+  const isFailedScheduledEdit =
+    isEditing &&
+    Boolean(detail && detail.status === 'scheduled' && detail.scheduledSendFailureCode);
+  const failedScheduledReason = isFailedScheduledEdit
+    ? describeScheduledSendFailure(detail?.scheduledSendFailureCode)
+    : null;
+
+  const draftIdRef = useRef<{ kind: 'announcement' | 'form'; id: number } | null>(
+    editId?.startsWith('annDraft_')
+      ? { kind: 'announcement', id: Number(editId.slice('annDraft_'.length)) }
+      : editId?.startsWith('cfDraft_')
+        ? { kind: 'form', id: Number(editId.slice('cfDraft_'.length)) }
+        : editId?.startsWith('cf_')
+          ? { kind: 'form', id: Number(editId.slice('cf_'.length)) }
+          : null,
+  );
+
+  const autoSave = useAutoSave({
+    payload: state,
+    save: async (_snapshot, { signal }) => {
+      await handleSaveDraft({ signal });
+    },
+    intervalMs: 30_000,
+    enabled: !isSaving,
+    shouldSave: (s) => s.title.trim().length > 0 || editorHasContent(s.descriptionDoc),
+  });
+
+  const isDirty =
+    autoSave.lastSavedSerialized !== null
+      ? JSON.stringify(state) !== autoSave.lastSavedSerialized
+      : state.title.trim().length > 0 || editorHasContent(state.descriptionDoc);
+
+  useUnsavedChangesGuard(isDirty);
+
+  if (editId && !editData) {
+    return <Navigate to="/posts" replace />;
+  }
+
+  function handlePostClick() {
+    if (!isFormValid) {
+      setFieldErrors(computeInlineErrors(state, toValidationKind(selectedType)));
+      setShowValidationPopover(true);
+      return;
+    }
+    setShowSendDialog(true);
+  }
+
+  function handleScheduleClick() {
+    if (!isFormValid) {
+      setFieldErrors(computeInlineErrors(state, toValidationKind(selectedType)));
+      setShowValidationPopover(true);
+      return;
+    }
+    setShowScheduleDialog(true);
+  }
+
+  function handleTypeSelect(type: PostKind) {
+    setSelectedType(type);
+    const kind = type === 'post-with-response' ? 'form' : 'announcement';
+    dispatch({ type: 'SET_KIND', payload: kind });
+    if (type === 'post-with-response') {
+      dispatch({ type: 'SET_RESPONSE_TYPE', payload: 'acknowledge' });
+    }
+  }
+
+  async function handleSaveDraft(opts: { signal?: AbortSignal } = {}): Promise<void> {
+    try {
+      const payloadInput = stateToPayloadInput(state);
+      if (state.kind === 'form') {
+        const payload = buildConsentFormPayload(payloadInput);
+        if (draftIdRef.current?.kind === 'form') {
+          await updateConsentFormDraft(draftIdRef.current.id, payload, { signal: opts.signal });
+        } else {
+          const { consentFormDraftId } = await createConsentFormDraft(payload, {
+            signal: opts.signal,
+          });
+          draftIdRef.current = { kind: 'form', id: consentFormDraftId };
+        }
+      } else {
+        const payload = buildAnnouncementPayload(payloadInput);
+        if (draftIdRef.current?.kind === 'announcement') {
+          await updateDraft(draftIdRef.current.id, payload, { signal: opts.signal });
+        } else {
+          const { announcementDraftId } = await createDraft(payload, { signal: opts.signal });
+          draftIdRef.current = { kind: 'announcement', id: announcementDraftId };
+        }
+      }
+    } catch (err) {
+      if (err instanceof DOMException && err.name === 'AbortError') return;
+      if (err instanceof ValidationError) {
+        notify.error(reportValidationError(err));
+      } else if (err instanceof Error && !(err instanceof AppError)) {
+        notify.error(err.message);
+      } else if (!(err instanceof AppError)) {
+        notify.error('Failed to save draft.');
+      }
+      throw err;
+    }
+  }
+
+  async function handleSavePostedEdit() {
+    if (!detail || saveState !== 'idle') return;
+    setSaveState('submitting');
+    try {
+      const staffIds = state.selectedStaff.map((s) => Number(s.id));
+      const email = state.enquiryEmail ?? '';
+      if (detail.kind === 'announcement') {
+        const id = detail.id as AnnouncementId;
+        await Promise.all([
+          updateAnnouncementEnquiryEmail(id, { enquiryEmailAddress: email }),
+          updateAnnouncementStaffInCharge(id, staffIds),
+        ]);
+      } else {
+        const id = detail.id as ConsentFormId;
+        const numericId = Number(id.slice(3));
+        const consentByDate = state.dueDate.trim() ? `${state.dueDate}T23:59:59+08:00` : '';
+        await Promise.all([
+          updateConsentFormEnquiryEmail(id, { enquiryEmailAddress: email }),
+          updateConsentFormStaffInCharge(id, staffIds),
+          updateConsentFormDueDate(numericId, { consentByDate }),
+        ]);
+      }
+      notify.success('Changes saved.');
+      navigate(-1);
+    } catch {
+      notify.error('Failed to save. Please try again.');
+    } finally {
+      setSaveState('idle');
+    }
+  }
+
+  async function handleScheduleConfirm(scheduledSendAt: string) {
+    if (saveState !== 'idle') return;
+    setShowScheduleDialog(false);
+    setSaveState('submitting');
+    try {
+      const payloadInput = stateToPayloadInput(state);
+      if (state.kind === 'form') {
+        const draftPayload = { ...buildConsentFormPayload(payloadInput), scheduledSendAt };
+        if (isEditing && editId?.startsWith('cf_')) {
+          await scheduleExistingConsentFormDraft(Number(editId.slice(3)), draftPayload);
+        } else {
+          await scheduleNewConsentFormDraft(draftPayload);
+        }
+      } else {
+        const draftPayload = { ...buildAnnouncementPayload(payloadInput), scheduledSendAt };
+        if (draftIdRef.current?.kind === 'announcement') {
+          await scheduleExistingAnnouncementDraft(draftIdRef.current.id, draftPayload);
+        } else {
+          await scheduleNewAnnouncementDraft(draftPayload);
+        }
+      }
+      setSaveState('submitted');
+      notify.success('Post scheduled.');
+      navigate('/posts');
+    } catch (err) {
+      setSaveState('idle');
+      if (err instanceof ValidationError) {
+        const stamped = stampValidationError(err);
+        if (!stamped) notify.error(reportValidationError(err));
+      } else if (!(err instanceof AppError)) {
+        notify.error('Failed to schedule post. Please try again.');
+      }
+    }
+  }
+
+  async function handleSendConfirm() {
+    if (saveState !== 'idle') return;
+    setShowSendDialog(false);
+    setSaveState('submitting');
+    try {
+      const payloadInput = stateToPayloadInput(state);
+      if (state.kind === 'form') {
+        await createConsentForm(buildConsentFormPayload(payloadInput));
+      } else {
+        await createAnnouncement(buildAnnouncementPayload(payloadInput));
+      }
+      setSaveState('submitted');
+      notify.success('Post sent.');
+      navigate('/posts');
+    } catch (err) {
+      setSaveState('idle');
+      if (err instanceof ValidationError) {
+        const stamped = stampValidationError(err);
+        if (!stamped) notify.error(reportValidationError(err));
+      } else if (err instanceof Error && !(err instanceof AppError)) {
+        notify.error(err.message);
+      } else if (!(err instanceof AppError)) {
+        notify.error('Failed to send post. Please try again.');
+      }
+    }
+  }
+
+  if (!selectedType) {
+    return (
+      <div className="flex flex-col">
+        <div className="sticky top-0 z-10 border-b bg-white/95 px-6 py-3 backdrop-blur-sm">
+          <div className="flex items-center gap-3">
+            <Link to="/posts" className="text-muted-foreground hover:text-foreground">
+              <ArrowLeft className="h-5 w-5" />
+            </Link>
+            <h1 className="text-xl font-semibold tracking-tight">New Post</h1>
+          </div>
+        </div>
+        <PostTypePicker onSelect={handleTypeSelect} />
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col">
+      {/* Header */}
+      <div className="sticky top-0 z-10 border-b bg-white/95 px-6 py-3 backdrop-blur-sm">
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <Link to="/posts" className="text-muted-foreground hover:text-foreground">
+              <ArrowLeft className="h-5 w-5" />
+            </Link>
+            <h1 className="text-xl font-semibold tracking-tight">
+              {isEditing ? 'Edit Post' : 'New Post'}
+            </h1>
+          </div>
+
+          <div className="flex items-center gap-3">
+            {isPostedEdit ? (
+              <Button
+                variant="default"
+                size="sm"
+                disabled={isSaving}
+                onClick={() => void handleSavePostedEdit()}
+              >
+                <Save className="mr-1.5 h-4 w-4" />
+                {isSaving ? 'Saving…' : 'Save changes'}
+              </Button>
+            ) : (
+              <>
+                <SaveStatusTicker status={autoSave.status} lastSavedAt={autoSave.lastSavedAt} />
+                <Button variant="ghost" size="sm" onClick={() => setShowPreview((s) => !s)}>
+                  {showPreview ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </Button>
+                {scheduleEnabled && (
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    disabled={isSaving}
+                    onClick={handleScheduleClick}
+                    className={cn(
+                      !isFormValid && '!bg-muted !text-muted-foreground/40 hover:!bg-muted',
+                    )}
+                  >
+                    <CalendarClock className="mr-1.5 h-4 w-4" />
+                    Schedule
+                  </Button>
+                )}
+                <Popover open={showValidationPopover} onOpenChange={setShowValidationPopover}>
+                  <PopoverTrigger render={
+                    <Button
+                      variant="default"
+                      size="sm"
+                      disabled={isSaving}
+                      onClick={handlePostClick}
+                      className={cn(
+                        !isFormValid && '!bg-muted !text-muted-foreground/40 hover:!bg-muted',
+                      )}
+                    >
+                      <Send className="mr-1.5 h-4 w-4" />
+                      Post
+                    </Button>
+                  } />
+                  <PopoverContent side="top" align="end" className="w-64 space-y-2 p-4">
+                    <p className="text-sm font-semibold">Complete these fields before posting</p>
+                    <ul className="space-y-1">
+                      {missingFieldLabels.map((label) => (
+                        <li
+                          key={label}
+                          className="flex items-center gap-2 text-sm text-destructive"
+                        >
+                          <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-destructive" />
+                          {label}
+                        </li>
+                      ))}
+                    </ul>
+                  </PopoverContent>
+                </Popover>
+                {uploadsPending && (
+                  <span className="text-xs text-muted-foreground">Attachments uploading…</span>
+                )}
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Posted-edit notice banner */}
+      {isPostedEdit && (
+        <div className="border-b bg-muted px-6 py-3">
+          <p className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Lock className="h-3.5 w-3.5 shrink-0" />
+            <span>
+              This post has been sent. Only{' '}
+              <span className="font-medium text-foreground">Staff-in-charge</span>
+              {', '}
+              <span className="font-medium text-foreground">Enquiry email</span>
+              {', '}
+              <span className="font-medium text-foreground">Due date</span>
+              {' and '}
+              <span className="font-medium text-foreground">Reminder</span> can be changed.
+            </span>
+          </p>
+        </div>
+      )}
+
+      {/* Failed-scheduled error banner */}
+      {isFailedScheduledEdit && (
+        <div className="border-b border-destructive/20 bg-destructive/5 px-6 py-3">
+          <p className="flex items-center gap-2 text-sm text-destructive">
+            <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+            <span>
+              <span className="font-medium">Scheduled send failed.</span> {failedScheduledReason}{' '}
+              Edit your post and reschedule to try again.
+            </span>
+          </p>
+        </div>
+      )}
+
+      {/* Body */}
+      <div className="flex justify-center gap-8 px-6 py-6">
+        <div className="flex w-full max-w-2xl flex-1 flex-col gap-6">
+          {/* RECIPIENTS Card */}
+          <Card>
+            <CardContent className="space-y-5 p-6">
+              <p className="text-xs font-medium tracking-widest text-muted-foreground uppercase">
+                Recipients
+              </p>
+
+              {/* Students field */}
+              <div className={isPostedEdit ? 'pointer-events-none opacity-50 select-none' : ''}>
+                <div className="space-y-1.5">
+                  <Label>
+                    Students <span className="text-destructive">*</span>
+                  </Label>
+                  <p className="text-sm text-muted-foreground">
+                    Parents of the selected students will receive this post via Parents Gateway.
+                  </p>
+                  {/* Simple class-based selector from available components */}
+                  <div className="space-y-2">
+                    {classes.map((cls) => {
+                      const isSelected = state.selectedRecipients.some(
+                        (r) => r.id === cls.value.toString(),
+                      );
+                      return (
+                        <label key={cls.value} className="flex cursor-pointer items-center gap-2">
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() => {
+                              clearFieldError('recipients');
+                              const next = isSelected
+                                ? state.selectedRecipients.filter(
+                                    (r) => r.id !== cls.value.toString(),
+                                  )
+                                : [
+                                    ...state.selectedRecipients,
+                                    {
+                                      id: cls.value.toString(),
+                                      label: cls.label,
+                                      type: 'group',
+                                      count: 0,
+                                      groupType: 'class',
+                                    } satisfies SelectedEntity,
+                                  ];
+                              dispatch({ type: 'SET_RECIPIENTS', payload: next });
+                            }}
+                          />
+                          <span className="text-sm">{cls.label}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                  {fieldErrors.recipients && (
+                    <p role="alert" className="text-sm text-destructive">
+                      {fieldErrors.recipients}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <Separator />
+
+              {/* Enquiry email */}
+              <div className="space-y-1.5">
+                <Label>
+                  Enquiry email <span className="text-destructive">*</span>
+                </Label>
+                <p className="text-sm text-muted-foreground">
+                  Select the preferred email address to receive enquiries from parents.
+                </p>
+                <EnquiryEmailSelector
+                  emailOptions={emailOptions}
+                  value={state.enquiryEmail ?? ''}
+                  onChange={(email) => {
+                    clearFieldError('enquiryEmail');
+                    dispatch({ type: 'SET_EMAIL', payload: email });
+                  }}
+                  aria-invalid={fieldErrors.enquiryEmail ? true : undefined}
+                />
+                {fieldErrors.enquiryEmail && (
+                  <p role="alert" className="text-sm text-destructive">
+                    {fieldErrors.enquiryEmail}
+                  </p>
+                )}
+              </div>
+
+              <Separator />
+
+              {/* Staff in charge */}
+              <div className="space-y-1.5">
+                <Label>
+                  Staff-in-charge{' '}
+                  <span className="text-xs font-normal text-muted-foreground">(optional)</span>
+                </Label>
+                <div className="space-y-2">
+                  {staff.slice(0, 20).map((s) => {
+                    const isSelected = state.selectedStaff.some(
+                      (sel) => sel.id === s.staffId.toString(),
+                    );
+                    return (
+                      <label key={s.staffId} className="flex cursor-pointer items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => {
+                            const next = isSelected
+                              ? state.selectedStaff.filter(
+                                  (sel) => sel.id !== s.staffId.toString(),
+                                )
+                              : [
+                                  ...state.selectedStaff,
+                                  {
+                                    id: s.staffId.toString(),
+                                    label: s.name,
+                                    type: 'individual',
+                                    count: 1,
+                                  } satisfies SelectedEntity,
+                                ];
+                            dispatch({ type: 'SET_STAFF', payload: next });
+                          }}
+                        />
+                        <span className="text-sm">{s.name}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+                <p className="text-sm text-muted-foreground">{staffHelperText(state.kind)}</p>
+              </div>
+            </CardContent>
+          </Card>
+
+          <div className={isPostedEdit ? 'pointer-events-none opacity-50 select-none' : 'contents'}>
+            {/* CONTENT Card */}
+            <Card>
+              <CardContent className="space-y-5 p-6">
+                <p className="text-xs font-medium tracking-widest text-muted-foreground uppercase">
+                  Content
+                </p>
+
+                {/* Title */}
+                <div className="space-y-1.5" onFocus={() => setFocusSection('header')}>
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="post-title">
+                      Title <span className="text-destructive">*</span>
+                    </Label>
+                    <span className="text-xs text-muted-foreground tabular-nums">
+                      {state.title.length}/120
+                    </span>
+                  </div>
+                  <Input
+                    id="post-title"
+                    placeholder="e.g. Term 3 School Camp Consent & Payment"
+                    value={state.title}
+                    maxLength={120}
+                    aria-invalid={fieldErrors.title ? true : undefined}
+                    onChange={(e) => {
+                      clearFieldError('title');
+                      dispatch({ type: 'SET_TITLE', payload: e.target.value });
+                    }}
+                  />
+                  {fieldErrors.title && (
+                    <p role="alert" className="text-sm text-destructive">
+                      {fieldErrors.title}
+                    </p>
+                  )}
+                </div>
+
+                <Separator />
+
+                {/* Description */}
+                <div className="space-y-1.5" onFocus={() => setFocusSection('content')}>
+                  <div className="flex items-center justify-between">
+                    <Label id="post-description-label">
+                      Description <span className="text-destructive">*</span>
+                    </Label>
+                    <span className="text-xs text-muted-foreground tabular-nums">
+                      {state.description.length}/2000
+                    </span>
+                  </div>
+                  <RichTextEditor
+                    initialContent={initialDescriptionDoc}
+                    maxLength={2000}
+                    placeholder="Write your announcement here. Use the toolbar to format text and insert inline links."
+                    ariaLabelledBy="post-description-label"
+                    onChange={(doc, text) => {
+                      clearFieldError('description');
+                      dispatch({ type: 'SET_DESCRIPTION_DOC', payload: { doc, text } });
+                    }}
+                  />
+                  {fieldErrors.description && (
+                    <p role="alert" className="text-sm text-destructive">
+                      {fieldErrors.description}
+                    </p>
+                  )}
+                </div>
+
+                {selectedType === 'post-with-response' && (
+                  <>
+                    <Separator />
+                    <div className="space-y-5" onFocus={() => setFocusSection('header')}>
+                      <EventScheduleSection
+                        value={state.event}
+                        onChange={(value) => dispatch({ type: 'SET_EVENT', payload: value })}
+                      />
+                      <VenueSection
+                        value={state.venue}
+                        onChange={(value) => dispatch({ type: 'SET_VENUE', payload: value })}
+                      />
+                    </div>
+                  </>
+                )}
+
+                <Separator />
+
+                <ShortcutsSection
+                  value={state.shortcuts}
+                  onChange={(next) => dispatch({ type: 'SET_SHORTCUTS', payload: next })}
+                  declareTravelsEnabled={declareTravelsEnabled}
+                  editContactEnabled={editContactEnabled}
+                />
+
+                <Separator />
+
+                <div onFocus={() => setFocusSection('links')}>
+                  <WebsiteLinksSection value={state.websiteLinks} dispatch={dispatch} />
+                </div>
+
+                <Separator />
+
+                <div onFocus={() => setFocusSection('attachments')}>
+                  <AttachmentSection
+                    files={state.attachments}
+                    photos={state.photos}
+                    dispatch={dispatch}
+                    kind={state.kind === 'announcement' ? 'ANNOUNCEMENT' : 'CONSENT_FORM'}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* RESPONSE TYPE Card */}
+            {selectedType === 'post-with-response' && (
+              <Card>
+                <CardContent className="space-y-5 p-6">
+                  <div className="space-y-1">
+                    <p className="text-xs font-medium tracking-widest text-muted-foreground uppercase">
+                      Response Type
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      Choose how parents respond to this post.
+                    </p>
+                  </div>
+
+                  <Separator />
+
+                  <div onFocus={() => setFocusSection('response')}>
+                    <ResponseTypeSelector
+                      value={state.responseType}
+                      onChange={(value) => dispatch({ type: 'SET_RESPONSE_TYPE', payload: value })}
+                      hideViewOnly
+                    />
+                  </div>
+
+                  {state.responseType === 'yes-no' && (
+                    <>
+                      <Separator />
+                      <div className="space-y-4">
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="space-y-1">
+                            <p className="text-xs font-medium tracking-widest text-muted-foreground uppercase">
+                              Questions
+                            </p>
+                            <p className="text-sm text-muted-foreground">
+                              Custom questions (optional). You may add up to {MAX_QUESTIONS}{' '}
+                              questions.
+                            </p>
+                          </div>
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            disabled={state.questions.length >= MAX_QUESTIONS}
+                            onClick={() => {
+                              dispatch({ type: 'ADD_QUESTION' });
+                              setFocusSection('questions');
+                            }}
+                          >
+                            <Plus className="h-4 w-4" />
+                            Add a Question
+                          </Button>
+                        </div>
+                        <QuestionBuilder
+                          questions={state.questions}
+                          dispatch={dispatch}
+                          onQuestionFocus={(index) => {
+                            setFocusedQuestionIndex(index);
+                            setFocusSection('questions');
+                          }}
+                        />
+                      </div>
+                    </>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+          </div>
+          {/* end locked-for-posted-edit */}
+
+          {/* DUE DATE & REMINDER Card */}
+          {selectedType === 'post-with-response' &&
+            (state.responseType === 'acknowledge' || state.responseType === 'yes-no') && (
+              <Card>
+                <CardContent className="space-y-5 p-6">
+                  <p className="text-xs font-medium tracking-widest text-muted-foreground uppercase">
+                    Due Date &amp; Reminder
+                  </p>
+
+                  <Separator />
+
+                  <div onFocus={() => setFocusSection('response')}>
+                    <DueDateSection
+                      value={state.dueDate}
+                      onChange={(value) => {
+                        clearFieldError('dueDate');
+                        dispatch({ type: 'SET_DUE_DATE', payload: value });
+                      }}
+                      required
+                    />
+                    {fieldErrors.dueDate && (
+                      <p role="alert" className="mt-1.5 text-sm text-destructive">
+                        {fieldErrors.dueDate}
+                      </p>
+                    )}
+                  </div>
+
+                  <Separator />
+
+                  <ReminderSection
+                    value={state.reminder}
+                    onChange={(value) => dispatch({ type: 'SET_REMINDER', payload: value })}
+                    consentByDate={state.dueDate}
+                  />
+                </CardContent>
+              </Card>
+            )}
+        </div>
+
+        {showPreview && (
+          <div className="sticky top-[72px] hidden h-fit w-[360px] shrink-0 lg:block">
+            <Card>
+              <CardContent className="space-y-4 p-5">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-base font-medium">Preview</p>
+                  <p className="text-xs text-muted-foreground">As seen by parents</p>
+                </div>
+                <PostPreview
+                  formState={deferredState}
+                  currentUserName={session.staffName ?? 'Daniel Tan'}
+                  defaultEnquiryEmail={session.schoolEmailAddress ?? 'enquiry@school.edu.sg'}
+                  focusSection={focusSection}
+                  focusQuestionIndex={focusedQuestionIndex}
+                  onDismissQuestions={() => setFocusSection('response')}
+                />
+              </CardContent>
+            </Card>
+          </div>
+        )}
+      </div>
+
+      {/* Mobile preview */}
+      <div
+        className={cn(
+          'fixed inset-0 z-50 transition-opacity duration-150 lg:hidden',
+          showPreview ? 'pointer-events-auto bg-black/50' : 'pointer-events-none bg-transparent',
+        )}
+        onClick={() => setShowPreview(false)}
+      >
+        <div
+          className={cn(
+            'absolute top-0 right-0 bottom-0 w-[360px] overflow-y-auto bg-white p-4 shadow-xl transition-transform duration-150',
+            showPreview ? 'translate-x-0' : 'translate-x-full',
+          )}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="mb-4 flex items-center justify-between">
+            <p className="text-sm font-medium">Preview</p>
+            <Button variant="ghost" size="sm" onClick={() => setShowPreview(false)}>
+              Close
+            </Button>
+          </div>
+          <PostPreview
+            formState={deferredState}
+            currentUserName={session.staffName ?? 'Daniel Tan'}
+            defaultEnquiryEmail={session.schoolEmailAddress ?? 'enquiry@school.edu.sg'}
+          />
+        </div>
+      </div>
+
+      <SendConfirmationDialog
+        open={showSendDialog}
+        onOpenChange={setShowSendDialog}
+        title={state.title}
+        recipientCount={recipientCount}
+        responseType={state.responseType}
+        onConfirm={handleSendConfirm}
+      />
+
+      <SchedulePickerDialog
+        open={showScheduleDialog}
+        onOpenChange={setShowScheduleDialog}
+        onConfirm={handleScheduleConfirm}
+        busy={isSaving}
+        scheduleWindow={scheduleWindow}
+        dueDate={selectedType === 'post-with-response' ? state.dueDate : undefined}
+      />
+    </div>
+  );
+}
+
+// ─── Route component ─────────────────────────────────────────────────────────
+
+function CreatePostPage() {
+  const { id } = useParams();
+  return <CreatePostPageInner key={id ?? 'new'} editId={id} />;
+}
+
+export { CreatePostPage };
+
+// ─── SaveStatusTicker ────────────────────────────────────────────────────────
+
+function SaveStatusTicker({
+  status,
+  lastSavedAt,
+}: {
+  status: AutoSaveStatus;
+  lastSavedAt: Date | null;
+}) {
+  let label: string;
+  if (status === 'saving') label = 'Saving…';
+  else if (status === 'error') label = 'Save failed';
+  else if (lastSavedAt) {
+    label = `Saved ${lastSavedAt.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`;
+  } else label = '';
+
+  return (
+    <span className="text-xs text-muted-foreground tabular-nums" aria-live="polite">
+      {label}
+    </span>
+  );
+}
