@@ -11,6 +11,8 @@ export interface SelectedEntity {
   label: string;
   type: string;
   count?: number;
+  groupType?: string;
+  memberNames?: string[];
 }
 
 export interface UploadingFile {
