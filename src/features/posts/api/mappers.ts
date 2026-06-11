@@ -1,4 +1,3 @@
-import type { UploadingFile } from '~/features/posts/state/initial-state';
 import type {
   AnnouncementDraftId,
   AnnouncementId,
@@ -20,6 +19,7 @@ import type {
   TargetType,
   UploadedFile,
 } from '~/data/posts-registry';
+import type { UploadingFile } from '~/features/posts/state/initial-state';
 import { extractTextFromTiptap, textToTiptapDoc } from '~/helpers/tiptap';
 
 import type {
@@ -28,6 +28,7 @@ import type {
   ApiAnnouncementStatus,
   ApiAnnouncementStudent,
   ApiAnnouncementSummary,
+  ApiAttachment,
   ApiConsentFormDetail,
   ApiConsentFormDraft,
   ApiConsentFormStatus,
@@ -36,6 +37,7 @@ import type {
   ApiCreateConsentFormDraftPayload,
   ApiCreateConsentFormPayload,
   ApiGroupTarget,
+  ApiImage,
   ApiReminderType,
 } from './types';
 
@@ -374,13 +376,13 @@ export function mapConsentFormDraftDetail(draft: ApiConsentFormDraft): ConsentFo
     history: [],
     event,
     websiteLinks,
-    shortcuts: (draft.shortcuts as string[]) ?? [],
+    shortcuts: ((draft.shortcuts as string[]) ?? []).map((s) => ({ id: s, label: s, url: '' })),
     staffOwnerIds: staffOwners.map((s) => s.staffID),
     staffInCharge: staffOwners[0]?.staffName,
     targets,
-    attachments: rehydrateAttachments(draft.attachments) as UploadedFile[],
+    attachments: rehydrateAttachments(draft.attachments as ApiAttachment[]) as UploadedFile[],
     photos: rehydratePhotos(
-      Array.isArray(draft.images) ? draft.images : draft.images.images,
+      (Array.isArray(draft.images) ? draft.images : draft.images.images) as ApiImage[],
     ) as UploadedFile[],
   };
 }
@@ -538,23 +540,19 @@ export function mapConsentFormDetail(detail: ApiConsentFormDetail): ConsentFormP
         }
       : undefined;
 
-  const questions = (detail.customQuestions ?? []).map<ConsentFormPost['questions'][number]>(
-    (q) =>
-      q.type === 'MCQ'
-        ? {
-            id: String(q.questionId),
-            text: q.text,
-            type: 'mcq',
-            options: (q.options && q.options.length > 0 ? q.options : ['']) as [
-              string,
-              ...string[],
-            ],
-          }
-        : {
-            id: String(q.questionId),
-            text: q.text,
-            type: 'free-text',
-          },
+  const questions = (detail.customQuestions ?? []).map<ConsentFormPost['questions'][number]>((q) =>
+    q.type === 'MCQ'
+      ? {
+          id: String(q.questionId),
+          text: q.text,
+          type: 'mcq',
+          options: (q.options && q.options.length > 0 ? q.options : ['']) as [string, ...string[]],
+        }
+      : {
+          id: String(q.questionId),
+          text: q.text,
+          type: 'free-text',
+        },
   );
 
   const history: ConsentFormHistoryEntry[] = detail.consentFormHistory ?? [];
@@ -910,9 +908,7 @@ function selectedToStudentGroups(
     .filter((g) => !Number.isNaN(g.value));
 }
 
-function selectedToStaffGroups(
-  selected: BuildPostPayloadInput['selectedStaff'],
-): ApiGroupTarget[] {
+function selectedToStaffGroups(selected: BuildPostPayloadInput['selectedStaff']): ApiGroupTarget[] {
   // Today the staff selector only surfaces individuals (per PGTW-7 scope —
   // Level/School staff data isn't exposed by the school endpoints). When
   // those tabs come online, fold them in here with the right `type`.
@@ -950,9 +946,7 @@ export function buildAnnouncementPayload(
   } satisfies ApiCreateAnnouncementPayload;
 }
 
-export function buildConsentFormPayload(
-  state: BuildPostPayloadInput,
-): ApiCreateConsentFormPayload {
+export function buildConsentFormPayload(state: BuildPostPayloadInput): ApiCreateConsentFormPayload {
   const doc = state.descriptionDoc ?? textToTiptapDoc(state.description);
   if (state.responseType === 'view-only') {
     // Consent forms never carry `view-only`; the container's type-picker
