@@ -1,36 +1,214 @@
 @import 'tailwindcss';
 
+:root {
+  /* Brand scale (twblue) */
+  --twblue-1: #fcfdff;
+  --twblue-2: #f5f9ff;
+  --twblue-3: #eaf3ff;
+  --twblue-4: #daebff;
+  --twblue-5: #c7e1ff;
+  --twblue-6: #b2d3ff;
+  --twblue-7: #98c1ff;
+  --twblue-8: #73a7ff;
+  --twblue-9: #0064ff;
+  --twblue-10: #0058e6;
+  --twblue-11: #015ceb;
+  --twblue-12: #0b2d6b;
+
+  /* Radix Slate scale (light) */
+  --slate-1: #fcfcfd;
+  --slate-2: #f9f9fb;
+  --slate-3: #f0f0f3;
+  --slate-4: #e8e8ec;
+  --slate-5: #e0e1e6;
+  --slate-6: #d9d9e0;
+  --slate-7: #cdced6;
+  --slate-8: #b9bbc6;
+  --slate-9: #8b8d98;
+  --slate-10: #80838d;
+  --slate-11: #60646c;
+  --slate-12: #1c2024;
+
+  /* Radix Blue scale */
+  --blue-3: #e1f0ff;
+  --blue-9: #0090ff;
+  --blue-11: #006adc;
+
+  /* Radix Green scale */
+  --green-3: #e4f9e0;
+  --green-9: #30a46c;
+  --green-11: #18794e;
+
+  /* Radix Red scale */
+  --red-9: #e5484d;
+  --red-11: #cd2b31;
+
+  /* Radix Amber scale */
+  --amber-3: #fff1d6;
+  --amber-11: #ad5700;
+
+  /* Shadcn semantic tokens — rebased on Radix slate + twblue */
+  --background: var(--slate-1);
+  --foreground: var(--slate-12);
+  --card: #ffffff;
+  --card-foreground: var(--slate-12);
+  --popover: #ffffff;
+  --popover-foreground: var(--slate-12);
+  --primary: var(--twblue-9);
+  --primary-foreground: #ffffff;
+  --secondary: #ffffff;
+  --secondary-foreground: var(--slate-12);
+  --muted: var(--slate-3);
+  --muted-foreground: var(--slate-11);
+  --accent: var(--slate-4);
+  --accent-foreground: var(--slate-12);
+  --destructive: var(--red-9);
+
+  /* Status tokens */
+  --success: var(--green-3);
+  --success-foreground: var(--green-11);
+  --warning: var(--amber-3);
+  --warning-foreground: var(--amber-11);
+  --info: var(--blue-3);
+  --info-foreground: var(--blue-11);
+
+  --border: var(--slate-6);
+  --input: var(--slate-7);
+  --ring: var(--twblue-7);
+  --radius: 0.625rem;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-info: var(--info);
+  --color-info-foreground: var(--info-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --color-slate-1: var(--slate-1);
+  --color-slate-2: var(--slate-2);
+  --color-slate-3: var(--slate-3);
+  --color-slate-4: var(--slate-4);
+  --color-slate-5: var(--slate-5);
+  --color-slate-6: var(--slate-6);
+  --color-slate-7: var(--slate-7);
+  --color-slate-8: var(--slate-8);
+  --color-slate-9: var(--slate-9);
+  --color-slate-10: var(--slate-10);
+  --color-slate-11: var(--slate-11);
+  --color-slate-12: var(--slate-12);
+
+  --color-twblue-9: var(--twblue-9);
+  --color-twblue-11: var(--twblue-11);
+
+  --radius-sm: 0.25rem;
+  --radius-md: calc(var(--radius) - 0.25rem);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 0.25rem);
+}
+
 @layer base {
+  *,
+  ::after,
+  ::before {
+    border-color: var(--color-border);
+  }
+
   body {
-    @apply bg-background text-foreground antialiased;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 }
 
-@theme {
-  --color-border: oklch(0.922 0.004 286.32);
-  --color-input: oklch(0.922 0.004 286.32);
-  --color-ring: oklch(0.708 0.165 254.624);
-  --color-background: oklch(1 0 0);
-  --color-foreground: oklch(0.145 0.004 286.32);
-  --color-primary: oklch(0.205 0.042 265.755);
-  --color-primary-foreground: oklch(0.985 0.001 286.32);
-  --color-secondary: oklch(0.97 0.001 286.32);
-  --color-secondary-foreground: oklch(0.205 0.042 265.755);
-  --color-destructive: oklch(0.577 0.245 27.325);
-  --color-destructive-foreground: oklch(0.985 0.001 286.32);
-  --color-muted: oklch(0.97 0.001 286.32);
-  --color-muted-foreground: oklch(0.556 0.016 286.32);
-  --color-accent: oklch(0.97 0.001 286.32);
-  --color-accent-foreground: oklch(0.205 0.042 265.755);
-  --color-popover: oklch(1 0 0);
-  --color-popover-foreground: oklch(0.145 0.004 286.32);
-  --color-card: oklch(1 0 0);
-  --color-card-foreground: oklch(0.145 0.004 286.32);
-  --color-success: oklch(0.627 0.194 149.214);
-  --color-info: oklch(0.623 0.214 259.815);
-  --radius-sm: 0.25rem;
-  --radius-md: 0.375rem;
-  --radius-lg: 0.5rem;
-  --radius-xl: 0.75rem;
+/* Rich-text surface — matches legacy for editor and preview */
+.rich-content {
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: var(--foreground);
+}
+.rich-content p {
+  margin-block: 0.375rem;
+}
+.rich-content ul {
+  list-style: disc;
+  padding-inline-start: 1.25rem;
+  margin-block: 0.5rem;
+}
+.rich-content ol {
+  list-style: decimal;
+  padding-inline-start: 1.25rem;
+  margin-block: 0.5rem;
+}
+.rich-content li {
+  margin-block: 0.125rem;
+}
+.rich-content li > p {
+  margin-block: 0;
+}
+.rich-content h1 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-block: 0.75rem 0.375rem;
+}
+.rich-content h2 {
+  font-size: 1.125rem;
+  font-weight: 600;
+  margin-block: 0.625rem 0.25rem;
+}
+.rich-content h3 {
+  font-size: 1rem;
+  font-weight: 600;
+  margin-block: 0.5rem 0.25rem;
+}
+.rich-content blockquote {
+  border-inline-start: 3px solid var(--border);
+  padding-inline-start: 0.75rem;
+  color: var(--muted-foreground);
+  margin-block: 0.5rem;
+}
+.rich-content a {
+  color: var(--primary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.rich-content :where(p, h1, h2, h3, ul, ol, blockquote):first-child {
+  margin-block-start: 0;
+}
+.rich-content :where(p, h1, h2, h3, ul, ol, blockquote):last-child {
+  margin-block-end: 0;
+}
+
+/* Sonner toast theming */
+[data-sonner-toaster][data-sonner-theme] {
+  --normal-bg: var(--background);
+  --normal-text: var(--foreground);
+  --normal-border: var(--border);
+  --success-bg: var(--background);
+  --success-text: var(--green-11);
+  --success-border: var(--border);
+  --error-bg: var(--background);
+  --error-text: var(--red-11);
+  --error-border: var(--border);
 }
