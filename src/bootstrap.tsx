@@ -1,7 +1,5 @@
 import { createRoot } from 'react-dom/client';
 
-import App from './App';
-
 import './index.css';
 
 async function boot() {
@@ -10,6 +8,7 @@ async function boot() {
     await worker.start({ onUnhandledRequest: 'bypass' });
   }
 
+  const { default: App } = await import('./App');
   const root = createRoot(document.getElementById('root')!);
   root.render(<App />);
 }
