@@ -191,7 +191,6 @@ function EventScheduleSection({ value, onChange }: EventScheduleSectionProps) {
                     if (date) handleStartDateChange(localDateToIso(date));
                   }}
                   disabled={{ before: today }}
-                  autoFocus
                 />
               </PopoverContent>
             </Popover>
@@ -234,7 +233,6 @@ function EventScheduleSection({ value, onChange }: EventScheduleSectionProps) {
                     if (date) handleEndDateChange(localDateToIso(date));
                   }}
                   disabled={{ before: endMinDate }}
-                  autoFocus
                 />
               </PopoverContent>
             </Popover>
