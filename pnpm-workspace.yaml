@@ -1,5 +1,6 @@
 allowBuilds:
   '@evilmartians/lefthook': true
+  msw: false
 minimumReleaseAgeExclude:
   - '@rsbuild/core@2.0.12'
   - '@rspack/binding-darwin-arm64@2.0.8'
