@@ -12,7 +12,8 @@ import StarterKit from '@tiptap/starter-kit';
  * preview (`generateHTML`). Keeping both sides on the same schema is what
  * makes the preview pixel-match what the teacher typed.
  */
-export function createRichTextExtensions(opts?: { maxLength?: number }) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function createRichTextExtensions(opts?: { maxLength?: number }): any[] {
   return [
     // StarterKit ships many extensions bundled — disable every node/mark that
     // PGW's schema validator (`pgw-web/src/server/utils/richTextUtil.ts#101`)
