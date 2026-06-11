@@ -1,0 +1,406 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+import {
+  cancelAnnouncementSchedule,
+  cancelConsentFormSchedule,
+  createDraft,
+  rescheduleAnnouncementDraft,
+  rescheduleConsentFormDraft,
+  scheduleExistingAnnouncementDraft,
+  scheduleExistingConsentFormDraft,
+  scheduleNewAnnouncementDraft,
+  scheduleNewConsentFormDraft,
+  updateDraft,
+} from './client';
+import { CsrfError, RedirectError, TimeoutError } from './errors';
+import type { ApiCreateConsentFormDraftPayload, ApiCreateDraftPayload } from './types';
+
+const base: ApiCreateDraftPayload = {
+  title: 'Draft',
+  richTextContent: '{"type":"doc","content":[]}',
+  enquiryEmailAddress: 'draft@moe.edu.sg',
+  studentGroups: [],
+};
+
+function mockFetch(body: unknown, status = 200) {
+  return vi.fn().mockResolvedValue(
+    new Response(JSON.stringify(body), {
+      status,
+      headers: { 'content-type': 'application/json' },
+    }),
+  );
+}
+
+beforeEach(() => {
+  vi.stubGlobal('fetch', mockFetch({ body: { announcementDraftId: 42 }, resultCode: 1 }));
+});
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
+
+describe('createDraft', () => {
+  it('POSTs to /api/web/2/staff/announcements/drafts', async () => {
+    await createDraft(base);
+    const call = (globalThis.fetch as unknown as ReturnType<typeof vi.fn>).mock.calls[0];
+    expect(call[0]).toMatch(/\/announcements\/drafts$/);
+    expect(call[1].method).toBe('POST');
+  });
+
+  it('returns the announcementDraftId from the envelope body', async () => {
+    const out = await createDraft(base);
+    expect(out).toEqual({ announcementDraftId: 42 });
+  });
+
+  it('accepts a payload with empty enquiryEmailAddress (partial draft)', async () => {
+    // Mirrors PGW's draft-manager contract: empty form inputs should still be acceptable.
+    await expect(createDraft({ ...base, enquiryEmailAddress: '' })).resolves.toEqual({
+      announcementDraftId: 42,
+    });
+  });
+
+  it('passes an AbortSignal to fetch that aborts when the caller aborts', async () => {
+    const controller = new AbortController();
+    await createDraft(base, { signal: controller.signal });
+    const call = (globalThis.fetch as unknown as ReturnType<typeof vi.fn>).mock.calls[0];
+    // The composed signal is a child of the caller's signal — aborting the
+    // caller cascades to the fetch's signal (compound AbortController pattern).
+    expect(call[1].signal).toBeInstanceOf(AbortSignal);
+    expect(call[1].signal.aborted).toBe(false);
+    controller.abort();
+    expect(call[1].signal.aborted).toBe(true);
+  });
+});
+
+describe('rescheduleAnnouncementDraft (U3)', () => {
+  beforeEach(() => {
+    vi.stubGlobal('fetch', mockFetch(undefined, 204));
+  });
+
+  it('PUTs to /announcements/drafts/:id/rescheduleSchedule with body { scheduledDateTime }', async () => {
+    await rescheduleAnnouncementDraft(123, { scheduledSendAt: '2026-05-01T09:15:00+08:00' });
+    const call = (globalThis.fetch as unknown as ReturnType<typeof vi.fn>).mock.calls[0];
+    expect(call[0]).toMatch(/\/announcements\/drafts\/123\/rescheduleSchedule$/);
+    expect(call[1].method).toBe('PUT');
+    expect(JSON.parse(call[1].body as string)).toEqual({
+      scheduledDateTime: '2026-05-01T09:15:00+08:00',
+    });
+  });
+});
+
+describe('rescheduleConsentFormDraft (U3)', () => {
+  beforeEach(() => {
+    vi.stubGlobal('fetch', mockFetch(undefined, 204));
+  });
+
+  it('PUTs to /consentForms/drafts/:id/rescheduleSchedule with body { scheduledDateTime }', async () => {
+    await rescheduleConsentFormDraft(401, { scheduledSendAt: '2026-05-02T10:00:00+08:00' });
+    const call = (globalThis.fetch as unknown as ReturnType<typeof vi.fn>).mock.calls[0];
+    expect(call[0]).toMatch(/\/consentForms\/drafts\/401\/rescheduleSchedule$/);
+    expect(call[1].method).toBe('PUT');
+    expect(JSON.parse(call[1].body as string)).toEqual({
+      scheduledDateTime: '2026-05-02T10:00:00+08:00',
+    });
+  });
+});
+
+describe('cancelAnnouncementSchedule (U9)', () => {
+  beforeEach(() => {
+    vi.stubGlobal('fetch', mockFetch({}, 200));
+  });
+
+  it('POSTs to /announcements/drafts/:id/cancelSchedule', async () => {
+    await cancelAnnouncementSchedule(123);
+    const call = (globalThis.fetch as unknown as ReturnType<typeof vi.fn>).mock.calls[0];
+    expect(call[0]).toMatch(/\/announcements\/drafts\/123\/cancelSchedule$/);
+    expect(call[1].method).toBe('POST');
+  });
+});
+
+describe('cancelConsentFormSchedule (U9)', () => {
+  beforeEach(() => {
+    vi.stubGlobal('fetch', mockFetch({}, 200));
+  });
+
+  it('POSTs to /consentForms/drafts/:id/cancelSchedule', async () => {
+    await cancelConsentFormSchedule(401);
+    const call = (globalThis.fetch as unknown as ReturnType<typeof vi.fn>).mock.calls[0];
+    expect(call[0]).toMatch(/\/consentForms\/drafts\/401\/cancelSchedule$/);
+  });
+});
+
+describe('mutateApi CSRF retry (U7)', () => {
+  function csrfErrorResponse() {
+    return new Response(JSON.stringify({ resultCode: -4013, error: { errorReason: 'CSRF' } }), {
+      status: 403,
+      headers: { 'content-type': 'application/json' },
+    });
+  }
+  function okResponse() {
+    return new Response(JSON.stringify({ body: { announcementDraftId: 42 }, resultCode: 1 }), {
+      status: 200,
+      headers: { 'content-type': 'application/json' },
+    });
+  }
+
+  it('replays the request once after a -4013 CSRF rejection', async () => {
+    const fetchMock = vi
+      .fn()
+      // First call: the write endpoint returns -4013.
+      .mockResolvedValueOnce(csrfErrorResponse())
+      // Second call: the CSRF refresh probe against /session/current.
+      .mockResolvedValueOnce(
+        new Response('{}', { status: 200, headers: { 'content-type': 'application/json' } }),
+      )
+      // Third call: the write endpoint replay succeeds.
+      .mockResolvedValueOnce(okResponse());
+    vi.stubGlobal('fetch', fetchMock);
+
+    const out = await createDraft(base);
+    expect(out).toEqual({ announcementDraftId: 42 });
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    // Replay hits the same write URL with the same body as the original attempt.
+    expect(fetchMock.mock.calls[0][0]).toMatch(/\/announcements\/drafts$/);
+    expect(fetchMock.mock.calls[2][0]).toMatch(/\/announcements\/drafts$/);
+  });
+
+  it('throws CsrfError when the replay also returns -4013 (no infinite loop)', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(csrfErrorResponse())
+      .mockResolvedValueOnce(
+        new Response('{}', { status: 200, headers: { 'content-type': 'application/json' } }),
+      )
+      .mockResolvedValueOnce(csrfErrorResponse());
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(createDraft(base)).rejects.toBeInstanceOf(CsrfError);
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+  });
+});
+
+describe('mutateApi redirect handling (U10)', () => {
+  it('throws RedirectError when PG returns a 302 with Location', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response(null, {
+          status: 302,
+          headers: { location: '/login?reason=-4031' },
+        }),
+      ),
+    );
+    // Stub navigation so the assertion doesn't try to actually relocate jsdom.
+    const locationHref = vi.fn();
+    Object.defineProperty(window, 'location', {
+      configurable: true,
+      value: {
+        get href() {
+          return '';
+        },
+        set href(v: string) {
+          locationHref(v);
+        },
+        origin: 'http://localhost',
+        pathname: '/',
+      },
+    });
+
+    const err = await createDraft(base).catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(RedirectError);
+    expect((err as RedirectError).location).toBe('/login?reason=-4031');
+    expect(locationHref).toHaveBeenCalledWith('/login?reason=-4031');
+  });
+
+  it('throws RedirectError with a null location when the browser hid the header', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        // Emulate an opaqueredirect — Response headers are empty but status < 400
+        // so isRedirectResponse still fires via the 3xx branch.
+        new Response(null, { status: 302 }),
+      ),
+    );
+    const err = await createDraft(base).catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(RedirectError);
+    expect((err as RedirectError).location).toBeNull();
+  });
+});
+
+describe('mutateApi timeout (U8)', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('rejects with TimeoutError when fetch never resolves within the budget', async () => {
+    // A fetch that never resolves. The `signal` passed in by mutateApi is the
+    // composed timeout signal — hook into it to resolve with an AbortError
+    // when the internal timeout fires, mimicking a real fetch implementation.
+    const fetchMock = vi.fn().mockImplementation((_url: string, init: RequestInit) => {
+      return new Promise((_resolve, reject) => {
+        const signal = init.signal;
+        if (signal) {
+          signal.addEventListener('abort', () => {
+            reject(new DOMException('Aborted', 'AbortError'));
+          });
+        }
+      });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const pending = createDraft(base, { timeoutMs: 100 });
+    // Catch the rejection now so there's no "unhandled promise" noise.
+    const assertion = expect(pending).rejects.toBeInstanceOf(TimeoutError);
+    await vi.advanceTimersByTimeAsync(200);
+    await assertion;
+  });
+
+  it('surfaces a caller-initiated abort as AbortError, not TimeoutError', async () => {
+    const fetchMock = vi.fn().mockImplementation((_url: string, init: RequestInit) => {
+      return new Promise((_resolve, reject) => {
+        const signal = init.signal;
+        if (signal) {
+          signal.addEventListener('abort', () => {
+            reject(new DOMException('Aborted', 'AbortError'));
+          });
+        }
+      });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const controller = new AbortController();
+    const pending = createDraft(base, { signal: controller.signal, timeoutMs: 30_000 });
+    const assertion = expect(pending).rejects.toSatisfy(
+      (err: unknown) =>
+        err instanceof DOMException && err.name === 'AbortError' && !(err instanceof TimeoutError),
+    );
+    controller.abort();
+    await assertion;
+  });
+
+  it('does not reject fast fetches with a timeout', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify({ body: { announcementDraftId: 7 }, resultCode: 1 }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        }),
+      ),
+    );
+    const out = await createDraft(base, { timeoutMs: 30_000 });
+    expect(out).toEqual({ announcementDraftId: 7 });
+  });
+});
+
+describe('updateDraft', () => {
+  beforeEach(() => {
+    vi.stubGlobal('fetch', mockFetch(undefined, 204));
+  });
+
+  it('PUTs to /api/web/2/staff/announcements/drafts/:id', async () => {
+    await updateDraft(123, base);
+    const call = (globalThis.fetch as unknown as ReturnType<typeof vi.fn>).mock.calls[0];
+    expect(call[0]).toMatch(/\/announcements\/drafts\/123$/);
+    expect(call[1].method).toBe('PUT');
+  });
+});
+
+const formBase: ApiCreateConsentFormDraftPayload = {
+  title: 'Form',
+  richTextContent: '{"type":"doc","content":[]}',
+  enquiryEmailAddress: 'form@moe.edu.sg',
+  responseType: 'YES_NO',
+  consentByDate: '2026-05-10',
+  addReminderType: 'NONE',
+  studentGroups: [],
+};
+
+describe('scheduleNewAnnouncementDraft', () => {
+  beforeEach(() => {
+    vi.stubGlobal(
+      'fetch',
+      mockFetch({ body: { announcementDraftId: 1042, updatedAt: 't' }, resultCode: 1 }),
+    );
+  });
+
+  it('POSTs to /announcements/drafts/schedule with body field { scheduledDateTime }', async () => {
+    await scheduleNewAnnouncementDraft({ ...base, scheduledSendAt: '2026-05-01T09:15:00+08:00' });
+    const call = (globalThis.fetch as unknown as ReturnType<typeof vi.fn>).mock.calls[0];
+    expect(call[0]).toMatch(/\/announcements\/drafts\/schedule$/);
+    expect(call[1].method).toBe('POST');
+    const body = JSON.parse(call[1].body as string);
+    expect(body.scheduledDateTime).toBe('2026-05-01T09:15:00+08:00');
+    expect(body.scheduledSendAt).toBeUndefined();
+  });
+});
+
+describe('scheduleExistingAnnouncementDraft', () => {
+  beforeEach(() => {
+    vi.stubGlobal(
+      'fetch',
+      mockFetch({ body: { announcementDraftId: 99, updatedAt: 't' }, resultCode: 1 }),
+    );
+  });
+
+  it('PUTs to /announcements/drafts/schedule/:id with body field { scheduledDateTime }', async () => {
+    await scheduleExistingAnnouncementDraft(99, {
+      ...base,
+      scheduledSendAt: '2026-05-02T10:00:00+08:00',
+    });
+    const call = (globalThis.fetch as unknown as ReturnType<typeof vi.fn>).mock.calls[0];
+    expect(call[0]).toMatch(/\/announcements\/drafts\/schedule\/99$/);
+    expect(call[1].method).toBe('PUT');
+    const body = JSON.parse(call[1].body as string);
+    expect(body.scheduledDateTime).toBe('2026-05-02T10:00:00+08:00');
+    expect(body.scheduledSendAt).toBeUndefined();
+  });
+});
+
+describe('scheduleNewConsentFormDraft', () => {
+  beforeEach(() => {
+    vi.stubGlobal(
+      'fetch',
+      mockFetch({ body: { consentFormDraftId: 401, updatedAt: 't' }, resultCode: 1 }),
+    );
+  });
+
+  it('POSTs to /consentForms/drafts/schedule with body field { scheduledDateTime }', async () => {
+    await scheduleNewConsentFormDraft({
+      ...formBase,
+      scheduledSendAt: '2026-05-03T11:00:00+08:00',
+    });
+    const call = (globalThis.fetch as unknown as ReturnType<typeof vi.fn>).mock.calls[0];
+    expect(call[0]).toMatch(/\/consentForms\/drafts\/schedule$/);
+    expect(call[1].method).toBe('POST');
+    const body = JSON.parse(call[1].body as string);
+    expect(body.scheduledDateTime).toBe('2026-05-03T11:00:00+08:00');
+    expect(body.scheduledSendAt).toBeUndefined();
+  });
+});
+
+describe('scheduleExistingConsentFormDraft', () => {
+  beforeEach(() => {
+    vi.stubGlobal(
+      'fetch',
+      mockFetch({ body: { consentFormDraftId: 402, updatedAt: 't' }, resultCode: 1 }),
+    );
+  });
+
+  it('PUTs to /consentForms/drafts/schedule/:id with body field { scheduledDateTime }', async () => {
+    await scheduleExistingConsentFormDraft(402, {
+      ...formBase,
+      scheduledSendAt: '2026-05-04T12:00:00+08:00',
+    });
+    const call = (globalThis.fetch as unknown as ReturnType<typeof vi.fn>).mock.calls[0];
+    expect(call[0]).toMatch(/\/consentForms\/drafts\/schedule\/402$/);
+    expect(call[1].method).toBe('PUT');
+    const body = JSON.parse(call[1].body as string);
+    expect(body.scheduledDateTime).toBe('2026-05-04T12:00:00+08:00');
+    expect(body.scheduledSendAt).toBeUndefined();
+  });
+});
