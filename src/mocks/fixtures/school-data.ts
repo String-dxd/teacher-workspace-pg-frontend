@@ -236,21 +236,22 @@ export const groupsAssigned: ApiGroupsAssigned = {
 
 export const customGroups = [
   {
-    customGroupId: 801,
-    name: 'Science Olympiad Team',
-    studentCount: 12,
-    createdBy: 1002,
-    createdByName: 'Mr Lim Kah Hoe',
-    isShared: true,
+    id: 801,
+    groupName: 'Science Olympiad Team',
+    createdBy: 'Mr Lim Kah Hoe',
     createdAt: '2026-03-01T10:00:00+08:00',
+    owners: [
+      { staffId: 1002, staffName: 'Mr Lim Kah Hoe' },
+      { staffId: 1001, staffName: 'Ms Tan Wei Ling' },
+    ],
+    studentsList: Array.from({ length: 12 }, (_, i) => ({ studentId: 4001 + i })),
   },
   {
-    customGroupId: 802,
-    name: 'Reading Programme',
-    studentCount: 8,
-    createdBy: 1001,
-    createdByName: 'Ms Tan Wei Ling',
-    isShared: false,
+    id: 802,
+    groupName: 'Reading Programme',
+    createdBy: 'Ms Tan Wei Ling',
     createdAt: '2026-04-15T09:00:00+08:00',
+    owners: [{ staffId: 1001, staffName: 'Ms Tan Wei Ling' }],
+    studentsList: Array.from({ length: 8 }, (_, i) => ({ studentId: 5001 + i })),
   },
 ];

@@ -33,6 +33,7 @@ import type {
   ApiAnnouncementDetail,
   ApiAnnouncementDraft,
   ApiAnnouncementList,
+  ApiCcaDetail,
   ApiClassDetail,
   ApiConfig,
   ApiConsentFormDetail,
@@ -947,6 +948,10 @@ export function deleteCustomGroup(id: number) {
 
 export function fetchClassDetail(classId: number) {
   return fetchApi<ApiClassDetail>(`/groups/classes/${classId}`);
+}
+
+export function fetchCcaDetail(ccaId: number) {
+  return fetchApi<ApiCcaDetail>(`/groups/ccas/${ccaId}`);
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

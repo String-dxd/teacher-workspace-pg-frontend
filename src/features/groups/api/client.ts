@@ -1,0 +1,15 @@
+export {
+  createCustomGroup,
+  deleteCustomGroup,
+  fetchCcaDetail,
+  fetchClassDetail,
+  fetchCustomGroupDetail,
+  fetchCustomGroups,
+  fetchGroupsAssigned,
+  fetchSchoolClasses,
+  fetchSchoolStaff,
+  fetchSchoolStudents,
+  removeAccessFromCustomGroup,
+  shareCustomGroup,
+  updateCustomGroup,
+} from '~/features/posts/api/client';
