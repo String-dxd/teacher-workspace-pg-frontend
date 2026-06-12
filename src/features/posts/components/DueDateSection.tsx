@@ -1,9 +1,8 @@
 import { CalendarIcon } from 'lucide-react';
 import { useMemo } from 'react';
 
-// TODO: add Calendar to ~/components/ui (shadcn calendar component + react-day-picker)
-import { Label } from '~/components/ui';
-import { Popover, PopoverContent, PopoverTrigger } from '~/components/ui/popover';
+import { Calendar, Label, Popover, PopoverContent, PopoverTrigger } from '~/components/ui';
+import { formatLocalDate } from '~/helpers/dateTime';
 
 interface DueDateSectionProps {
   value: string; // YYYY-MM-DD
@@ -27,19 +26,6 @@ function localDateToIso(date: Date): string {
   return `${y}-${m}-${d}`;
 }
 
-/** Format a naive-local `YYYY-MM-DD` string as `"30 Mar 2026"`. */
-function formatLocalDate(local: string | undefined): string | undefined {
-  if (!local) return undefined;
-  const [y, mo, d] = local.split('-').map(Number);
-  if (![y, mo, d].every((n) => Number.isFinite(n))) return undefined;
-  const dt = new Date(y, (mo ?? 1) - 1, d);
-  if (Number.isNaN(dt.getTime())) return undefined;
-  const day = dt.getDate();
-  const month = dt.toLocaleDateString('en-GB', { month: 'short' });
-  const year = dt.getFullYear();
-  return `${day} ${month} ${year}`;
-}
-
 function DueDateSection({ value, onChange, required = false }: DueDateSectionProps) {
   const today = useMemo(() => {
     const t = new Date();
@@ -47,7 +33,6 @@ function DueDateSection({ value, onChange, required = false }: DueDateSectionPro
     return t;
   }, []);
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const selected = useMemo(() => isoToLocalDate(value), [value]);
   const formattedDate = value ? (formatLocalDate(value) ?? value) : null;
 
@@ -64,16 +49,13 @@ function DueDateSection({ value, onChange, required = false }: DueDateSectionPro
           {formattedDate ?? <span className="text-muted-foreground">Pick a date</span>}
         </PopoverTrigger>
         <PopoverContent className="w-auto p-0" align="start">
-          {/* TODO: render <Calendar> once ~/components/ui/calendar is added.
-              For now fall back to a native date input. */}
-          <input
-            type="date"
-            className="m-2 rounded border border-input bg-background px-3 py-2 text-sm"
-            value={value}
-            min={localDateToIso(today)}
-            onChange={(e) => {
-              if (e.target.value) onChange(e.target.value);
+          <Calendar
+            mode="single"
+            selected={selected}
+            onSelect={(date) => {
+              if (date) onChange(localDateToIso(date));
             }}
+            disabled={{ before: today }}
           />
         </PopoverContent>
       </Popover>

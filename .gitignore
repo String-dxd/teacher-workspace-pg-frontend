@@ -9,9 +9,6 @@ dist/
 # pnpm local store
 .pnpm-store/
 
-# Claude Code
-.claude/
-
 # IDE
 .idea/
 .vscode/

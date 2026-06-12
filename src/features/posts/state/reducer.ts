@@ -3,6 +3,7 @@ import type { FormQuestion } from '~/data/posts-registry';
 import type { PostFormAction } from './actions';
 import type { PostFormState, UploadingFile } from './initial-state';
 
+const MAX_QUESTIONS = 5;
 const MAX_WEBSITE_LINKS = 3;
 
 export function formReducer(state: PostFormState, action: PostFormAction): PostFormState {
@@ -18,6 +19,7 @@ export function formReducer(state: PostFormState, action: PostFormAction): PostF
     case 'SET_RECIPIENTS':
       return { ...state, selectedRecipients: action.payload };
     case 'ADD_QUESTION': {
+      if (state.questions.length >= MAX_QUESTIONS) return state;
       const newQuestion: FormQuestion = { id: crypto.randomUUID(), text: '', type: 'free-text' };
       return { ...state, questions: [...state.questions, newQuestion] };
     }
