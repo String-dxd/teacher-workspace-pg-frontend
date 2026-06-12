@@ -40,6 +40,14 @@ import {
 import { NotFoundError } from '~/features/posts/api/errors';
 import type { ApiConfig } from '~/features/posts/api/types';
 import { DeletePostDialog } from '~/features/posts/components/DeletePostDialog';
+import {
+  DEFAULT_POST_FILTERS,
+  PostFilterPopover,
+  type PostFilters,
+  type PostOwnershipFilter,
+  type PostResponseFilter,
+  type PostStatusFilter,
+} from '~/features/posts/components/PostFilterPopover';
 import { formatDate } from '~/helpers/dateTime';
 import { notify } from '~/lib/notify';
 
@@ -109,10 +117,6 @@ function comparePosts(a: PostRowData, b: PostRowData): number {
   return a.id.localeCompare(b.id);
 }
 
-type PostStatusFilter = 'posted' | 'scheduled' | 'draft';
-type PostOwnershipFilter = 'mine' | 'shared';
-type PostResponseFilter = 'acknowledge' | 'yes-no';
-
 function statusBucket(row: Pick<Post, 'status'>): PostStatusFilter | null {
   const s = row.status;
   if (s === 'posted' || s === 'posting' || s === 'open' || s === 'closed') return 'posted';
@@ -120,22 +124,6 @@ function statusBucket(row: Pick<Post, 'status'>): PostStatusFilter | null {
   if (s === 'draft') return 'draft';
   return null;
 }
-
-interface PostFilters {
-  status: PostStatusFilter[];
-  ownership: PostOwnershipFilter[];
-  response: PostResponseFilter[];
-  dateFrom: string | null;
-  dateTo: string | null;
-}
-
-const DEFAULT_POST_FILTERS: PostFilters = {
-  status: [],
-  ownership: [],
-  response: [],
-  dateFrom: null,
-  dateTo: null,
-};
 
 export interface PostFilterQuery extends PostFilters {
   tab: PostTab;
@@ -306,15 +294,29 @@ const PostsListPage: React.FC = () => {
             </TabsList>
           </Tabs>
 
-          <div className="relative">
-            <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              type="text"
-              placeholder="Search posts..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full min-w-[220px] pl-9 sm:w-[280px]"
-              aria-label="Search posts"
+          <div className="flex items-center gap-2">
+            <div className="relative">
+              <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                type="text"
+                placeholder="Search posts..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full min-w-[220px] pl-9 sm:w-[280px]"
+                aria-label="Search posts"
+              />
+            </div>
+            <PostFilterPopover
+              value={filters}
+              onChange={setFilters}
+              responseOptions={
+                tab === 'view-only'
+                  ? null
+                  : [
+                      { value: 'acknowledge', label: 'Acknowledge' },
+                      { value: 'yes-no', label: 'Yes / No' },
+                    ]
+              }
             />
           </div>
         </div>
