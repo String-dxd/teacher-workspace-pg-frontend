@@ -80,7 +80,32 @@ export const handlers = [
   }),
 
   http.get(`${BASE}/groups/custom/:id`, () => {
-    return HttpResponse.json(envelope(customGroups[0]));
+    return HttpResponse.json(
+      envelope({
+        id: 801,
+        groupName: 'Science Olympiad Team',
+        createdBy: 'Mr Lim Kah Hoe',
+        createdAt: '2026-03-01T10:00:00+08:00',
+        owners: [
+          { staffId: 1002, staffName: 'Mr Lim Kah Hoe' },
+          { staffId: 1001, staffName: 'Ms Tan Wei Ling' },
+        ],
+        studentsList: [
+          { studentId: 2001, studentName: 'Ahmad bin Ibrahim', className: '3A', indexNumber: 1 },
+          { studentId: 2002, studentName: 'Chen Mei Hua', className: '3A', indexNumber: 2 },
+          { studentId: 2003, studentName: 'Raj Kumar', className: '3B', indexNumber: 1 },
+          { studentId: 2004, studentName: 'Sarah Lim', className: '3B', indexNumber: 2 },
+          { studentId: 3001, studentName: 'Ahmad bin Ibrahim Jr', className: '4A', indexNumber: 1 },
+          { studentId: 3002, studentName: 'Chen Wei Jie', className: '4A', indexNumber: 5 },
+          { studentId: 3003, studentName: 'Priya Nair', className: '4B', indexNumber: 12 },
+          { studentId: 4001, studentName: 'Lim Zhi Hao', className: '5A', indexNumber: 3 },
+          { studentId: 4002, studentName: 'Nurul Aisyah', className: '5A', indexNumber: 7 },
+          { studentId: 4003, studentName: 'Tan Jia Wen', className: '5B', indexNumber: 2 },
+          { studentId: 4004, studentName: 'Mohamed Irfan', className: '5B', indexNumber: 8 },
+          { studentId: 4005, studentName: 'Chua Kai Xin', className: '5C', indexNumber: 4 },
+        ],
+      }),
+    );
   }),
 
   http.get(`${BASE}/groups/classes/:classId`, () => {
@@ -120,6 +145,75 @@ export const handlers = [
 
   http.get('/api/configs', () => {
     return HttpResponse.json(envelope(configs));
+  }),
+
+  http.get(`${BASE}/groups/ccas/:ccaId`, () => {
+    return HttpResponse.json(
+      envelope({
+        ccaId: 701,
+        ccaDescription: 'Football',
+        students: [
+          { studentId: 2001, studentName: 'Ahmad bin Ibrahim', className: '3A' },
+          { studentId: 3001, studentName: 'Ahmad bin Ibrahim Jr', className: '4A' },
+          { studentId: 3002, studentName: 'Chen Wei Jie', className: '4A' },
+        ],
+      }),
+    );
+  }),
+
+  // ─── Groups Write Operations ────────────────────────────────────────────────
+  http.post(`${BASE}/groups/custom`, () => {
+    return HttpResponse.json(envelope({ customGroupId: 803 }));
+  }),
+
+  http.put(`${BASE}/groups/custom/:id`, () => {
+    return new HttpResponse(null, { status: 204 });
+  }),
+
+  http.put(`${BASE}/groups/custom/:id/share`, () => {
+    return new HttpResponse(null, { status: 204 });
+  }),
+
+  http.put(`${BASE}/groups/custom/:id/removeAccess`, () => {
+    return new HttpResponse(null, { status: 204 });
+  }),
+
+  http.delete(`${BASE}/groups/custom/:id`, () => {
+    return new HttpResponse(null, { status: 204 });
+  }),
+
+  http.post(`${BASE}/groups/custom/validateStudents`, () => {
+    return HttpResponse.json(envelope({ token: 'mock-validation-token-123' }));
+  }),
+
+  http.post(`${BASE}/groups/custom/validateStudents/results`, () => {
+    return HttpResponse.json(
+      envelope({
+        status: 'success',
+        data: {
+          validStudents: [
+            {
+              pgStudentId: 2001,
+              studentId: 'T1234567A',
+              studentName: 'Ahmad bin Ibrahim',
+              className: '3A',
+              classCode: '3A',
+              levelCode: 'P3',
+              levelCodeDescription: 'Primary 3',
+            },
+          ],
+          invalidStudents: [
+            {
+              name: 'Unknown Student',
+              className: '9Z',
+              message: 'Student not found in School Cockpit records.',
+              row: 3,
+            },
+          ],
+        },
+        error: null,
+      }),
+    );
   }),
 
   // ─── Write Operations (stubs) ──────────────────────────────────────────────

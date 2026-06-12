@@ -425,6 +425,16 @@ export interface ApiClassDetail {
   formTeachers?: ApiStaffOwner[];
 }
 
+export interface ApiCcaDetail {
+  ccaId: number;
+  ccaDescription: string;
+  students: {
+    studentId: number;
+    studentName: string;
+    className: string;
+  }[];
+}
+
 // ─── Session & Config ───────────────────────────────────────────────────────
 
 export interface ApiSession {
