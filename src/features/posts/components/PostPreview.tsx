@@ -1,4 +1,5 @@
 import { generateHTML } from '@tiptap/react';
+import DOMPurify from 'dompurify';
 import {
   ArrowDown,
   ArrowUp,
@@ -170,7 +171,11 @@ const PostPreview = React.memo(function PostPreview({
   const descriptionHtml = useMemo(() => {
     if (!descriptionDoc) return '';
     if (!extractTextFromTiptap(descriptionDoc)) return '';
-    return generateHTML(descriptionDoc as Parameters<typeof generateHTML>[0], RICH_TEXT_EXTENSIONS);
+    const raw = generateHTML(
+      descriptionDoc as Parameters<typeof generateHTML>[0],
+      RICH_TEXT_EXTENSIONS,
+    );
+    return DOMPurify.sanitize(raw);
   }, [descriptionDoc]);
   const hasContent = Boolean(title || description);
   const dimmedWhenEmpty = hasContent ? 'text-foreground' : 'text-muted-foreground/60';
@@ -406,6 +411,7 @@ const PostPreview = React.memo(function PostPreview({
                       className="rich-content"
                       // `generateHTML` serializes a trusted Tiptap schema; Link is
                       // constrained to http/https/mailto via createRichTextExtensions.
+                      // DOMPurify provides defense-in-depth against schema drift.
                       dangerouslySetInnerHTML={{ __html: descriptionHtml }}
                     />
                   ) : description ? (
