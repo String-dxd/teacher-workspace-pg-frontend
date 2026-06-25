@@ -209,7 +209,7 @@ describe('mutateApi redirect handling (U10)', () => {
     const err = await createDraft(base).catch((e: unknown) => e);
     expect(err).toBeInstanceOf(RedirectError);
     expect((err as RedirectError).location).toBe('/login?reason=-4031');
-    expect(locationHref).toHaveBeenCalledWith('/login?reason=-4031');
+    expect(locationHref).toHaveBeenCalledWith('http://localhost/login?reason=-4031');
   });
 
   it('throws RedirectError with a null location when the browser hid the header', async () => {
@@ -224,6 +224,130 @@ describe('mutateApi redirect handling (U10)', () => {
     const err = await createDraft(base).catch((e: unknown) => e);
     expect(err).toBeInstanceOf(RedirectError);
     expect((err as RedirectError).location).toBeNull();
+  });
+});
+
+describe('handleRedirectResponse origin validation', () => {
+  const locationHref = vi.fn();
+
+  beforeEach(() => {
+    locationHref.mockClear();
+    Object.defineProperty(window, 'location', {
+      configurable: true,
+      value: {
+        get href() {
+          return 'http://localhost:3001/posts';
+        },
+        set href(v: string) {
+          locationHref(v);
+        },
+        origin: 'http://localhost:3001',
+        pathname: '/posts',
+      },
+    });
+  });
+
+  it('follows a same-origin absolute redirect', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response(null, {
+          status: 302,
+          headers: { location: 'http://localhost:3001/login' },
+        }),
+      ),
+    );
+    await createDraft(base).catch(() => {});
+    expect(locationHref).toHaveBeenCalledWith('http://localhost:3001/login');
+  });
+
+  it('follows a relative-path redirect', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response(null, {
+          status: 302,
+          headers: { location: '/session-expired' },
+        }),
+      ),
+    );
+    await createDraft(base).catch(() => {});
+    expect(locationHref).toHaveBeenCalledWith('http://localhost:3001/session-expired');
+  });
+
+  it('blocks a cross-origin redirect and throws RedirectError', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response(null, {
+          status: 302,
+          headers: { location: 'https://evil.example.com/phish' },
+        }),
+      ),
+    );
+    const err = await createDraft(base).catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(RedirectError);
+    expect(locationHref).not.toHaveBeenCalled();
+  });
+
+  it('blocks a protocol-relative redirect and throws RedirectError', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response(null, {
+          status: 302,
+          headers: { location: '//evil.example.com/phish' },
+        }),
+      ),
+    );
+    const err = await createDraft(base).catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(RedirectError);
+    expect(locationHref).not.toHaveBeenCalled();
+  });
+
+  it('blocks a javascript: protocol URL and throws RedirectError', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response(null, {
+          status: 302,
+          headers: { location: 'javascript:alert(1)' },
+        }),
+      ),
+    );
+    const err = await createDraft(base).catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(RedirectError);
+    expect(locationHref).not.toHaveBeenCalled();
+  });
+
+  it('blocks a data: protocol URL and throws RedirectError', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response(null, {
+          status: 302,
+          headers: { location: 'data:text/html,<script>alert(1)</script>' },
+        }),
+      ),
+    );
+    const err = await createDraft(base).catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(RedirectError);
+    expect(locationHref).not.toHaveBeenCalled();
+  });
+
+  it('throws RedirectError when Location header is empty', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response(null, {
+          status: 302,
+          headers: { location: '' },
+        }),
+      ),
+    );
+    const err = await createDraft(base).catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(RedirectError);
+    expect(locationHref).not.toHaveBeenCalled();
   });
 });
 
