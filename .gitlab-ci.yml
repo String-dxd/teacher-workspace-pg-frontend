@@ -1,0 +1,88 @@
+variables:
+  GITLAB_REGISTRY_SHARED_CI: registry.sgts.gitlab-dedicated.com/wog/moe/dxdtransform/dxd-transform/ci-images/node:1.0.6
+
+stages:
+  - prepare
+  - test
+  - build
+  - deploy
+
+include:
+  - template: Jobs/Secret-Detection.latest.gitlab-ci.yml
+  - template: Jobs/Dependency-Scanning.latest.gitlab-ci.yml
+  - template: Jobs/SAST.latest.gitlab-ci.yml
+  - project: "innersource/sgts/ship-hats/ship-hats-templates"
+    ref: "v1.1.10"
+    file:
+      - /templates/.gitlab-ci-aws.yml
+  - project: wog/moe/dxdtransform/dxd-transform/cicd-templates
+    ref: v2.2.2
+    file: gitlab/bundle.yml
+
+# remove this
+.rules:is_merge_request: |
+  $CI_PIPELINE_SOURCE == 'merge_request_event'
+
+.rules:is_trunk_pipeline: |
+  $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+
+default:
+  image: '${GITLAB_REGISTRY_SHARED_CI}'
+  tags:
+    - ship_docker
+    - non_privileged
+
+dependency_scanning:
+  stage: prepare
+
+gemnasium-dependency_scanning:
+  rules:
+    - if: !reference [.rules:is_trunk_pipeline]
+
+semgrep-sast:
+  rules:
+    - if: !reference [.rules:is_trunk_pipeline]
+
+.pnpm-setup:
+  before_script:
+    - pnpm install --frozen-lockfile
+  cache:
+    key:
+      files:
+        - pnpm-lock.yaml
+    paths:
+      - node_modules/
+      - .pnpm-store/
+
+build:
+  extends:
+    .pnpm-setup
+  stage: build
+  script:
+    - pnpm build
+  artifacts:
+    paths:
+      - dist/
+    expire_in: 1 day
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+    - if: $CI_COMMIT_TAG
+
+deploy_dev:
+  stage: deploy
+  extends:
+    - .invoke-awscli-commands-with-assumerole
+    - .vars:aws-acct:lower
+  variables:
+    ROLE_ARN: $GITLAB_IAM_ROLE
+    S3_BUCKET: $S3_BUCKET_DEV
+  script:
+    - aws sts get-caller-identity
+    - aws s3 sync dist/ s3://$S3_BUCKET/ --delete
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+  needs:
+    - build
+  environment:
+    name: dev
+
