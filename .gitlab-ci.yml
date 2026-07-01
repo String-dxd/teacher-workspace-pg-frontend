@@ -19,13 +19,6 @@ include:
     ref: v2.2.2
     file: gitlab/bundle.yml
 
-# remove this
-.rules:is_merge_request: |
-  $CI_PIPELINE_SOURCE == 'merge_request_event'
-
-.rules:is_trunk_pipeline: |
-  $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
-
 default:
   image: '${GITLAB_REGISTRY_SHARED_CI}'
   tags:
@@ -37,11 +30,11 @@ dependency_scanning:
 
 gemnasium-dependency_scanning:
   rules:
-    - if: !reference [.rules:is_trunk_pipeline]
+    - if: $CI_COMMIT_BRANCH == "main"
 
 semgrep-sast:
   rules:
-    - if: !reference [.rules:is_trunk_pipeline]
+    - if: $CI_COMMIT_BRANCH == "main"
 
 .pnpm-setup:
   before_script:
@@ -80,9 +73,30 @@ deploy_dev:
     - aws sts get-caller-identity
     - aws s3 sync dist/ s3://$S3_BUCKET/ --delete
   rules:
-    - if: $CI_COMMIT_BRANCH == "main"
+    - if: $CI_COMMIT_BRANCH == "main" && $CI_PIPELINE_SOURCE == "push"
+    - if: $CI_COMMIT_BRANCH == "main" && $CI_PIPELINE_SOURCE == "pipeline"
   needs:
     - build
   environment:
     name: dev
+
+deploy_prod:
+  stage: deploy
+  extends:
+    - .invoke-awscli-commands-with-assumerole
+    - .vars:aws-acct:upper
+  variables:
+    ROLE_ARN: $GITLAB_IAM_ROLE
+    S3_BUCKET: $S3_BUCKET_PROD
+  script:
+    - aws sts get-caller-identity
+    - aws s3 sync dist/ s3://$S3_BUCKET/ --delete
+  rules:
+    - if: $CI_COMMIT_TAG
+      when: manual
+      allow_failure: false
+  needs:
+    - build
+  environment:
+    name: prod
 
