@@ -2,6 +2,9 @@ import type { PostFormField } from '~/lib/validation-errors';
 
 import type { PostFormState } from '../state/initial-state';
 
+export const TITLE_MAX_LENGTH = 120;
+export const DESCRIPTION_MAX_LENGTH = 2000;
+
 export type PostKind = 'announcement' | 'post-with-response';
 
 export function isCreatePostFormValid(
@@ -10,10 +13,11 @@ export function isCreatePostFormValid(
 ): boolean {
   const baseValid =
     state.title.trim().length > 0 &&
+    state.title.length <= TITLE_MAX_LENGTH &&
     state.enquiryEmail.trim().length > 0 &&
     state.selectedRecipients.length > 0 &&
     state.description.trim().length > 0 &&
-    state.description.length <= 2000;
+    state.description.length <= DESCRIPTION_MAX_LENGTH;
 
   if (!baseValid) return false;
 
@@ -45,9 +49,16 @@ export function computeInlineErrors(
   selectedType: PostKind | null,
 ): Partial<Record<PostFormField, string>> {
   const errors: Partial<Record<PostFormField, string>> = {};
-  if (!state.title.trim()) errors.title = 'Please enter a title.';
-  if (!state.description.trim() || state.description.length > 2000)
+  if (!state.title.trim()) {
+    errors.title = 'Please enter a title.';
+  } else if (state.title.length > TITLE_MAX_LENGTH) {
+    errors.title = `Exceeded by ${state.title.length - TITLE_MAX_LENGTH} characters.`;
+  }
+  if (!state.description.trim()) {
     errors.description = 'Please write the post details.';
+  } else if (state.description.length > DESCRIPTION_MAX_LENGTH) {
+    errors.description = `Exceeded by ${state.description.length - DESCRIPTION_MAX_LENGTH} characters.`;
+  }
   if (!state.enquiryEmail.trim()) errors.enquiryEmail = 'Please select an enquiry email.';
   if (state.selectedRecipients.length === 0)
     errors.recipients = 'Please select at least one recipient.';

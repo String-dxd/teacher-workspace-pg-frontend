@@ -98,6 +98,8 @@ import { useUnsavedChangesGuard } from '~/features/posts/hooks/useUnsavedChanges
 import { INITIAL_STATE, type SelectedEntity } from '~/features/posts/state/initial-state';
 import { formReducer } from '~/features/posts/state/reducer';
 import {
+  DESCRIPTION_MAX_LENGTH,
+  TITLE_MAX_LENGTH,
   computeInlineErrors,
   hasPendingUploads,
   isCreatePostFormValid,
@@ -888,22 +890,35 @@ function CreatePostPageInner({ editId }: { editId?: string }) {
                     <Label htmlFor="post-title">
                       Title <span className="text-destructive">*</span>
                     </Label>
-                    <span className="text-xs text-muted-foreground tabular-nums">
-                      {state.title.length}/120
+                    <span
+                      className={cn(
+                        'text-xs tabular-nums',
+                        state.title.length > TITLE_MAX_LENGTH
+                          ? 'text-destructive'
+                          : 'text-muted-foreground',
+                      )}
+                    >
+                      {state.title.length}/{TITLE_MAX_LENGTH}
                     </span>
                   </div>
                   <Input
                     id="post-title"
                     placeholder="e.g. Term 3 School Camp Consent & Payment"
                     value={state.title}
-                    maxLength={120}
-                    aria-invalid={fieldErrors.title ? true : undefined}
+                    aria-invalid={
+                      fieldErrors.title || state.title.length > TITLE_MAX_LENGTH ? true : undefined
+                    }
                     onChange={(e) => {
                       clearFieldError('title');
                       dispatch({ type: 'SET_TITLE', payload: e.target.value });
                     }}
                   />
-                  {fieldErrors.title && (
+                  {state.title.length > TITLE_MAX_LENGTH && (
+                    <p role="alert" className="text-sm text-destructive">
+                      Exceeded by {state.title.length - TITLE_MAX_LENGTH} characters.
+                    </p>
+                  )}
+                  {fieldErrors.title && state.title.length <= TITLE_MAX_LENGTH && (
                     <p role="alert" className="text-sm text-destructive">
                       {fieldErrors.title}
                     </p>
@@ -918,13 +933,20 @@ function CreatePostPageInner({ editId }: { editId?: string }) {
                     <Label id="post-description-label">
                       Description <span className="text-destructive">*</span>
                     </Label>
-                    <span className="text-xs text-muted-foreground tabular-nums">
-                      {state.description.length}/2000
+                    <span
+                      className={cn(
+                        'text-xs tabular-nums',
+                        state.description.length > DESCRIPTION_MAX_LENGTH
+                          ? 'text-destructive'
+                          : 'text-muted-foreground',
+                      )}
+                    >
+                      {state.description.length}/{DESCRIPTION_MAX_LENGTH}
                     </span>
                   </div>
                   <RichTextEditor
                     initialContent={initialDescriptionDoc}
-                    maxLength={2000}
+                    maxLength={DESCRIPTION_MAX_LENGTH}
                     placeholder="Write your announcement here. Use the toolbar to format text and insert inline links."
                     ariaLabelledBy="post-description-label"
                     onChange={(doc, text) => {
@@ -932,11 +954,17 @@ function CreatePostPageInner({ editId }: { editId?: string }) {
                       dispatch({ type: 'SET_DESCRIPTION_DOC', payload: { doc, text } });
                     }}
                   />
-                  {fieldErrors.description && (
+                  {state.description.length > DESCRIPTION_MAX_LENGTH && (
                     <p role="alert" className="text-sm text-destructive">
-                      {fieldErrors.description}
+                      Exceeded by {state.description.length - DESCRIPTION_MAX_LENGTH} characters.
                     </p>
                   )}
+                  {fieldErrors.description &&
+                    state.description.length <= DESCRIPTION_MAX_LENGTH && (
+                      <p role="alert" className="text-sm text-destructive">
+                        {fieldErrors.description}
+                      </p>
+                    )}
                 </div>
 
                 {selectedType === 'post-with-response' && (
