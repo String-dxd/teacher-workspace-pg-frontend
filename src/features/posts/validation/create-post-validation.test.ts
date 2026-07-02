@@ -3,6 +3,8 @@ import { describe, it, expect } from 'vitest';
 import { INITIAL_STATE } from '../state/initial-state';
 import type { PostFormState } from '../state/initial-state';
 import {
+  TITLE_MAX_LENGTH,
+  DESCRIPTION_MAX_LENGTH,
   isCreatePostFormValid,
   computeInlineErrors,
   hasPendingUploads,
@@ -24,6 +26,16 @@ function daysFromToday(offset: number): string {
   const day = String(d.getDate()).padStart(2, '0');
   return `${y}-${m}-${day}`;
 }
+
+describe('constants', () => {
+  it('exports TITLE_MAX_LENGTH as 120', () => {
+    expect(TITLE_MAX_LENGTH).toBe(120);
+  });
+
+  it('exports DESCRIPTION_MAX_LENGTH as 2000', () => {
+    expect(DESCRIPTION_MAX_LENGTH).toBe(2000);
+  });
+});
 
 describe('isCreatePostFormValid', () => {
   it('returns false for empty state', () => {
@@ -148,6 +160,38 @@ describe('isCreatePostFormValid', () => {
     };
     expect(isCreatePostFormValid(state, 'post-with-response')).toBe(false);
   });
+
+  it('returns false when title exceeds max length', () => {
+    const state: PostFormState = {
+      ...VALID_STATE,
+      title: 'a'.repeat(TITLE_MAX_LENGTH + 1),
+    };
+    expect(isCreatePostFormValid(state, 'announcement')).toBe(false);
+  });
+
+  it('returns true when title is exactly at max length', () => {
+    const state: PostFormState = {
+      ...VALID_STATE,
+      title: 'a'.repeat(TITLE_MAX_LENGTH),
+    };
+    expect(isCreatePostFormValid(state, 'announcement')).toBe(true);
+  });
+
+  it('returns false when description exceeds max length', () => {
+    const state: PostFormState = {
+      ...VALID_STATE,
+      description: 'a'.repeat(DESCRIPTION_MAX_LENGTH + 1),
+    };
+    expect(isCreatePostFormValid(state, 'announcement')).toBe(false);
+  });
+
+  it('returns true when description is exactly at max length', () => {
+    const state: PostFormState = {
+      ...VALID_STATE,
+      description: 'a'.repeat(DESCRIPTION_MAX_LENGTH),
+    };
+    expect(isCreatePostFormValid(state, 'announcement')).toBe(true);
+  });
 });
 
 describe('computeInlineErrors', () => {
@@ -168,6 +212,33 @@ describe('computeInlineErrors', () => {
     const state = { ...VALID_STATE, dueDate: daysFromToday(3) };
     const errors = computeInlineErrors(state, 'post-with-response');
     expect(Object.keys(errors)).toHaveLength(0);
+  });
+
+  it('returns exceeded-by error when title is over limit', () => {
+    const state: PostFormState = {
+      ...VALID_STATE,
+      title: 'a'.repeat(TITLE_MAX_LENGTH + 5),
+    };
+    const errors = computeInlineErrors(state, 'announcement');
+    expect(errors.title).toBe('Exceeded by 5 characters.');
+  });
+
+  it('returns exceeded-by error when description is over limit', () => {
+    const state: PostFormState = {
+      ...VALID_STATE,
+      description: 'a'.repeat(DESCRIPTION_MAX_LENGTH + 12),
+    };
+    const errors = computeInlineErrors(state, 'announcement');
+    expect(errors.description).toBe('Exceeded by 12 characters.');
+  });
+
+  it('returns no title error when title is exactly at limit', () => {
+    const state: PostFormState = {
+      ...VALID_STATE,
+      title: 'a'.repeat(TITLE_MAX_LENGTH),
+    };
+    const errors = computeInlineErrors(state, 'announcement');
+    expect(errors.title).toBeUndefined();
   });
 });
 
