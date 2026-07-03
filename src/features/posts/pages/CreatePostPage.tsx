@@ -145,6 +145,8 @@ export function makeCreatePostLoader(postKind?: 'announcement' | 'form', draft?:
   };
 }
 
+export const loader = makeCreatePostLoader();
+
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function parseScheduleWindow(raw: unknown): ScheduleWindow | undefined {
