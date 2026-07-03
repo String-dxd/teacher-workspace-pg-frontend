@@ -1,11 +1,4 @@
-import type {
-  AnnouncementDraftId,
-  AnnouncementId,
-  ConsentFormDraftId,
-  ConsentFormId,
-  AnnouncementPost,
-  ConsentFormPost,
-} from '~/data/posts-registry';
+import type { AnnouncementPost, ConsentFormPost } from '~/data/posts-registry';
 import { notify } from '~/lib/notify';
 
 import {
@@ -417,18 +410,15 @@ function fetchSharedAnnouncements() {
   return fetchApi<ApiAnnouncementList>('/announcements/shared');
 }
 
-async function fetchAnnouncementDetail(postId: AnnouncementId): Promise<ApiAnnouncementDetail> {
+async function fetchAnnouncementDetail(postId: number): Promise<ApiAnnouncementDetail> {
   // pgw-web wraps single-detail responses as `body: [<detail>]`; unwrap the array.
   const arr = await fetchApi<ApiAnnouncementDetail[]>(`/announcements/${postId}`);
   return arr[0];
 }
 
-async function fetchAnnouncementDraftDetail(
-  draftId: AnnouncementDraftId,
-): Promise<ApiAnnouncementDraft> {
+async function fetchAnnouncementDraftDetail(draftId: number): Promise<ApiAnnouncementDraft> {
   // pgw-web wraps single-detail responses as `body: [<detail>]`; unwrap.
-  const bareId = draftId.replace(/^annDraft_/, '');
-  const arr = await fetchApi<ApiAnnouncementDraft[]>(`/announcements/drafts/${bareId}`);
+  const arr = await fetchApi<ApiAnnouncementDraft[]>(`/announcements/drafts/${draftId}`);
   return arr[0];
 }
 
@@ -545,7 +535,7 @@ export function duplicateAnnouncementDraft(announcementDraftId: number) {
 
 /** Update enquiry email on a posted announcement. */
 export function updateAnnouncementEnquiryEmail(
-  postId: AnnouncementId,
+  postId: number,
   payload: { enquiryEmailAddress: string },
 ) {
   return mutateApi<void>('PUT', `/announcements/${postId}/enquiryEmailAddress`, payload);
@@ -553,7 +543,7 @@ export function updateAnnouncementEnquiryEmail(
 
 /** Replace staff-in-charge on a posted announcement. */
 export function updateAnnouncementStaffInCharge(
-  postId: AnnouncementId,
+  postId: number,
   staffIds: number[],
 ): Promise<void> {
   const staffGroups: ApiGroupTarget[] = staffIds.map((id) => ({
@@ -565,7 +555,7 @@ export function updateAnnouncementStaffInCharge(
 }
 
 /** Delete a posted announcement. */
-export function deleteAnnouncement(postId: AnnouncementId) {
+export function deleteAnnouncement(postId: number) {
   return deleteApi(`/announcements/${postId}`);
 }
 
@@ -583,14 +573,12 @@ export async function loadPostsList(): Promise<AnnouncementPost[]> {
   return mergeAndDedup(mappedOwn, mappedShared);
 }
 
-export async function loadPostDetail(postId: AnnouncementId): Promise<AnnouncementPost> {
+export async function loadPostDetail(postId: number): Promise<AnnouncementPost> {
   const detail = await fetchAnnouncementDetail(postId);
   return mapAnnouncementDetail(detail);
 }
 
-export async function loadAnnouncementDraftDetail(
-  draftId: AnnouncementDraftId,
-): Promise<AnnouncementPost> {
+export async function loadAnnouncementDraftDetail(draftId: number): Promise<AnnouncementPost> {
   const detail = await fetchAnnouncementDraftDetail(draftId);
   return mapAnnouncementDraftDetail(detail);
 }
@@ -609,11 +597,9 @@ function fetchSharedConsentForms() {
   return fetchApi<ApiConsentFormList>('/consentForms/shared');
 }
 
-export async function fetchConsentFormDetail(formId: ConsentFormId): Promise<ApiConsentFormDetail> {
-  // pgw strips the `cf_` prefix when addressing the detail endpoint. The
-  // response shape is `body: [<detail>]` (single-element array) — unwrap.
-  const numericId = formId.slice(3);
-  const arr = await fetchApi<ApiConsentFormDetail[]>(`/consentForms/${numericId}`);
+export async function fetchConsentFormDetail(formId: number): Promise<ApiConsentFormDetail> {
+  // pgw-web wraps single-detail responses as `body: [<detail>]`; unwrap.
+  const arr = await fetchApi<ApiConsentFormDetail[]>(`/consentForms/${formId}`);
   return arr[0];
 }
 
@@ -729,9 +715,8 @@ export function duplicateConsentFormDraft(consentFormDraftId: number) {
   });
 }
 
-export function deleteConsentForm(formId: ConsentFormId) {
-  const numericId = formId.slice(3);
-  return deleteApi(`/consentForms/${numericId}`);
+export function deleteConsentForm(formId: number) {
+  return deleteApi(`/consentForms/${formId}`);
 }
 
 export function deleteConsentFormDraft(draftId: number) {
@@ -740,25 +725,20 @@ export function deleteConsentFormDraft(draftId: number) {
 
 /** Update enquiry email on a posted consent form. */
 export function updateConsentFormEnquiryEmail(
-  formId: ConsentFormId,
+  formId: number,
   payload: { enquiryEmailAddress: string },
 ) {
-  const numericId = formId.slice(3);
-  return mutateApi<void>('PUT', `/consentForms/${numericId}/updateEnquiryEmail`, payload);
+  return mutateApi<void>('PUT', `/consentForms/${formId}/updateEnquiryEmail`, payload);
 }
 
 /** Replace staff-in-charge on a posted consent form. */
-export function updateConsentFormStaffInCharge(
-  formId: ConsentFormId,
-  staffIds: number[],
-): Promise<void> {
-  const numericId = formId.slice(3);
+export function updateConsentFormStaffInCharge(formId: number, staffIds: number[]): Promise<void> {
   const staffGroups: ApiGroupTarget[] = staffIds.map((id) => ({
     type: 'individual',
     label: '',
     value: id,
   }));
-  return mutateApi('POST', `/consentForms/${numericId}/addStaffInCharge`, { staffGroups });
+  return mutateApi('POST', `/consentForms/${formId}/addStaffInCharge`, { staffGroups });
 }
 
 // ─── Composed loaders ───────────────────────────────────────────────────────
@@ -772,24 +752,18 @@ export async function loadConsentPostsList(): Promise<ConsentFormPost[]> {
 }
 
 /** Consent-form detail loader that returns the unified `ConsentFormPost` shape. */
-export async function loadConsentPostDetail(formId: ConsentFormId): Promise<ConsentFormPost> {
+export async function loadConsentPostDetail(formId: number): Promise<ConsentFormPost> {
   const detail = await fetchConsentFormDetail(formId);
   return mapConsentFormDetail(detail);
 }
 
-async function fetchConsentFormDraftDetail(
-  draftId: ConsentFormDraftId,
-): Promise<ApiConsentFormDraft> {
-  // Strip the `cfDraft_` prefix to get the bare numeric ID.
-  const bareId = draftId.replace(/^cfDraft_/, '');
+async function fetchConsentFormDraftDetail(draftId: number): Promise<ApiConsentFormDraft> {
   // pgw-web wraps single-detail responses as `body: [<detail>]`; unwrap.
-  const arr = await fetchApi<ApiConsentFormDraft[]>(`/consentForms/drafts/${bareId}`);
+  const arr = await fetchApi<ApiConsentFormDraft[]>(`/consentForms/drafts/${draftId}`);
   return arr[0];
 }
 
-export async function loadConsentFormDraftDetail(
-  draftId: ConsentFormDraftId,
-): Promise<ConsentFormPost> {
+export async function loadConsentFormDraftDetail(draftId: number): Promise<ConsentFormPost> {
   const draft = await fetchConsentFormDraftDetail(draftId);
   return mapConsentFormDraftDetail(draft);
 }
