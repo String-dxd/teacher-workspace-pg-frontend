@@ -542,10 +542,7 @@ export function updateAnnouncementEnquiryEmail(
 }
 
 /** Replace staff-in-charge on a posted announcement. */
-export function updateAnnouncementStaffInCharge(
-  postId: number,
-  staffIds: number[],
-): Promise<void> {
+export function updateAnnouncementStaffInCharge(postId: number, staffIds: number[]): Promise<void> {
   const staffGroups: ApiGroupTarget[] = staffIds.map((id) => ({
     type: 'individual',
     label: '',
