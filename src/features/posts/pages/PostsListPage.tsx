@@ -16,14 +16,7 @@ import {
   TabsList,
   TabsTrigger,
 } from '~/components/ui';
-import {
-  getPostStatusBadge,
-  isAnnouncementDraftId,
-  isConsentFormDraftId,
-  postHref,
-  type AnnouncementId,
-  type Post,
-} from '~/data/posts-registry';
+import { getPostStatusBadge, postHref, type Post } from '~/data/posts-registry';
 import {
   deleteAnnouncement,
   deleteConsentForm,
@@ -76,8 +69,8 @@ function isLowReadRate(postedAt: string | undefined, readCount: number, total: n
 
 function duplicateDraftHref(kind: 'announcement' | 'form', draftId: number): string {
   return kind === 'announcement'
-    ? `/posts/annDraft_${draftId}/edit?kind=announcement`
-    : `/posts/cfDraft_${draftId}/edit?kind=form`;
+    ? `/posts/announcements/drafts/${draftId}/edit`
+    : `/posts/consent-forms/drafts/${draftId}/edit`;
 }
 
 export const __duplicateDraftHref = duplicateDraftHref;
@@ -193,16 +186,16 @@ const PostsListPage: React.FC = () => {
 
   const handleDuplicate = useCallback(
     (row: PostRowData) => {
-      const numericTail = (id: string, prefix: string) => Number(id.slice(prefix.length));
+      const isDraft = row.status === 'draft' || row.status === 'scheduled';
       const promise: Promise<number> =
         row.kind === 'announcement'
-          ? (isAnnouncementDraftId(row.id)
-              ? duplicateAnnouncementDraft(numericTail(row.id, 'annDraft_'))
-              : duplicateAnnouncement(Number(row.id))
+          ? (isDraft
+              ? duplicateAnnouncementDraft(row.numericId)
+              : duplicateAnnouncement(row.numericId)
             ).then((r) => r.announcementDraftId)
-          : (isConsentFormDraftId(row.id)
-              ? duplicateConsentFormDraft(numericTail(row.id, 'cfDraft_'))
-              : duplicateConsentForm(numericTail(row.id, 'cf_'))
+          : (isDraft
+              ? duplicateConsentFormDraft(row.numericId)
+              : duplicateConsentForm(row.numericId)
             ).then((r) => r.consentFormDraftId);
 
       promise
@@ -232,14 +225,19 @@ const PostsListPage: React.FC = () => {
     if (!row) return;
     setDeleting(true);
     try {
-      if (isConsentFormDraftId(row.id)) {
-        await deleteConsentFormDraft(Number(row.id.slice('cfDraft_'.length)));
-      } else if (row.kind === 'form') {
-        await deleteConsentForm(row.id);
-      } else if (isAnnouncementDraftId(row.id)) {
-        await deleteDraft(Number(row.id.slice('annDraft_'.length)));
+      const isDraft = row.status === 'draft' || row.status === 'scheduled';
+      if (row.kind === 'form') {
+        if (isDraft) {
+          await deleteConsentFormDraft(row.numericId);
+        } else {
+          await deleteConsentForm(row.numericId);
+        }
       } else {
-        await deleteAnnouncement(row.id as AnnouncementId);
+        if (isDraft) {
+          await deleteDraft(row.numericId);
+        } else {
+          await deleteAnnouncement(row.numericId);
+        }
       }
       revalidator.revalidate();
       notify.success('Post deleted.');
@@ -255,9 +253,7 @@ const PostsListPage: React.FC = () => {
 
   const deleteMode: 'draft' | 'posted' | null = !pendingDelete
     ? null
-    : pendingDelete.status === 'draft' ||
-        (pendingDelete.kind === 'announcement' && isAnnouncementDraftId(pendingDelete.id)) ||
-        isConsentFormDraftId(pendingDelete.id)
+    : pendingDelete.status === 'draft' || pendingDelete.status === 'scheduled'
       ? 'draft'
       : 'posted';
 
