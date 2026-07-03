@@ -76,7 +76,7 @@ describe('toPGCreatePayload', () => {
 });
 
 const baseConsentFormSummary: ApiConsentFormSummary = {
-  id: 'cf_42',
+  id: '42',
   postId: 42,
   title: 'Test form',
   date: '2026-04-01T00:00:00.000Z',
@@ -210,26 +210,29 @@ describe('mapConsentFormDetail — attachments rehydration', () => {
 });
 
 describe('mapConsentFormSummaryToPost — status branching', () => {
-  it('brands posted rows as cf_<id>', () => {
+  it('maps posted rows with id and numericId', () => {
     const out = mapConsentFormSummaryToPost(baseConsentFormSummary, 'mine');
-    expect(out.id).toBe('cf_42');
+    expect(out.id).toBe('42');
+    expect(out.numericId).toBe(42);
     expect(out.status).toBe('open');
   });
 
-  it('brands draft rows as cfDraft_<id>', () => {
+  it('maps draft rows with id and numericId', () => {
     const draft: ApiConsentFormSummary = { ...baseConsentFormSummary, status: 'DRAFT' };
     const out = mapConsentFormSummaryToPost(draft, 'mine');
-    expect(out.id).toBe('cfDraft_42');
+    expect(out.id).toBe('42');
+    expect(out.numericId).toBe(42);
     expect(out.status).toBe('draft');
   });
 
-  it('brands scheduled rows as cfDraft_<id> (PGW: scheduled forms live in the draft table)', () => {
+  it('maps scheduled rows with id and numericId (PGW: scheduled forms live in the draft table)', () => {
     const scheduled: ApiConsentFormSummary = {
       ...baseConsentFormSummary,
       status: 'SCHEDULED',
     };
     const out = mapConsentFormSummaryToPost(scheduled, 'mine');
-    expect(out.id).toBe('cfDraft_42');
+    expect(out.id).toBe('42');
+    expect(out.numericId).toBe(42);
     expect(out.status).toBe('scheduled');
   });
 });
