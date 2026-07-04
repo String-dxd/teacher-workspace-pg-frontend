@@ -64,3 +64,10 @@ export class ValidationError extends AppError {
     this.subCode = extras?.subCode;
   }
 }
+
+export class RateLimitError extends AppError {
+  constructor(message: string) {
+    super(message, -429, 429);
+    this.name = 'RateLimitError';
+  }
+}
