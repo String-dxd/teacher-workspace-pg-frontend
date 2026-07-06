@@ -1,4 +1,5 @@
 import type { FormQuestion } from '~/data/posts-registry';
+import { MAX_COVER_PHOTOS } from '~/helpers/attachments';
 
 import type { PostFormAction } from './actions';
 import type { PostFormState, UploadingFile } from './initial-state';
@@ -117,11 +118,33 @@ export function formReducer(state: PostFormState, action: PostFormAction): PostF
       }
       return { ...state, [slot]: remaining };
     }
-    case 'SET_COVER_PHOTO':
+    case 'TOGGLE_COVER_PHOTO': {
+      const target = state.photos.find((p) => p.localId === action.localId);
+      if (!target) return state;
+      if (target.isCover) {
+        const updated = state.photos.map((p) =>
+          p.localId === action.localId ? { ...p, isCover: false } : p,
+        );
+        if (!updated.some((p) => p.isCover)) {
+          const first = updated.find((p) => p.localId !== action.localId);
+          if (first) {
+            return {
+              ...state,
+              photos: updated.map((p) => (p === first ? { ...p, isCover: true } : p)),
+            };
+          }
+        }
+        return { ...state, photos: updated };
+      }
+      const coverCount = state.photos.filter((p) => p.isCover).length;
+      if (coverCount >= MAX_COVER_PHOTOS) return state;
       return {
         ...state,
-        photos: state.photos.map((p) => ({ ...p, isCover: p.localId === action.localId })),
+        photos: state.photos.map((p) =>
+          p.localId === action.localId ? { ...p, isCover: true } : p,
+        ),
       };
+    }
     case 'REORDER_PHOTOS': {
       const photos = [...state.photos];
       const [moved] = photos.splice(action.from, 1);

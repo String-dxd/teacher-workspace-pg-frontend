@@ -90,8 +90,8 @@ describe('formReducer', () => {
       kind: 'photo',
       payload: { localId: 'p2', name: 'b.png', size: 1024, mimeType: 'image/png' },
     });
-    state = formReducer(state, { type: 'SET_COVER_PHOTO', localId: 'p2' });
-    // p2 is the cover; removing p1 (non-cover) leaves p2 as cover
+    state = formReducer(state, { type: 'TOGGLE_COVER_PHOTO', localId: 'p2' });
+    // Both p1 and p2 are covers now
     state = formReducer(state, { type: 'REMOVE_UPLOAD', kind: 'photo', localId: 'p1' });
     expect(state.photos[0].localId).toBe('p2');
     expect(state.photos[0].isCover).toBe(true);
@@ -339,7 +339,7 @@ describe('formReducer', () => {
 
   // ─── Photo gallery actions ─────────────────────────────────────────────────
 
-  describe('SET_COVER_PHOTO', () => {
+  describe('TOGGLE_COVER_PHOTO', () => {
     function stateWithPhotos(...ids: string[]): PostFormState {
       let state = INITIAL_STATE;
       for (const id of ids) {
@@ -352,18 +352,45 @@ describe('formReducer', () => {
       return state;
     }
 
-    it('sets the selected photo as cover and unsets all others', () => {
-      const state = stateWithPhotos('p1', 'p2', 'p3');
-      const result = formReducer(state, { type: 'SET_COVER_PHOTO', localId: 'p2' });
-      expect(result.photos.find((p) => p.localId === 'p1')!.isCover).toBe(false);
+    it('toggles a non-cover photo to cover', () => {
+      const state = stateWithPhotos('p1', 'p2');
+      const result = formReducer(state, { type: 'TOGGLE_COVER_PHOTO', localId: 'p2' });
       expect(result.photos.find((p) => p.localId === 'p2')!.isCover).toBe(true);
-      expect(result.photos.find((p) => p.localId === 'p3')!.isCover).toBe(false);
+      expect(result.photos.find((p) => p.localId === 'p1')!.isCover).toBe(true);
     });
 
-    it('only one photo is cover at a time', () => {
+    it('untoggling the only cover promotes the next photo', () => {
       const state = stateWithPhotos('p1', 'p2');
-      const result = formReducer(state, { type: 'SET_COVER_PHOTO', localId: 'p2' });
-      expect(result.photos.filter((p) => p.isCover)).toHaveLength(1);
+      // p1 is the only cover
+      const result = formReducer(state, { type: 'TOGGLE_COVER_PHOTO', localId: 'p1' });
+      expect(result.photos.find((p) => p.localId === 'p1')!.isCover).toBe(false);
+      expect(result.photos.find((p) => p.localId === 'p2')!.isCover).toBe(true);
+    });
+
+    it('untoggling a cover when others remain does not promote', () => {
+      let state = stateWithPhotos('p1', 'p2', 'p3');
+      state = formReducer(state, { type: 'TOGGLE_COVER_PHOTO', localId: 'p2' });
+      // p1 and p2 are covers
+      const result = formReducer(state, { type: 'TOGGLE_COVER_PHOTO', localId: 'p1' });
+      expect(result.photos.find((p) => p.localId === 'p1')!.isCover).toBe(false);
+      expect(result.photos.find((p) => p.localId === 'p2')!.isCover).toBe(true);
+      expect(result.photos.find((p) => p.localId === 'p3')!.isCover).toBeFalsy();
+    });
+
+    it('respects max 3 covers cap', () => {
+      let state = stateWithPhotos('p1', 'p2', 'p3', 'p4');
+      state = formReducer(state, { type: 'TOGGLE_COVER_PHOTO', localId: 'p2' });
+      state = formReducer(state, { type: 'TOGGLE_COVER_PHOTO', localId: 'p3' });
+      // p1, p2, p3 are covers — toggling p4 should be a no-op
+      const result = formReducer(state, { type: 'TOGGLE_COVER_PHOTO', localId: 'p4' });
+      expect(result.photos.filter((p) => p.isCover)).toHaveLength(3);
+      expect(result.photos.find((p) => p.localId === 'p4')!.isCover).toBeFalsy();
+    });
+
+    it('no-ops for non-existent localId', () => {
+      const state = stateWithPhotos('p1');
+      const result = formReducer(state, { type: 'TOGGLE_COVER_PHOTO', localId: 'nonexistent' });
+      expect(result).toEqual(state);
     });
   });
 
