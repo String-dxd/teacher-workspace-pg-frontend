@@ -18,7 +18,6 @@ import {
   ALLOWED_FILE_MIME,
   ALLOWED_PHOTO_MIME,
   formatFileSize,
-  MAX_COVER_PHOTOS,
   MAX_FILE_ITEMS,
   MAX_PHOTO_ITEMS,
   validateUploadFile,
@@ -246,7 +245,6 @@ function PhotosSubSection({
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
 
   const readyCount = items.filter((i) => i.status === 'ready').length;
-  const coverCount = items.filter((i) => i.isCover).length;
   const atCap = items.length >= MAX_PHOTO_ITEMS;
 
   const onPick = async (picked: FileList | null) => {
@@ -324,10 +322,7 @@ function PhotosSubSection({
             >
               <PhotoRow
                 item={item}
-                coverCount={coverCount}
-                onToggleCover={() =>
-                  dispatch({ type: 'TOGGLE_COVER_PHOTO', localId: item.localId })
-                }
+                onToggleCover={() => dispatch({ type: 'SET_COVER_PHOTO', localId: item.localId })}
                 onRemove={() =>
                   dispatch({ type: 'REMOVE_UPLOAD', kind: 'photo', localId: item.localId })
                 }
@@ -385,20 +380,18 @@ function PhotosSubSection({
 
 function PhotoRow({
   item,
-  coverCount,
   onToggleCover,
   onRemove,
   onEnlarge,
 }: {
   item: UploadingFile;
-  coverCount: number;
   onToggleCover: () => void;
   onRemove: () => void;
   onEnlarge: (src: string) => void;
 }) {
   const isReady = item.status === 'ready';
   const src = item.thumbnailUrl ?? item.url;
-  const canToggleCover = isReady && (item.isCover || coverCount < MAX_COVER_PHOTOS);
+  const canToggleCover = isReady && !item.isCover;
 
   return (
     <div className="flex items-center gap-3 rounded-xl border p-3">

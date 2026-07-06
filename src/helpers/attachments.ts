@@ -5,7 +5,6 @@
 
 export const MAX_FILE_ITEMS = 3;
 export const MAX_PHOTO_ITEMS = 12;
-export const MAX_COVER_PHOTOS = 3;
 export const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024;
 
 /** Documents: PDF + the modern + legacy Microsoft Office MIME types. */
