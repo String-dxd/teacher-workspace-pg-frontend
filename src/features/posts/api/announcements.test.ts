@@ -6,26 +6,20 @@ vi.mock('./http', () => ({
   deleteApi: vi.fn(),
 }));
 
-import { fetchApi, mutateApi, deleteApi } from './http';
 import {
-  fetchAnnouncements,
-  fetchSharedAnnouncements,
-  fetchAnnouncementDetail,
-  fetchAnnouncementDraftDetail,
   createAnnouncement,
   createDraft,
-  updateDraft,
-  scheduleNewAnnouncementDraft,
-  scheduleExistingAnnouncementDraft,
-  rescheduleAnnouncementDraft,
-  cancelAnnouncementSchedule,
-  duplicateAnnouncement,
-  duplicateAnnouncementDraft,
-  updateAnnouncementEnquiryEmail,
-  updateAnnouncementStaffInCharge,
   deleteAnnouncement,
   deleteDraft,
+  fetchAnnouncementDetail,
+  fetchAnnouncementDraftDetail,
+  fetchAnnouncements,
+  fetchSharedAnnouncements,
+  rescheduleAnnouncementDraft,
+  updateAnnouncementStaffInCharge,
+  updateDraft,
 } from './announcements';
+import { fetchApi, mutateApi, deleteApi } from './http';
 
 describe('api/announcements', () => {
   beforeEach(() => {
@@ -100,16 +94,12 @@ describe('api/announcements', () => {
     it('updateAnnouncementStaffInCharge maps staffIds to staffGroups', async () => {
       vi.mocked(mutateApi).mockResolvedValue(undefined);
       await updateAnnouncementStaffInCharge(7, [10, 20]);
-      expect(mutateApi).toHaveBeenCalledWith(
-        'POST',
-        '/announcements/7/addStaffInCharge',
-        {
-          staffGroups: [
-            { type: 'individual', label: '', value: 10 },
-            { type: 'individual', label: '', value: 20 },
-          ],
-        },
-      );
+      expect(mutateApi).toHaveBeenCalledWith('POST', '/announcements/7/addStaffInCharge', {
+        staffGroups: [
+          { type: 'individual', label: '', value: 10 },
+          { type: 'individual', label: '', value: 20 },
+        ],
+      });
     });
 
     it('deleteAnnouncement calls DELETE /announcements/:id', async () => {

@@ -1,7 +1,7 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
 import {
   AppError,
-  CsrfError,
   NotFoundError,
   RateLimitError,
   SessionExpiredError,
@@ -96,9 +96,7 @@ describe('http infrastructure', () => {
 
       mockFetchFn
         .mockResolvedValueOnce(pgwError(-4013, 'CSRF'))
-        .mockResolvedValueOnce(
-          new Response(JSON.stringify({ ok: true }), { status: 200 }),
-        )
+        .mockResolvedValueOnce(new Response(JSON.stringify({ ok: true }), { status: 200 }))
         .mockResolvedValueOnce(
           new Response(JSON.stringify({ body: { id: 1 }, resultCode: 1 }), {
             status: 200,
