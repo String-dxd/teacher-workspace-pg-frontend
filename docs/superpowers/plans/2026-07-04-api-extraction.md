@@ -24,57 +24,59 @@
 
 ### New files to create:
 
-| File | Responsibility |
-|------|---------------|
-| `src/features/posts/api/http.ts` | Fetch infrastructure: `fetchApi`, `fetchApiRoot`, `mutateApi`, `deleteApi`, `postMultipart`, envelope unwrap, error handling, CSRF retry, timeout |
-| `src/features/posts/api/http.test.ts` | Tests for error mapping, CSRF retry, timeout, no side effects |
-| `src/features/posts/api/announcements.ts` | Atomic announcement endpoint functions |
-| `src/features/posts/api/announcements.test.ts` | Tests for announcement endpoint calls |
-| `src/features/posts/api/consent-forms.ts` | Atomic consent form endpoint functions |
-| `src/features/posts/api/consent-forms.test.ts` | Tests for consent form endpoint calls |
-| `src/features/posts/api/school.ts` | School data + custom groups endpoint functions |
-| `src/features/posts/api/school.test.ts` | Tests for school endpoints |
-| `src/features/posts/api/session.ts` | Session, user profile, configs endpoints |
-| `src/features/posts/api/session.test.ts` | Tests for session endpoints |
-| `src/features/posts/api/uploads.ts` | 3 atomic upload endpoints + `isPresignedUrlTrusted` |
-| `src/features/posts/api/uploads.test.ts` | Tests for upload endpoints |
-| `src/features/posts/api/index.ts` | Barrel re-export |
-| `src/features/posts/mappers/announcements.ts` | Inbound announcement mappers |
-| `src/features/posts/mappers/consent-forms.ts` | Inbound consent form mappers |
-| `src/features/posts/mappers/shared.ts` | Shared mapper helpers (dedup, rehydrate, timezone) |
-| `src/features/posts/mappers/index.ts` | Barrel re-export |
-| `src/features/posts/mappers/announcements.test.ts` | Tests for announcement mappers |
-| `src/features/posts/mappers/consent-forms.test.ts` | Tests for consent form mappers |
-| `src/features/posts/mappers/shared.test.ts` | Tests for shared helpers |
-| `src/features/posts/services/announcements.ts` | Composed loaders + `buildAnnouncementPayload` |
-| `src/features/posts/services/consent-forms.ts` | Composed loaders + `buildConsentFormPayload` |
-| `src/features/posts/services/uploads.ts` | `uploadAttachment` orchestration |
-| `src/features/posts/services/index.ts` | Barrel re-export |
-| `src/features/posts/services/announcements.test.ts` | Tests for announcement service orchestration |
-| `src/features/posts/services/consent-forms.test.ts` | Tests for consent form service orchestration |
-| `src/features/posts/services/uploads.test.ts` | Tests for upload orchestration |
-| `src/features/posts/pages/handle-post-error.ts` | Shared error-reaction utility |
-| `src/features/posts/pages/handle-post-error.test.ts` | Tests for error reactions |
-| `scripts/check-boundaries.sh` | Layer boundary enforcement script |
+| File                                                 | Responsibility                                                                                                                                    |
+| ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/features/posts/api/http.ts`                     | Fetch infrastructure: `fetchApi`, `fetchApiRoot`, `mutateApi`, `deleteApi`, `postMultipart`, envelope unwrap, error handling, CSRF retry, timeout |
+| `src/features/posts/api/http.test.ts`                | Tests for error mapping, CSRF retry, timeout, no side effects                                                                                     |
+| `src/features/posts/api/announcements.ts`            | Atomic announcement endpoint functions                                                                                                            |
+| `src/features/posts/api/announcements.test.ts`       | Tests for announcement endpoint calls                                                                                                             |
+| `src/features/posts/api/consent-forms.ts`            | Atomic consent form endpoint functions                                                                                                            |
+| `src/features/posts/api/consent-forms.test.ts`       | Tests for consent form endpoint calls                                                                                                             |
+| `src/features/posts/api/school.ts`                   | School data + custom groups endpoint functions                                                                                                    |
+| `src/features/posts/api/school.test.ts`              | Tests for school endpoints                                                                                                                        |
+| `src/features/posts/api/session.ts`                  | Session, user profile, configs endpoints                                                                                                          |
+| `src/features/posts/api/session.test.ts`             | Tests for session endpoints                                                                                                                       |
+| `src/features/posts/api/uploads.ts`                  | 3 atomic upload endpoints + `isPresignedUrlTrusted`                                                                                               |
+| `src/features/posts/api/uploads.test.ts`             | Tests for upload endpoints                                                                                                                        |
+| `src/features/posts/api/index.ts`                    | Barrel re-export                                                                                                                                  |
+| `src/features/posts/mappers/announcements.ts`        | Inbound announcement mappers                                                                                                                      |
+| `src/features/posts/mappers/consent-forms.ts`        | Inbound consent form mappers                                                                                                                      |
+| `src/features/posts/mappers/shared.ts`               | Shared mapper helpers (dedup, rehydrate, timezone)                                                                                                |
+| `src/features/posts/mappers/index.ts`                | Barrel re-export                                                                                                                                  |
+| `src/features/posts/mappers/announcements.test.ts`   | Tests for announcement mappers                                                                                                                    |
+| `src/features/posts/mappers/consent-forms.test.ts`   | Tests for consent form mappers                                                                                                                    |
+| `src/features/posts/mappers/shared.test.ts`          | Tests for shared helpers                                                                                                                          |
+| `src/features/posts/services/announcements.ts`       | Composed loaders + `buildAnnouncementPayload`                                                                                                     |
+| `src/features/posts/services/consent-forms.ts`       | Composed loaders + `buildConsentFormPayload`                                                                                                      |
+| `src/features/posts/services/uploads.ts`             | `uploadAttachment` orchestration                                                                                                                  |
+| `src/features/posts/services/index.ts`               | Barrel re-export                                                                                                                                  |
+| `src/features/posts/services/announcements.test.ts`  | Tests for announcement service orchestration                                                                                                      |
+| `src/features/posts/services/consent-forms.test.ts`  | Tests for consent form service orchestration                                                                                                      |
+| `src/features/posts/services/uploads.test.ts`        | Tests for upload orchestration                                                                                                                    |
+| `src/features/posts/pages/handle-post-error.ts`      | Shared error-reaction utility                                                                                                                     |
+| `src/features/posts/pages/handle-post-error.test.ts` | Tests for error reactions                                                                                                                         |
+| `scripts/check-boundaries.sh`                        | Layer boundary enforcement script                                                                                                                 |
 
 ### Files to delete after migration:
 
-| File | Reason |
-|------|--------|
-| `src/features/posts/api/client.ts` | Replaced by domain modules + http.ts |
-| `src/features/posts/api/client.test.ts` | Replaced by per-module tests |
-| `src/features/posts/api/mappers.ts` | Replaced by `mappers/` directory |
-| `src/features/posts/api/mappers.test.ts` | Replaced by `mappers/*.test.ts` |
+| File                                     | Reason                               |
+| ---------------------------------------- | ------------------------------------ |
+| `src/features/posts/api/client.ts`       | Replaced by domain modules + http.ts |
+| `src/features/posts/api/client.test.ts`  | Replaced by per-module tests         |
+| `src/features/posts/api/mappers.ts`      | Replaced by `mappers/` directory     |
+| `src/features/posts/api/mappers.test.ts` | Replaced by `mappers/*.test.ts`      |
 
 ---
 
 ### Task 1: Extract `api/errors.ts` — Add `RateLimitError`
 
 **Files:**
+
 - Modify: `src/features/posts/api/errors.ts`
 - Test: `src/features/posts/api/http.test.ts` (new file, first test)
 
 **Interfaces:**
+
 - Consumes: nothing (leaf module)
 - Produces: `RateLimitError` class (used by `api/http.ts` Task 2, `pages/handle-post-error.ts` Task 9)
 
@@ -133,10 +135,12 @@ git -c commit.gpgsign=false commit -m "feat(api): add RateLimitError class"
 ### Task 2: Extract `api/http.ts` — Fetch infrastructure without side effects
 
 **Files:**
+
 - Create: `src/features/posts/api/http.ts`
 - Modify: `src/features/posts/api/http.test.ts` (add tests)
 
 **Interfaces:**
+
 - Consumes: `./errors` (all error classes)
 - Produces: `fetchApi<T>(path)`, `fetchApiRoot<T>(path)`, `mutateApi<T>(method, path, body, options?)`, `deleteApi(path)`, `postMultipart<T>(path, formData, options?)`, `unwrapEnvelope<T>(json)` — used by all `api/` domain modules (Tasks 3-7)
 
@@ -170,10 +174,10 @@ describe('http infrastructure', () => {
   });
 
   function pgwError(resultCode: number, message = 'error') {
-    return new Response(
-      JSON.stringify({ body: null, resultCode, message }),
-      { status: 400, headers: { 'content-type': 'application/json' } },
-    );
+    return new Response(JSON.stringify({ body: null, resultCode, message }), {
+      status: 400,
+      headers: { 'content-type': 'application/json' },
+    });
   }
 
   describe('handleErrorResponse — no side effects', () => {
@@ -233,14 +237,12 @@ describe('http infrastructure', () => {
 
       mockFetchFn
         .mockResolvedValueOnce(pgwError(-4013, 'CSRF'))
+        .mockResolvedValueOnce(new Response(JSON.stringify({ ok: true }), { status: 200 }))
         .mockResolvedValueOnce(
-          new Response(JSON.stringify({ ok: true }), { status: 200 }),
-        )
-        .mockResolvedValueOnce(
-          new Response(
-            JSON.stringify({ body: { id: 1 }, resultCode: 1 }),
-            { status: 200, headers: { 'content-type': 'application/json' } },
-          ),
+          new Response(JSON.stringify({ body: { id: 1 }, resultCode: 1 }), {
+            status: 200,
+            headers: { 'content-type': 'application/json' },
+          }),
         );
 
       const result = await mutateApi('POST', '/test', { data: 1 });
@@ -252,13 +254,9 @@ describe('http infrastructure', () => {
   describe('timeout', () => {
     it('throws TimeoutError when request exceeds timeoutMs', async () => {
       const { mutateApi } = await import('./http');
-      mockFetchFn.mockImplementation(
-        () => new Promise((resolve) => setTimeout(resolve, 5000)),
-      );
+      mockFetchFn.mockImplementation(() => new Promise((resolve) => setTimeout(resolve, 5000)));
 
-      await expect(
-        mutateApi('POST', '/test', {}, { timeoutMs: 10 }),
-      ).rejects.toThrow(TimeoutError);
+      await expect(mutateApi('POST', '/test', {}, { timeoutMs: 10 })).rejects.toThrow(TimeoutError);
     });
   });
 
@@ -266,10 +264,10 @@ describe('http infrastructure', () => {
     it('prepends API_BASE and unwraps envelope', async () => {
       const { fetchApi } = await import('./http');
       mockFetchFn.mockResolvedValue(
-        new Response(
-          JSON.stringify({ body: { items: [1, 2] }, resultCode: 1 }),
-          { status: 200, headers: { 'content-type': 'application/json' } },
-        ),
+        new Response(JSON.stringify({ body: { items: [1, 2] }, resultCode: 1 }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        }),
       );
 
       const result = await fetchApi('/announcements');
@@ -282,10 +280,10 @@ describe('http infrastructure', () => {
     it('prepends /api without staff path', async () => {
       const { fetchApiRoot } = await import('./http');
       mockFetchFn.mockResolvedValue(
-        new Response(
-          JSON.stringify({ body: { flags: {} }, resultCode: 1 }),
-          { status: 200, headers: { 'content-type': 'application/json' } },
-        ),
+        new Response(JSON.stringify({ body: { flags: {} }, resultCode: 1 }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        }),
       );
 
       const result = await fetchApiRoot('/configs');
@@ -619,32 +617,64 @@ git -c commit.gpgsign=false commit -m "feat(api): extract http.ts with pure erro
 ### Task 3: Extract `api/announcements.ts` — Atomic endpoint functions
 
 **Files:**
+
 - Create: `src/features/posts/api/announcements.ts`
 - Create: `src/features/posts/api/announcements.test.ts`
 
 **Interfaces:**
+
 - Consumes: `./http` (`fetchApi`, `mutateApi`, `deleteApi`), `./types` (all `Api*` types)
 - Produces: All announcement endpoint functions — used by `services/announcements.ts` (Task 8)
 
 ```typescript
 // Exported signatures:
-export function fetchAnnouncements(): Promise<ApiAnnouncementList>
-export function fetchSharedAnnouncements(): Promise<ApiAnnouncementList>
-export function fetchAnnouncementDetail(postId: number): Promise<ApiAnnouncementDetail>
-export function fetchAnnouncementDraftDetail(draftId: number): Promise<ApiAnnouncementDraft>
-export function createAnnouncement(payload: ApiCreateAnnouncementPayload): Promise<{ postId: number }>
-export function createDraft(payload: ApiCreateDraftPayload, options?: { signal?: AbortSignal; timeoutMs?: number }): Promise<{ announcementDraftId: number }>
-export function scheduleNewAnnouncementDraft(payload: ApiCreateDraftPayload & { scheduledSendAt: string }, options?: { signal?: AbortSignal }): Promise<{ announcementDraftId: number; updatedAt: string }>
-export function scheduleExistingAnnouncementDraft(draftId: number, payload: ApiCreateDraftPayload & { scheduledSendAt: string }, options?: { signal?: AbortSignal }): Promise<{ announcementDraftId: number; updatedAt: string }>
-export function rescheduleAnnouncementDraft(draftId: number, payload: { scheduledSendAt: string }, options?: { signal?: AbortSignal }): Promise<void>
-export function cancelAnnouncementSchedule(draftId: number, options?: { signal?: AbortSignal }): Promise<void>
-export function updateDraft(draftId: number, payload: ApiCreateDraftPayload, options?: { signal?: AbortSignal }): Promise<void>
-export function duplicateAnnouncement(announcementId: number): Promise<ApiDuplicateAnnouncementResponse>
-export function duplicateAnnouncementDraft(announcementDraftId: number): Promise<ApiDuplicateAnnouncementResponse>
-export function updateAnnouncementEnquiryEmail(postId: number, payload: { enquiryEmailAddress: string }): Promise<void>
-export function updateAnnouncementStaffInCharge(postId: number, staffIds: number[]): Promise<void>
-export function deleteAnnouncement(postId: number): Promise<void>
-export function deleteDraft(draftId: number): Promise<void>
+export function fetchAnnouncements(): Promise<ApiAnnouncementList>;
+export function fetchSharedAnnouncements(): Promise<ApiAnnouncementList>;
+export function fetchAnnouncementDetail(postId: number): Promise<ApiAnnouncementDetail>;
+export function fetchAnnouncementDraftDetail(draftId: number): Promise<ApiAnnouncementDraft>;
+export function createAnnouncement(
+  payload: ApiCreateAnnouncementPayload,
+): Promise<{ postId: number }>;
+export function createDraft(
+  payload: ApiCreateDraftPayload,
+  options?: { signal?: AbortSignal; timeoutMs?: number },
+): Promise<{ announcementDraftId: number }>;
+export function scheduleNewAnnouncementDraft(
+  payload: ApiCreateDraftPayload & { scheduledSendAt: string },
+  options?: { signal?: AbortSignal },
+): Promise<{ announcementDraftId: number; updatedAt: string }>;
+export function scheduleExistingAnnouncementDraft(
+  draftId: number,
+  payload: ApiCreateDraftPayload & { scheduledSendAt: string },
+  options?: { signal?: AbortSignal },
+): Promise<{ announcementDraftId: number; updatedAt: string }>;
+export function rescheduleAnnouncementDraft(
+  draftId: number,
+  payload: { scheduledSendAt: string },
+  options?: { signal?: AbortSignal },
+): Promise<void>;
+export function cancelAnnouncementSchedule(
+  draftId: number,
+  options?: { signal?: AbortSignal },
+): Promise<void>;
+export function updateDraft(
+  draftId: number,
+  payload: ApiCreateDraftPayload,
+  options?: { signal?: AbortSignal },
+): Promise<void>;
+export function duplicateAnnouncement(
+  announcementId: number,
+): Promise<ApiDuplicateAnnouncementResponse>;
+export function duplicateAnnouncementDraft(
+  announcementDraftId: number,
+): Promise<ApiDuplicateAnnouncementResponse>;
+export function updateAnnouncementEnquiryEmail(
+  postId: number,
+  payload: { enquiryEmailAddress: string },
+): Promise<void>;
+export function updateAnnouncementStaffInCharge(postId: number, staffIds: number[]): Promise<void>;
+export function deleteAnnouncement(postId: number): Promise<void>;
+export function deleteDraft(draftId: number): Promise<void>;
 ```
 
 - [ ] **Step 1: Write failing tests**
@@ -873,10 +903,7 @@ export function updateAnnouncementEnquiryEmail(
   return mutateApi('PUT', `/announcements/${postId}/enquiryEmailAddress`, payload);
 }
 
-export function updateAnnouncementStaffInCharge(
-  postId: number,
-  staffIds: number[],
-): Promise<void> {
+export function updateAnnouncementStaffInCharge(postId: number, staffIds: number[]): Promise<void> {
   return mutateApi('POST', `/announcements/${postId}/addStaffInCharge`, { staffIds });
 }
 
@@ -906,33 +933,68 @@ git -c commit.gpgsign=false commit -m "feat(api): extract announcements.ts domai
 ### Task 4: Extract `api/consent-forms.ts` — Atomic endpoint functions
 
 **Files:**
+
 - Create: `src/features/posts/api/consent-forms.ts`
 - Create: `src/features/posts/api/consent-forms.test.ts`
 
 **Interfaces:**
+
 - Consumes: `./http` (`fetchApi`, `mutateApi`, `deleteApi`), `./types`
 - Produces: All consent form endpoint functions — used by `services/consent-forms.ts` (Task 8)
 
 ```typescript
 // Exported signatures:
-export function fetchConsentForms(): Promise<ApiConsentFormList>
-export function fetchSharedConsentForms(): Promise<ApiConsentFormList>
-export function fetchConsentFormDetail(formId: number): Promise<ApiConsentFormDetail>
-export function fetchConsentFormDraftDetail(draftId: number): Promise<ApiConsentFormDraft>
-export function createConsentForm(payload: ApiCreateConsentFormPayload): Promise<{ consentFormId: number }>
-export function createConsentFormDraft(payload: ApiCreateConsentFormDraftPayload, options?: { signal?: AbortSignal }): Promise<{ consentFormDraftId: number }>
-export function updateConsentFormDraft(draftId: number, payload: ApiCreateConsentFormDraftPayload, options?: { signal?: AbortSignal }): Promise<void>
-export function updateConsentFormDueDate(formId: number, payload: { consentByDate: string }): Promise<void>
-export function scheduleNewConsentFormDraft(payload: ApiCreateConsentFormDraftPayload & { scheduledSendAt: string }, options?: { signal?: AbortSignal }): Promise<{ consentFormDraftId: number; updatedAt: string }>
-export function scheduleExistingConsentFormDraft(draftId: number, payload: ApiCreateConsentFormDraftPayload & { scheduledSendAt: string }, options?: { signal?: AbortSignal }): Promise<{ consentFormDraftId: number; updatedAt: string }>
-export function rescheduleConsentFormDraft(draftId: number, payload: { scheduledSendAt: string }, options?: { signal?: AbortSignal }): Promise<void>
-export function cancelConsentFormSchedule(draftId: number, options?: { signal?: AbortSignal }): Promise<void>
-export function duplicateConsentForm(consentFormId: number): Promise<ApiDuplicateConsentFormResponse>
-export function duplicateConsentFormDraft(consentFormDraftId: number): Promise<ApiDuplicateConsentFormResponse>
-export function deleteConsentForm(formId: number): Promise<void>
-export function deleteConsentFormDraft(draftId: number): Promise<void>
-export function updateConsentFormEnquiryEmail(formId: number, payload: { enquiryEmailAddress: string }): Promise<void>
-export function updateConsentFormStaffInCharge(formId: number, staffIds: number[]): Promise<void>
+export function fetchConsentForms(): Promise<ApiConsentFormList>;
+export function fetchSharedConsentForms(): Promise<ApiConsentFormList>;
+export function fetchConsentFormDetail(formId: number): Promise<ApiConsentFormDetail>;
+export function fetchConsentFormDraftDetail(draftId: number): Promise<ApiConsentFormDraft>;
+export function createConsentForm(
+  payload: ApiCreateConsentFormPayload,
+): Promise<{ consentFormId: number }>;
+export function createConsentFormDraft(
+  payload: ApiCreateConsentFormDraftPayload,
+  options?: { signal?: AbortSignal },
+): Promise<{ consentFormDraftId: number }>;
+export function updateConsentFormDraft(
+  draftId: number,
+  payload: ApiCreateConsentFormDraftPayload,
+  options?: { signal?: AbortSignal },
+): Promise<void>;
+export function updateConsentFormDueDate(
+  formId: number,
+  payload: { consentByDate: string },
+): Promise<void>;
+export function scheduleNewConsentFormDraft(
+  payload: ApiCreateConsentFormDraftPayload & { scheduledSendAt: string },
+  options?: { signal?: AbortSignal },
+): Promise<{ consentFormDraftId: number; updatedAt: string }>;
+export function scheduleExistingConsentFormDraft(
+  draftId: number,
+  payload: ApiCreateConsentFormDraftPayload & { scheduledSendAt: string },
+  options?: { signal?: AbortSignal },
+): Promise<{ consentFormDraftId: number; updatedAt: string }>;
+export function rescheduleConsentFormDraft(
+  draftId: number,
+  payload: { scheduledSendAt: string },
+  options?: { signal?: AbortSignal },
+): Promise<void>;
+export function cancelConsentFormSchedule(
+  draftId: number,
+  options?: { signal?: AbortSignal },
+): Promise<void>;
+export function duplicateConsentForm(
+  consentFormId: number,
+): Promise<ApiDuplicateConsentFormResponse>;
+export function duplicateConsentFormDraft(
+  consentFormDraftId: number,
+): Promise<ApiDuplicateConsentFormResponse>;
+export function deleteConsentForm(formId: number): Promise<void>;
+export function deleteConsentFormDraft(draftId: number): Promise<void>;
+export function updateConsentFormEnquiryEmail(
+  formId: number,
+  payload: { enquiryEmailAddress: string },
+): Promise<void>;
+export function updateConsentFormStaffInCharge(formId: number, staffIds: number[]): Promise<void>;
 ```
 
 - [ ] **Step 1: Write failing tests**
@@ -1168,10 +1230,7 @@ export function updateConsentFormEnquiryEmail(
   return mutateApi('PUT', `/consentForms/${formId}/updateEnquiryEmail`, payload);
 }
 
-export function updateConsentFormStaffInCharge(
-  formId: number,
-  staffIds: number[],
-): Promise<void> {
+export function updateConsentFormStaffInCharge(formId: number, staffIds: number[]): Promise<void> {
   return mutateApi('POST', `/consentForms/${formId}/addStaffInCharge`, { staffIds });
 }
 ```
@@ -1193,29 +1252,37 @@ git -c commit.gpgsign=false commit -m "feat(api): extract consent-forms.ts domai
 ### Task 5: Extract `api/school.ts` — School data + custom groups
 
 **Files:**
+
 - Create: `src/features/posts/api/school.ts`
 - Create: `src/features/posts/api/school.test.ts`
 
 **Interfaces:**
+
 - Consumes: `./http` (`fetchApi`, `mutateApi`, `deleteApi`), `./types`
 - Produces: All school data functions — used by page loaders
 
 ```typescript
 // Exported signatures:
-export function fetchSchoolStaff(): Promise<ApiSchoolStaff[]>
-export function fetchSchoolClasses(): Promise<ApiSchoolClass[]>
-export function fetchSchoolStudents(): Promise<ApiSchoolStudent[]>
-export function fetchSchoolStaffGroups(): Promise<ApiStaffGroups>
-export function fetchGroupsAssigned(): Promise<ApiGroupsAssigned>
-export function fetchCustomGroups(): Promise<ApiCustomGroupSummary[]>
-export function fetchCustomGroupDetail(id: number): Promise<ApiCustomGroupDetail>
-export function createCustomGroup(payload: { name: string; studentIds: number[] }): Promise<ApiCreateCustomGroupResponse>
-export function updateCustomGroup(id: number, payload: { name: string; studentIds: number[] }): Promise<void>
-export function shareCustomGroup(id: number, staffIds: number[]): Promise<void>
-export function removeAccessFromCustomGroup(id: number): Promise<void>
-export function deleteCustomGroup(id: number): Promise<void>
-export function fetchClassDetail(classId: number): Promise<ApiClassDetail>
-export function fetchCcaDetail(ccaId: number): Promise<ApiCcaDetail>
+export function fetchSchoolStaff(): Promise<ApiSchoolStaff[]>;
+export function fetchSchoolClasses(): Promise<ApiSchoolClass[]>;
+export function fetchSchoolStudents(): Promise<ApiSchoolStudent[]>;
+export function fetchSchoolStaffGroups(): Promise<ApiStaffGroups>;
+export function fetchGroupsAssigned(): Promise<ApiGroupsAssigned>;
+export function fetchCustomGroups(): Promise<ApiCustomGroupSummary[]>;
+export function fetchCustomGroupDetail(id: number): Promise<ApiCustomGroupDetail>;
+export function createCustomGroup(payload: {
+  name: string;
+  studentIds: number[];
+}): Promise<ApiCreateCustomGroupResponse>;
+export function updateCustomGroup(
+  id: number,
+  payload: { name: string; studentIds: number[] },
+): Promise<void>;
+export function shareCustomGroup(id: number, staffIds: number[]): Promise<void>;
+export function removeAccessFromCustomGroup(id: number): Promise<void>;
+export function deleteCustomGroup(id: number): Promise<void>;
+export function fetchClassDetail(classId: number): Promise<ApiClassDetail>;
+export function fetchCcaDetail(ccaId: number): Promise<ApiCcaDetail>;
 ```
 
 - [ ] **Step 1: Write failing tests**
@@ -1410,9 +1477,10 @@ export async function fetchCustomGroupDetail(id: number): Promise<ApiCustomGroup
   return mapPgwCustomGroupDetail(item);
 }
 
-export function createCustomGroup(
-  payload: { name: string; studentIds: number[] },
-): Promise<unknown> {
+export function createCustomGroup(payload: {
+  name: string;
+  studentIds: number[];
+}): Promise<unknown> {
   return mutateApi('POST', '/groups/custom', {
     groupName: payload.name,
     selectedSchoolStudents: payload.studentIds,
@@ -1467,10 +1535,12 @@ git -c commit.gpgsign=false commit -m "feat(api): extract school.ts domain modul
 ### Task 6: Extract `api/session.ts` — Session, profile, configs
 
 **Files:**
+
 - Create: `src/features/posts/api/session.ts`
 - Create: `src/features/posts/api/session.test.ts`
 
 **Interfaces:**
+
 - Consumes: `./http` (`fetchApi`, `fetchApiRoot`, `mutateApi`), `./types`
 - Produces: `fetchSession()`, `fetchUserProfile()`, `getConfigs()`, `updateDisplayName()`, `updateDisplayEmail()`
 
@@ -1621,10 +1691,12 @@ git -c commit.gpgsign=false commit -m "feat(api): extract session.ts domain modu
 ### Task 7: Extract `api/uploads.ts` — Atomic upload endpoints
 
 **Files:**
+
 - Create: `src/features/posts/api/uploads.ts`
 - Create: `src/features/posts/api/uploads.test.ts`
 
 **Interfaces:**
+
 - Consumes: `./http` (`postMultipart`, `fetchApiRoot`), `./types`
 - Produces: `validateAttachmentUpload`, `uploadToPresignedUrl`, `verifyAttachmentUpload`, `isPresignedUrlTrusted`, `AttachmentUploadType`, `PreUploadResponse` — used by `services/uploads.ts` (Task 12)
 
@@ -1692,9 +1764,9 @@ describe('api/uploads', () => {
 
     it('throws if URL is not trusted', async () => {
       const file = new File(['content'], 'test.pdf');
-      await expect(
-        uploadToPresignedUrl('https://evil.com/upload', {}, file),
-      ).rejects.toThrow('Untrusted upload URL');
+      await expect(uploadToPresignedUrl('https://evil.com/upload', {}, file)).rejects.toThrow(
+        'Untrusted upload URL',
+      );
     });
   });
 
@@ -1828,6 +1900,7 @@ git -c commit.gpgsign=false commit -m "feat(api): extract uploads.ts domain modu
 ### Task 8: Create `api/index.ts` barrel and extract `mappers/`
 
 **Files:**
+
 - Create: `src/features/posts/api/index.ts`
 - Create: `src/features/posts/mappers/announcements.ts`
 - Create: `src/features/posts/mappers/consent-forms.ts`
@@ -1838,6 +1911,7 @@ git -c commit.gpgsign=false commit -m "feat(api): extract uploads.ts domain modu
 - Create: `src/features/posts/mappers/shared.test.ts`
 
 **Interfaces:**
+
 - Consumes: `../api/types` (wire types), `~/data/posts-registry` (domain types)
 - Produces: All inbound mapper functions — used by `services/` (Tasks 10-11)
 
@@ -1865,7 +1939,10 @@ describe('mappers/shared', () => {
   describe('mergeAndDedup', () => {
     it('deduplicates by id, own takes priority', () => {
       const own = [{ id: 1, title: 'Own', numericId: 1 }];
-      const shared = [{ id: 1, title: 'Shared', numericId: 1 }, { id: 2, title: 'Other', numericId: 2 }];
+      const shared = [
+        { id: 1, title: 'Shared', numericId: 1 },
+        { id: 2, title: 'Other', numericId: 2 },
+      ];
       const result = mergeAndDedup(own as any, shared as any);
       expect(result).toHaveLength(2);
       expect(result[0].title).toBe('Own');
@@ -1895,6 +1972,7 @@ Expected: FAIL — `./shared` module does not exist
 - [ ] **Step 4: Implement `mappers/shared.ts`**
 
 Move the following functions from current `api/mappers.ts`:
+
 - `mergeAndDedup`
 - `mapReminder`
 - `rehydrateAttachments`
@@ -1907,7 +1985,12 @@ Move the following functions from current `api/mappers.ts`:
 - `splitLocalDateTime`
 
 ```typescript
-import type { AnnouncementPost, ConsentFormPost, ReminderConfig, UploadedFile } from '~/data/posts-registry';
+import type {
+  AnnouncementPost,
+  ConsentFormPost,
+  ReminderConfig,
+  UploadedFile,
+} from '~/data/posts-registry';
 import type { ApiAttachment, ApiImage } from '../api/types';
 
 type Post = AnnouncementPost | ConsentFormPost;
@@ -1950,15 +2033,11 @@ export function rehydratePhotos(images: ApiImage[]): UploadedFile[] {
 }
 
 export function mapReadyAttachments(files: UploadedFile[]): Array<{ attachmentId: number }> {
-  return files
-    .filter((f) => f.status === 'ready')
-    .map((f) => ({ attachmentId: f.attachmentId }));
+  return files.filter((f) => f.status === 'ready').map((f) => ({ attachmentId: f.attachmentId }));
 }
 
 export function mapReadyPhotos(files: UploadedFile[]): Array<{ attachmentId: number }> {
-  return files
-    .filter((f) => f.status === 'ready')
-    .map((f) => ({ attachmentId: f.attachmentId }));
+  return files.filter((f) => f.status === 'ready').map((f) => ({ attachmentId: f.attachmentId }));
 }
 
 export function selectedToStudentGroups(
@@ -2064,10 +2143,12 @@ git -c commit.gpgsign=false commit -m "feat: extract mappers/ and create api bar
 ### Task 9: Create `pages/handle-post-error.ts` — Shared error reactions
 
 **Files:**
+
 - Create: `src/features/posts/pages/handle-post-error.ts`
 - Create: `src/features/posts/pages/handle-post-error.test.ts`
 
 **Interfaces:**
+
 - Consumes: `../api/errors` (all error classes), `~/lib/notify`
 - Produces: `handlePostError(err: unknown): void` — used by all page event handlers
 
@@ -2192,10 +2273,12 @@ git -c commit.gpgsign=false commit -m "feat(pages): add handlePostError utility 
 ### Task 10: Create `services/announcements.ts` — Composed loaders + outbound mapping
 
 **Files:**
+
 - Create: `src/features/posts/services/announcements.ts`
 - Create: `src/features/posts/services/announcements.test.ts`
 
 **Interfaces:**
+
 - Consumes: `../api/announcements` (fetch functions), `../mappers/announcements` (inbound mappers), `../mappers/shared` (mergeAndDedup, helpers)
 - Produces: `loadPostsList()`, `loadPostDetail(id)`, `loadAnnouncementDraftDetail(id)`, `buildAnnouncementPayload(state)` — used by page loaders and event handlers
 
@@ -2220,16 +2303,31 @@ vi.mock('../mappers/announcements', () => ({
     title: api.title,
     ownership,
   })),
-  mapAnnouncementDetail: vi.fn((d: any) => ({ id: `ann_${d.announcementId}`, numericId: d.announcementId })),
-  mapAnnouncementDraftDetail: vi.fn((d: any) => ({ id: `draft_${d.announcementDraftId}`, numericId: d.announcementDraftId })),
+  mapAnnouncementDetail: vi.fn((d: any) => ({
+    id: `ann_${d.announcementId}`,
+    numericId: d.announcementId,
+  })),
+  mapAnnouncementDraftDetail: vi.fn((d: any) => ({
+    id: `draft_${d.announcementDraftId}`,
+    numericId: d.announcementDraftId,
+  })),
 }));
 
 vi.mock('../mappers/shared', () => ({
   mergeAndDedup: vi.fn((own: any[], shared: any[]) => [...own, ...shared]),
 }));
 
-import { fetchAnnouncements, fetchSharedAnnouncements, fetchAnnouncementDetail, fetchAnnouncementDraftDetail } from '../api/announcements';
-import { loadPostsList, loadPostDetail, loadAnnouncementDraftDetail as loadDraftDetail } from './announcements';
+import {
+  fetchAnnouncements,
+  fetchSharedAnnouncements,
+  fetchAnnouncementDetail,
+  fetchAnnouncementDraftDetail,
+} from '../api/announcements';
+import {
+  loadPostsList,
+  loadPostDetail,
+  loadAnnouncementDraftDetail as loadDraftDetail,
+} from './announcements';
 
 describe('services/announcements', () => {
   beforeEach(() => vi.clearAllMocks());
@@ -2237,7 +2335,9 @@ describe('services/announcements', () => {
   describe('loadPostsList', () => {
     it('fetches own + shared, maps, and merges', async () => {
       vi.mocked(fetchAnnouncements).mockResolvedValue([{ announcementId: 1, title: 'Own' }] as any);
-      vi.mocked(fetchSharedAnnouncements).mockResolvedValue([{ announcementId: 2, title: 'Shared' }] as any);
+      vi.mocked(fetchSharedAnnouncements).mockResolvedValue([
+        { announcementId: 2, title: 'Shared' },
+      ] as any);
 
       const result = await loadPostsList();
       expect(fetchAnnouncements).toHaveBeenCalled();
@@ -2309,7 +2409,9 @@ export async function loadAnnouncementDraftDetail(draftId: number): Promise<Anno
   return mapAnnouncementDraftDetail(draft);
 }
 
-export function buildAnnouncementPayload(state: BuildPostPayloadInput): ApiCreateAnnouncementPayload {
+export function buildAnnouncementPayload(
+  state: BuildPostPayloadInput,
+): ApiCreateAnnouncementPayload {
   return toPGCreatePayload(state);
 }
 
@@ -2341,10 +2443,12 @@ git -c commit.gpgsign=false commit -m "feat(services): add announcements service
 ### Task 11: Create `services/consent-forms.ts` — Composed loaders + outbound mapping
 
 **Files:**
+
 - Create: `src/features/posts/services/consent-forms.ts`
 - Create: `src/features/posts/services/consent-forms.test.ts`
 
 **Interfaces:**
+
 - Consumes: `../api/consent-forms`, `../mappers/consent-forms`, `../mappers/shared`
 - Produces: `loadConsentPostsList()`, `loadConsentPostDetail(id)`, `loadConsentFormDraftDetail(id)`, `buildConsentFormPayload(state)`
 
@@ -2369,16 +2473,31 @@ vi.mock('../mappers/consent-forms', () => ({
     title: api.title,
     ownership,
   })),
-  mapConsentFormDetail: vi.fn((d: any) => ({ id: `cf_${d.consentFormId}`, numericId: d.consentFormId })),
-  mapConsentFormDraftDetail: vi.fn((d: any) => ({ id: `cfd_${d.consentFormDraftId}`, numericId: d.consentFormDraftId })),
+  mapConsentFormDetail: vi.fn((d: any) => ({
+    id: `cf_${d.consentFormId}`,
+    numericId: d.consentFormId,
+  })),
+  mapConsentFormDraftDetail: vi.fn((d: any) => ({
+    id: `cfd_${d.consentFormDraftId}`,
+    numericId: d.consentFormDraftId,
+  })),
 }));
 
 vi.mock('../mappers/shared', () => ({
   mergeAndDedup: vi.fn((own: any[], shared: any[]) => [...own, ...shared]),
 }));
 
-import { fetchConsentForms, fetchSharedConsentForms, fetchConsentFormDetail, fetchConsentFormDraftDetail } from '../api/consent-forms';
-import { loadConsentPostsList, loadConsentPostDetail, loadConsentFormDraftDetail as loadDraftDetail } from './consent-forms';
+import {
+  fetchConsentForms,
+  fetchSharedConsentForms,
+  fetchConsentFormDetail,
+  fetchConsentFormDraftDetail,
+} from '../api/consent-forms';
+import {
+  loadConsentPostsList,
+  loadConsentPostDetail,
+  loadConsentFormDraftDetail as loadDraftDetail,
+} from './consent-forms';
 
 describe('services/consent-forms', () => {
   beforeEach(() => vi.clearAllMocks());
@@ -2386,7 +2505,9 @@ describe('services/consent-forms', () => {
   describe('loadConsentPostsList', () => {
     it('fetches own + shared, maps, and merges', async () => {
       vi.mocked(fetchConsentForms).mockResolvedValue([{ consentFormId: 1, title: 'Own' }] as any);
-      vi.mocked(fetchSharedConsentForms).mockResolvedValue([{ consentFormId: 2, title: 'Shared' }] as any);
+      vi.mocked(fetchSharedConsentForms).mockResolvedValue([
+        { consentFormId: 2, title: 'Shared' },
+      ] as any);
 
       const result = await loadConsentPostsList();
       expect(result).toHaveLength(2);
@@ -2483,10 +2604,12 @@ git -c commit.gpgsign=false commit -m "feat(services): add consent-forms service
 ### Task 12: Create `services/uploads.ts` — Upload orchestration
 
 **Files:**
+
 - Create: `src/features/posts/services/uploads.ts`
 - Create: `src/features/posts/services/uploads.test.ts`
 
 **Interfaces:**
+
 - Consumes: `../api/uploads` (`validateAttachmentUpload`, `uploadToPresignedUrl`, `verifyAttachmentUpload`)
 - Produces: `uploadAttachment(file, type, onProgress?)` — used by page event handlers
 
@@ -2503,7 +2626,11 @@ vi.mock('../api/uploads', () => ({
   verifyAttachmentUpload: vi.fn(),
 }));
 
-import { validateAttachmentUpload, uploadToPresignedUrl, verifyAttachmentUpload } from '../api/uploads';
+import {
+  validateAttachmentUpload,
+  uploadToPresignedUrl,
+  verifyAttachmentUpload,
+} from '../api/uploads';
 import { uploadAttachment } from './uploads';
 
 describe('services/uploads', () => {
@@ -2536,7 +2663,9 @@ describe('services/uploads', () => {
 
   it('calls onProgress with stage updates', async () => {
     vi.mocked(validateAttachmentUpload).mockResolvedValue({
-      attachmentId: 1, presignedUrl: 'https://s3.amazonaws.com/b', fields: {},
+      attachmentId: 1,
+      presignedUrl: 'https://s3.amazonaws.com/b',
+      fields: {},
     });
     vi.mocked(uploadToPresignedUrl).mockResolvedValue(undefined);
     vi.mocked(verifyAttachmentUpload).mockResolvedValue({ verified: true });
@@ -2552,7 +2681,9 @@ describe('services/uploads', () => {
 
   it('throws when verification fails', async () => {
     vi.mocked(validateAttachmentUpload).mockResolvedValue({
-      attachmentId: 1, presignedUrl: 'https://s3.amazonaws.com/b', fields: {},
+      attachmentId: 1,
+      presignedUrl: 'https://s3.amazonaws.com/b',
+      fields: {},
     });
     vi.mocked(uploadToPresignedUrl).mockResolvedValue(undefined);
     vi.mocked(verifyAttachmentUpload).mockResolvedValue({ verified: false });
@@ -2630,6 +2761,7 @@ git -c commit.gpgsign=false commit -m "feat(services): add uploads orchestration
 ### Task 13: Rewire pages to import from `services/` and add boundary enforcement
 
 **Files:**
+
 - Modify: `src/features/posts/pages/PostsListPage.tsx`
 - Modify: `src/features/posts/pages/PostDetailPage.tsx`
 - Modify: `src/features/posts/pages/CreatePostPage.tsx`
@@ -2637,6 +2769,7 @@ git -c commit.gpgsign=false commit -m "feat(services): add uploads orchestration
 - Modify: `lefthook.yml`
 
 **Interfaces:**
+
 - Consumes: `../services/` (all composed loaders + payload builders), `../api/errors` (for catch blocks), `./handle-post-error`
 - Produces: Working application with same behavior, new architecture
 
@@ -2682,6 +2815,7 @@ Expected: Exit 0 (no violations in new modules)
 Replace all imports from `../api/client` in page files with imports from `../services/`:
 
 In `PostsListPage.tsx`:
+
 ```typescript
 // Before:
 import { loadPostsList, loadConsentPostsList, duplicateAnnouncement, ... } from '../api/client';
@@ -2697,12 +2831,26 @@ import { handlePostError } from './handle-post-error';
 ```
 
 In `PostDetailPage.tsx`:
+
 ```typescript
 // After:
 import { loadPostDetail } from '../services/announcements';
 import { loadConsentPostDetail } from '../services/consent-forms';
-import { rescheduleAnnouncementDraft, cancelAnnouncementSchedule, updateAnnouncementEnquiryEmail, updateAnnouncementStaffInCharge, deleteAnnouncement } from '../api/announcements';
-import { rescheduleConsentFormDraft, cancelConsentFormSchedule, updateConsentFormEnquiryEmail, updateConsentFormStaffInCharge, updateConsentFormDueDate, deleteConsentForm } from '../api/consent-forms';
+import {
+  rescheduleAnnouncementDraft,
+  cancelAnnouncementSchedule,
+  updateAnnouncementEnquiryEmail,
+  updateAnnouncementStaffInCharge,
+  deleteAnnouncement,
+} from '../api/announcements';
+import {
+  rescheduleConsentFormDraft,
+  cancelConsentFormSchedule,
+  updateConsentFormEnquiryEmail,
+  updateConsentFormStaffInCharge,
+  updateConsentFormDueDate,
+  deleteConsentForm,
+} from '../api/consent-forms';
 import { getConfigs, fetchSession } from '../api/session';
 import { fetchSchoolStaff } from '../api/school';
 import { AppError, NotFoundError } from '../api/errors';
@@ -2710,13 +2858,42 @@ import { handlePostError } from './handle-post-error';
 ```
 
 In `CreatePostPage.tsx`:
+
 ```typescript
 // After:
-import { loadAnnouncementDraftDetail, loadPostDetail, buildAnnouncementPayload } from '../services/announcements';
-import { loadConsentFormDraftDetail, loadConsentPostDetail, buildConsentFormPayload } from '../services/consent-forms';
-import { createAnnouncement, createDraft, updateDraft, scheduleNewAnnouncementDraft, scheduleExistingAnnouncementDraft } from '../api/announcements';
-import { createConsentForm, createConsentFormDraft, updateConsentFormDraft, scheduleNewConsentFormDraft, scheduleExistingConsentFormDraft, updateConsentFormEnquiryEmail, updateConsentFormStaffInCharge, updateConsentFormDueDate } from '../api/consent-forms';
-import { fetchSchoolClasses, fetchSchoolStaff, fetchSchoolStaffGroups, fetchSchoolStudents } from '../api/school';
+import {
+  loadAnnouncementDraftDetail,
+  loadPostDetail,
+  buildAnnouncementPayload,
+} from '../services/announcements';
+import {
+  loadConsentFormDraftDetail,
+  loadConsentPostDetail,
+  buildConsentFormPayload,
+} from '../services/consent-forms';
+import {
+  createAnnouncement,
+  createDraft,
+  updateDraft,
+  scheduleNewAnnouncementDraft,
+  scheduleExistingAnnouncementDraft,
+} from '../api/announcements';
+import {
+  createConsentForm,
+  createConsentFormDraft,
+  updateConsentFormDraft,
+  scheduleNewConsentFormDraft,
+  scheduleExistingConsentFormDraft,
+  updateConsentFormEnquiryEmail,
+  updateConsentFormStaffInCharge,
+  updateConsentFormDueDate,
+} from '../api/consent-forms';
+import {
+  fetchSchoolClasses,
+  fetchSchoolStaff,
+  fetchSchoolStaffGroups,
+  fetchSchoolStudents,
+} from '../api/school';
 import { fetchSession, getConfigs } from '../api/session';
 import { AppError, ValidationError } from '../api/errors';
 import { handlePostError } from './handle-post-error';
@@ -2725,6 +2902,7 @@ import { handlePostError } from './handle-post-error';
 - [ ] **Step 4: Replace inline error handling with `handlePostError`**
 
 In event handlers where errors are caught:
+
 ```typescript
 // Before:
 } catch (err) {
@@ -2758,8 +2936,8 @@ Expected: Exit 0
 Add to `lefthook.yml` under `pre-commit`:
 
 ```yaml
-  boundary-check:
-    run: bash scripts/check-boundaries.sh
+boundary-check:
+  run: bash scripts/check-boundaries.sh
 ```
 
 - [ ] **Step 8: Commit**
@@ -2774,18 +2952,21 @@ git -c commit.gpgsign=false commit -m "refactor(pages): rewire imports to servic
 ### Task 14: Delete old files and final verification
 
 **Files:**
+
 - Delete: `src/features/posts/api/client.ts`
 - Delete: `src/features/posts/api/client.test.ts`
 - Delete: `src/features/posts/api/mappers.ts`
 - Delete: `src/features/posts/api/mappers.test.ts`
 
 **Interfaces:**
+
 - Consumes: All new modules must be wired up and working
 - Produces: Clean codebase with no dead code
 
 - [ ] **Step 1: Verify no remaining imports from old files**
 
 Run:
+
 ```bash
 grep -rE "from ['\"].*/api/client['\"]" src/features/posts/ && echo "STILL REFERENCED" || echo "SAFE TO DELETE"
 grep -rE "from ['\"].*/api/mappers['\"]" src/features/posts/ && echo "STILL REFERENCED" || echo "SAFE TO DELETE"

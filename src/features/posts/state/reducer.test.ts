@@ -37,6 +37,20 @@ describe('formReducer', () => {
     expect(state.photos[0].isCover).toBe(true);
   });
 
+  it('ADD_UPLOAD for second photo does not auto-cover', () => {
+    let state = formReducer(INITIAL_STATE, {
+      type: 'ADD_UPLOAD',
+      kind: 'photo',
+      payload: { localId: 'p1', name: 'a.png', size: 1024, mimeType: 'image/png' },
+    });
+    state = formReducer(state, {
+      type: 'ADD_UPLOAD',
+      kind: 'photo',
+      payload: { localId: 'p2', name: 'b.png', size: 1024, mimeType: 'image/png' },
+    });
+    expect(state.photos[1].isCover).toBeFalsy();
+  });
+
   it('REMOVE_UPLOAD removes by localId', () => {
     const withFile = formReducer(INITIAL_STATE, {
       type: 'ADD_UPLOAD',
@@ -45,6 +59,42 @@ describe('formReducer', () => {
     });
     const state = formReducer(withFile, { type: 'REMOVE_UPLOAD', kind: 'file', localId: 'abc' });
     expect(state.attachments).toHaveLength(0);
+  });
+
+  it('REMOVE_UPLOAD auto-promotes next photo to cover when cover is removed', () => {
+    let state = formReducer(INITIAL_STATE, {
+      type: 'ADD_UPLOAD',
+      kind: 'photo',
+      payload: { localId: 'p1', name: 'a.png', size: 1024, mimeType: 'image/png' },
+    });
+    state = formReducer(state, {
+      type: 'ADD_UPLOAD',
+      kind: 'photo',
+      payload: { localId: 'p2', name: 'b.png', size: 1024, mimeType: 'image/png' },
+    });
+    expect(state.photos[0].isCover).toBe(true);
+    state = formReducer(state, { type: 'REMOVE_UPLOAD', kind: 'photo', localId: 'p1' });
+    expect(state.photos).toHaveLength(1);
+    expect(state.photos[0].isCover).toBe(true);
+  });
+
+  it('REMOVE_UPLOAD does not promote when other covers remain', () => {
+    let state = INITIAL_STATE;
+    state = formReducer(state, {
+      type: 'ADD_UPLOAD',
+      kind: 'photo',
+      payload: { localId: 'p1', name: 'a.png', size: 1024, mimeType: 'image/png' },
+    });
+    state = formReducer(state, {
+      type: 'ADD_UPLOAD',
+      kind: 'photo',
+      payload: { localId: 'p2', name: 'b.png', size: 1024, mimeType: 'image/png' },
+    });
+    state = formReducer(state, { type: 'TOGGLE_COVER_PHOTO', localId: 'p2' });
+    // Both p1 and p2 are covers now
+    state = formReducer(state, { type: 'REMOVE_UPLOAD', kind: 'photo', localId: 'p1' });
+    expect(state.photos[0].localId).toBe('p2');
+    expect(state.photos[0].isCover).toBe(true);
   });
 
   it('ADD_WEBSITE_LINK respects max 3 cap', () => {
@@ -284,6 +334,101 @@ describe('formReducer', () => {
         direction: 'up',
       });
       expect(state.questions.map((q) => q.id)).toEqual(['q1', 'q2', 'q3']);
+    });
+  });
+
+  // ─── Photo gallery actions ─────────────────────────────────────────────────
+
+  describe('TOGGLE_COVER_PHOTO', () => {
+    function stateWithPhotos(...ids: string[]): PostFormState {
+      let state = INITIAL_STATE;
+      for (const id of ids) {
+        state = formReducer(state, {
+          type: 'ADD_UPLOAD',
+          kind: 'photo',
+          payload: { localId: id, name: `${id}.png`, size: 1024, mimeType: 'image/png' },
+        });
+      }
+      return state;
+    }
+
+    it('toggles a non-cover photo to cover', () => {
+      const state = stateWithPhotos('p1', 'p2');
+      const result = formReducer(state, { type: 'TOGGLE_COVER_PHOTO', localId: 'p2' });
+      expect(result.photos.find((p) => p.localId === 'p2')!.isCover).toBe(true);
+      expect(result.photos.find((p) => p.localId === 'p1')!.isCover).toBe(true);
+    });
+
+    it('untoggling the only cover promotes the next photo', () => {
+      const state = stateWithPhotos('p1', 'p2');
+      // p1 is the only cover
+      const result = formReducer(state, { type: 'TOGGLE_COVER_PHOTO', localId: 'p1' });
+      expect(result.photos.find((p) => p.localId === 'p1')!.isCover).toBe(false);
+      expect(result.photos.find((p) => p.localId === 'p2')!.isCover).toBe(true);
+    });
+
+    it('untoggling a cover when others remain does not promote', () => {
+      let state = stateWithPhotos('p1', 'p2', 'p3');
+      state = formReducer(state, { type: 'TOGGLE_COVER_PHOTO', localId: 'p2' });
+      // p1 and p2 are covers
+      const result = formReducer(state, { type: 'TOGGLE_COVER_PHOTO', localId: 'p1' });
+      expect(result.photos.find((p) => p.localId === 'p1')!.isCover).toBe(false);
+      expect(result.photos.find((p) => p.localId === 'p2')!.isCover).toBe(true);
+      expect(result.photos.find((p) => p.localId === 'p3')!.isCover).toBeFalsy();
+    });
+
+    it('respects max 3 covers cap', () => {
+      let state = stateWithPhotos('p1', 'p2', 'p3', 'p4');
+      state = formReducer(state, { type: 'TOGGLE_COVER_PHOTO', localId: 'p2' });
+      state = formReducer(state, { type: 'TOGGLE_COVER_PHOTO', localId: 'p3' });
+      // p1, p2, p3 are covers — toggling p4 should be a no-op
+      const result = formReducer(state, { type: 'TOGGLE_COVER_PHOTO', localId: 'p4' });
+      expect(result.photos.filter((p) => p.isCover)).toHaveLength(3);
+      expect(result.photos.find((p) => p.localId === 'p4')!.isCover).toBeFalsy();
+    });
+
+    it('no-ops for non-existent localId', () => {
+      const state = stateWithPhotos('p1');
+      const result = formReducer(state, { type: 'TOGGLE_COVER_PHOTO', localId: 'nonexistent' });
+      expect(result).toEqual(state);
+    });
+  });
+
+  describe('REORDER_PHOTOS', () => {
+    function stateWithPhotos(...ids: string[]): PostFormState {
+      let state = INITIAL_STATE;
+      for (const id of ids) {
+        state = formReducer(state, {
+          type: 'ADD_UPLOAD',
+          kind: 'photo',
+          payload: { localId: id, name: `${id}.png`, size: 1024, mimeType: 'image/png' },
+        });
+      }
+      return state;
+    }
+
+    it('moves photo from index 0 to index 2', () => {
+      const state = stateWithPhotos('p1', 'p2', 'p3');
+      const result = formReducer(state, { type: 'REORDER_PHOTOS', from: 0, to: 2 });
+      expect(result.photos.map((p) => p.localId)).toEqual(['p2', 'p3', 'p1']);
+    });
+
+    it('moves photo from index 2 to index 0', () => {
+      const state = stateWithPhotos('p1', 'p2', 'p3');
+      const result = formReducer(state, { type: 'REORDER_PHOTOS', from: 2, to: 0 });
+      expect(result.photos.map((p) => p.localId)).toEqual(['p3', 'p1', 'p2']);
+    });
+
+    it('no-ops when from equals to', () => {
+      const state = stateWithPhotos('p1', 'p2');
+      const result = formReducer(state, { type: 'REORDER_PHOTOS', from: 1, to: 1 });
+      expect(result.photos.map((p) => p.localId)).toEqual(['p1', 'p2']);
+    });
+
+    it('preserves cover status after reorder', () => {
+      const state = stateWithPhotos('p1', 'p2', 'p3');
+      const result = formReducer(state, { type: 'REORDER_PHOTOS', from: 0, to: 2 });
+      expect(result.photos.find((p) => p.localId === 'p1')!.isCover).toBe(true);
     });
   });
 });

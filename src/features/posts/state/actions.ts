@@ -34,5 +34,5 @@ export type PostFormAction =
       patch: Partial<UploadingFile>;
     }
   | { type: 'REMOVE_UPLOAD'; kind: 'file' | 'photo'; localId: string }
-  | { type: 'SET_COVER_PHOTO'; localId: string }
+  | { type: 'TOGGLE_COVER_PHOTO'; localId: string }
   | { type: 'REORDER_PHOTOS'; from: number; to: number };

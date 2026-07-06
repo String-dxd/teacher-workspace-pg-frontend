@@ -6,7 +6,6 @@ vi.mock('./http', () => ({
   deleteApi: vi.fn(),
 }));
 
-import { fetchApi, mutateApi, deleteApi } from './http';
 import {
   fetchConsentForms,
   fetchSharedConsentForms,
@@ -27,6 +26,7 @@ import {
   updateConsentFormEnquiryEmail,
   updateConsentFormStaffInCharge,
 } from './consent-forms';
+import { fetchApi, mutateApi, deleteApi } from './http';
 
 describe('api/consent-forms', () => {
   beforeEach(() => vi.clearAllMocks());
@@ -108,7 +108,12 @@ describe('api/consent-forms', () => {
       vi.mocked(mutateApi).mockResolvedValue({ consentFormDraftId: 11, updatedAt: 'now' });
       const payload = { title: 'Sched', scheduledSendAt: '2026-06-01T09:00:00Z' } as any;
       const result = await scheduleNewConsentFormDraft(payload);
-      expect(mutateApi).toHaveBeenCalledWith('POST', '/consentForms/drafts/schedule', payload, undefined);
+      expect(mutateApi).toHaveBeenCalledWith(
+        'POST',
+        '/consentForms/drafts/schedule',
+        payload,
+        undefined,
+      );
       expect(result).toEqual({ consentFormDraftId: 11, updatedAt: 'now' });
     });
 
