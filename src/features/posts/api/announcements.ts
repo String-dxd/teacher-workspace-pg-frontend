@@ -1,4 +1,12 @@
+import type { AnnouncementPost } from '~/data/posts-registry';
+
 import { deleteApi, fetchApi, mutateApi } from './http';
+import {
+  mapAnnouncementDetail,
+  mapAnnouncementDraftDetail,
+  mapAnnouncementSummary,
+  mergeAndDedup,
+} from './mappers';
 import type {
   ApiAnnouncementDetail,
   ApiAnnouncementDraft,
@@ -103,10 +111,7 @@ export function updateAnnouncementEnquiryEmail(
   return mutateApi('PUT', `/announcements/${postId}/enquiryEmailAddress`, payload);
 }
 
-export function updateAnnouncementStaffInCharge(
-  postId: number,
-  staffIds: number[],
-): Promise<void> {
+export function updateAnnouncementStaffInCharge(postId: number, staffIds: number[]): Promise<void> {
   const staffGroups: ApiGroupTarget[] = staffIds.map((id) => ({
     type: 'individual',
     label: '',
@@ -121,4 +126,23 @@ export function deleteAnnouncement(postId: number): Promise<void> {
 
 export function deleteDraft(draftId: number): Promise<void> {
   return deleteApi(`/announcements/drafts/${draftId}`);
+}
+
+// ─── Composed loaders ───────────────────────────────────────────────────────
+
+export async function loadPostsList(): Promise<AnnouncementPost[]> {
+  const [own, shared] = await Promise.all([fetchAnnouncements(), fetchSharedAnnouncements()]);
+  const mappedOwn = own.map((p) => mapAnnouncementSummary(p, 'mine'));
+  const mappedShared = shared.map((p) => mapAnnouncementSummary(p, 'shared'));
+  return mergeAndDedup(mappedOwn, mappedShared);
+}
+
+export async function loadPostDetail(postId: number): Promise<AnnouncementPost> {
+  const detail = await fetchAnnouncementDetail(postId);
+  return mapAnnouncementDetail(detail);
+}
+
+export async function loadAnnouncementDraftDetail(draftId: number): Promise<AnnouncementPost> {
+  const detail = await fetchAnnouncementDraftDetail(draftId);
+  return mapAnnouncementDraftDetail(detail);
 }

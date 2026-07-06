@@ -11,8 +11,7 @@ import {
   PopoverTitle,
   PopoverTrigger,
 } from '~/components/ui';
-import type { AttachmentUploadType } from '~/features/posts/api/client';
-import { uploadAttachment } from '~/features/posts/api/client';
+import { uploadAttachment, type AttachmentUploadType } from '~/features/posts/api/uploads';
 import type { PostFormAction } from '~/features/posts/state/actions';
 import type { UploadingFile } from '~/features/posts/state/initial-state';
 import {

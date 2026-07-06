@@ -1,4 +1,12 @@
+import type { ConsentFormPost } from '~/data/posts-registry';
+
 import { deleteApi, fetchApi, mutateApi } from './http';
+import {
+  mapConsentFormDetail,
+  mapConsentFormDraftDetail,
+  mapConsentFormSummaryToPost,
+  mergeAndDedup,
+} from './mappers';
 import type {
   ApiConsentFormDetail,
   ApiConsentFormDraft,
@@ -127,4 +135,23 @@ export function updateConsentFormStaffInCharge(formId: number, staffIds: number[
     value: id,
   }));
   return mutateApi('POST', `/consentForms/${formId}/addStaffInCharge`, { staffGroups }, undefined);
+}
+
+// ─── Composed loaders ───────────────────────────────────────────────────────
+
+export async function loadConsentPostsList(): Promise<ConsentFormPost[]> {
+  const [own, shared] = await Promise.all([fetchConsentForms(), fetchSharedConsentForms()]);
+  const mappedOwn = own.map((p) => mapConsentFormSummaryToPost(p, 'mine'));
+  const mappedShared = shared.map((p) => mapConsentFormSummaryToPost(p, 'shared'));
+  return mergeAndDedup(mappedOwn, mappedShared);
+}
+
+export async function loadConsentPostDetail(formId: number): Promise<ConsentFormPost> {
+  const detail = await fetchConsentFormDetail(formId);
+  return mapConsentFormDetail(detail);
+}
+
+export async function loadConsentFormDraftDetail(draftId: number): Promise<ConsentFormPost> {
+  const draft = await fetchConsentFormDraftDetail(draftId);
+  return mapConsentFormDraftDetail(draft);
 }

@@ -12,4 +12,4 @@ export {
   removeAccessFromCustomGroup,
   shareCustomGroup,
   updateCustomGroup,
-} from '~/features/posts/api/client';
+} from '~/features/posts/api/school';

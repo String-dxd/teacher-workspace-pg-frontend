@@ -88,3 +88,21 @@ export async function verifyAttachmentUpload(
     await new Promise((resolve) => setTimeout(resolve, intervalMs));
   }
 }
+
+// ─── Composed orchestration ─────────────────────────────────────────────────
+
+export type UploadStage = 'uploading' | 'verifying' | 'ready';
+
+export async function uploadAttachment(
+  file: File,
+  type: AttachmentUploadType,
+  onProgress?: (stage: UploadStage) => void,
+): Promise<{ attachmentId: number; url: string }> {
+  onProgress?.('uploading');
+  const pre = await validateAttachmentUpload(file, type);
+  await uploadToPresignedUrl(pre.presignedUrl, pre.fields, file);
+  onProgress?.('verifying');
+  await verifyAttachmentUpload(pre.attachmentId);
+  const url = `/api/files/2/handleDownloadAttachment?attachmentId=${pre.attachmentId}`;
+  return { attachmentId: pre.attachmentId, url };
+}

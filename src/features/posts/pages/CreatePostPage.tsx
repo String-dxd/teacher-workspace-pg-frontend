@@ -27,37 +27,40 @@ import {
 import { describeScheduledSendFailure, type Post } from '~/data/posts-registry';
 import {
   createAnnouncement,
-  createConsentForm,
-  createConsentFormDraft,
   createDraft,
-  fetchSchoolClasses,
-  fetchSchoolStaff,
-  fetchSchoolStaffGroups,
-  fetchSchoolStudents,
-  fetchSession,
-  getConfigs,
   loadAnnouncementDraftDetail,
-  loadConsentFormDraftDetail,
-  loadConsentPostDetail,
   loadPostDetail,
   scheduleExistingAnnouncementDraft,
-  scheduleExistingConsentFormDraft,
   scheduleNewAnnouncementDraft,
-  scheduleNewConsentFormDraft,
   updateAnnouncementEnquiryEmail,
   updateAnnouncementStaffInCharge,
+  updateDraft,
+} from '~/features/posts/api/announcements';
+import {
+  createConsentForm,
+  createConsentFormDraft,
+  loadConsentFormDraftDetail,
+  loadConsentPostDetail,
+  scheduleExistingConsentFormDraft,
+  scheduleNewConsentFormDraft,
   updateConsentFormDraft,
   updateConsentFormDueDate,
   updateConsentFormEnquiryEmail,
   updateConsentFormStaffInCharge,
-  updateDraft,
-} from '~/features/posts/api/client';
+} from '~/features/posts/api/consent-forms';
 import { AppError, ValidationError } from '~/features/posts/api/errors';
 import {
   buildAnnouncementPayload,
   buildConsentFormPayload,
   type BuildPostPayloadInput,
 } from '~/features/posts/api/mappers';
+import {
+  fetchSchoolClasses,
+  fetchSchoolStaff,
+  fetchSchoolStaffGroups,
+  fetchSchoolStudents,
+} from '~/features/posts/api/school';
+import { fetchSession, getConfigs } from '~/features/posts/api/session';
 import type {
   ApiConfig,
   ApiSchoolClass,
