@@ -73,7 +73,8 @@ export function makePostDetailLoader(postKind: 'announcement' | 'form') {
     if (!id || !/^\d+$/.test(id)) throw new Response('Not Found', { status: 404 });
     const numericId = Number(id);
 
-    const { loadConsentPostDetail, loadPostDetail } = await import('~/features/posts/api/client');
+    const { loadPostDetail } = await import('~/features/posts/api/announcements');
+    const { loadConsentPostDetail } = await import('~/features/posts/api/consent-forms');
 
     const [post, configs, staff, session] = await Promise.all([
       postKind === 'form' ? loadConsentPostDetail(numericId) : loadPostDetail(numericId),
