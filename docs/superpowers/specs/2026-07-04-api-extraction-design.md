@@ -58,6 +58,7 @@ No upward imports. Enforced by a shell script in lefthook (see Boundary Enforcem
 #### `http.ts`
 
 Exports:
+
 - `fetchApi<T>(path)` — GET on `/api/web/2/staff` + path, credentials included, redirect manual
 - `fetchApiRoot<T>(path)` — GET on `/api` + path (for endpoints outside `/staff`)
 - `mutateApi<T>(method, path, body, options?)` — POST/PUT with JSON body, 30s timeout, CSRF retry
@@ -65,6 +66,7 @@ Exports:
 - `postMultipart<T>(path, formData, options?)` — multipart POST, 60s timeout, CSRF retry
 
 Internal (not exported):
+
 - `unwrapEnvelope<T>(json)` — PGW `{body, resultCode}` detection and unwrapping
 - `handleErrorResponse(res)` — maps resultCode to typed error; **throws only, no side effects**
 - `handleRedirectResponse(res)` — throws `RedirectError` with `.location`; **no window.location**
@@ -98,21 +100,27 @@ Thin wrappers calling `fetchApi`/`mutateApi`/`deleteApi` with correct paths.
 - `session.ts`: `getConfigs()` retains its 15-minute memoization cache (pure caching, not a UI side effect)
 
 Example signatures:
+
 ```typescript
 // api/announcements.ts
-export function createAnnouncement(payload: ApiCreateAnnouncementPayload): Promise<unknown>
-export function fetchAnnouncementDetail(id: number): Promise<ApiAnnouncementDetail>
-export function deleteDraft(draftId: number): Promise<void>
+export function createAnnouncement(payload: ApiCreateAnnouncementPayload): Promise<unknown>;
+export function fetchAnnouncementDetail(id: number): Promise<ApiAnnouncementDetail>;
+export function deleteDraft(draftId: number): Promise<void>;
 ```
 
 #### `uploads.ts`
 
 Three atomic endpoints:
+
 ```typescript
-export function validateAttachmentUpload(file: File, type: string): Promise<PreUploadResult>
-export function uploadToPresignedUrl(url: string, fields: Record<string, string>, file: File): Promise<void>
-export function verifyAttachmentUpload(attachmentId: string): Promise<VerificationResult>
-export function isPresignedUrlTrusted(url: string): boolean
+export function validateAttachmentUpload(file: File, type: string): Promise<PreUploadResult>;
+export function uploadToPresignedUrl(
+  url: string,
+  fields: Record<string, string>,
+  file: File,
+): Promise<void>;
+export function verifyAttachmentUpload(attachmentId: string): Promise<VerificationResult>;
+export function isPresignedUrlTrusted(url: string): boolean;
 ```
 
 ### `mappers/` — Inbound Transforms
@@ -120,16 +128,19 @@ export function isPresignedUrlTrusted(url: string): boolean
 Converts API wire types to domain models. Pure functions, no I/O.
 
 #### `mappers/announcements.ts`
+
 - `mapAnnouncementSummary(api: ApiAnnouncementSummary, ownership: string)` → `AnnouncementPost`
 - `mapAnnouncementDetail(detail: ApiAnnouncementDetail)` → `AnnouncementPost`
 - `mapAnnouncementDraftDetail(draft: ApiAnnouncementDraft)` → `AnnouncementPost`
 
 #### `mappers/consent-forms.ts`
+
 - `mapConsentFormSummary(api: ApiConsentFormSummary, ownership: string)` → `ConsentFormPost`
 - `mapConsentFormDetail(detail: ApiConsentFormDetail)` → `ConsentFormPost`
 - `mapConsentFormDraftDetail(draft: ApiConsentFormDraft)` → `ConsentFormPost`
 
 #### `mappers/shared.ts`
+
 - `mergeAndDedup(own, shared)` — dedup by ID, own takes priority
 - `mapReminder(type, date)` → `ReminderConfig`
 - `rehydrateAttachments(apiAttachments)` → `UploadedFile[]`
@@ -143,15 +154,19 @@ Converts API wire types to domain models. Pure functions, no I/O.
 #### `services/announcements.ts`
 
 Composed reads (fetch + map + merge):
+
 ```typescript
-export function loadPostsList(): Promise<AnnouncementPost[]>
-export function loadPostDetail(id: number): Promise<AnnouncementPost>
-export function loadAnnouncementDraftDetail(id: number): Promise<AnnouncementPost>
+export function loadPostsList(): Promise<AnnouncementPost[]>;
+export function loadPostDetail(id: number): Promise<AnnouncementPost>;
+export function loadAnnouncementDraftDetail(id: number): Promise<AnnouncementPost>;
 ```
 
 Outbound mapping (form state → wire payload):
+
 ```typescript
-export function buildAnnouncementPayload(state: BuildPostPayloadInput): ApiCreateAnnouncementPayload
+export function buildAnnouncementPayload(
+  state: BuildPostPayloadInput,
+): ApiCreateAnnouncementPayload;
 ```
 
 Internal helpers: `toPGCreatePayload` (field renaming: `websiteLinks` → `urls`, `shortcutLink` → `shortcuts`).
@@ -159,11 +174,11 @@ Internal helpers: `toPGCreatePayload` (field renaming: `websiteLinks` → `urls`
 #### `services/consent-forms.ts`
 
 ```typescript
-export function loadConsentPostsList(): Promise<ConsentFormPost[]>
-export function loadConsentPostDetail(id: number): Promise<ConsentFormPost>
-export function loadConsentFormDraftDetail(id: number): Promise<ConsentFormPost>
+export function loadConsentPostsList(): Promise<ConsentFormPost[]>;
+export function loadConsentPostDetail(id: number): Promise<ConsentFormPost>;
+export function loadConsentFormDraftDetail(id: number): Promise<ConsentFormPost>;
 
-export function buildConsentFormPayload(state: BuildPostPayloadInput): ApiCreateConsentFormPayload
+export function buildConsentFormPayload(state: BuildPostPayloadInput): ApiCreateConsentFormPayload;
 ```
 
 Internal helpers: `toPGConsentFormCreatePayload`, `toPGConsentFormDraftPayload`.
@@ -174,8 +189,8 @@ Internal helpers: `toPGConsentFormCreatePayload`, `toPGConsentFormDraftPayload`.
 export function uploadAttachment(
   file: File,
   type: string,
-  onProgress?: (stage: UploadStage) => void
-): Promise<UploadResult>
+  onProgress?: (stage: UploadStage) => void,
+): Promise<UploadResult>;
 ```
 
 Composes: `validateAttachmentUpload` → `uploadToPresignedUrl` → poll `verifyAttachmentUpload`.
@@ -188,19 +203,20 @@ Pages catch typed errors and react with UI side effects. Shared utility:
 // pages/handle-post-error.ts
 export function handlePostError(err: unknown): void {
   if (err instanceof SessionExpiredError) {
-    window.location.href = '/session-expired'
+    window.location.href = '/session-expired';
   } else if (err instanceof RateLimitError) {
-    notify.error('Too many requests. Please try again later.')
+    notify.error('Too many requests. Please try again later.');
   } else if (err instanceof RedirectError && err.location) {
-    window.location.href = err.location
+    window.location.href = err.location;
   } else if (err instanceof AppError) {
-    notify.error(err.message)
+    notify.error(err.message);
   }
   // ValidationError: not handled here — pages handle inline per field
 }
 ```
 
 Pages use this in event handlers:
+
 ```typescript
 try {
   await saveDraft(...)
