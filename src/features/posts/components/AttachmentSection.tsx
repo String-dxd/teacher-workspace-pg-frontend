@@ -18,6 +18,7 @@ import {
   ALLOWED_FILE_MIME,
   ALLOWED_PHOTO_MIME,
   formatFileSize,
+  MAX_COVER_PHOTOS,
   MAX_FILE_ITEMS,
   MAX_PHOTO_ITEMS,
   validateUploadFile,
@@ -25,9 +26,6 @@ import {
 } from '~/helpers/attachments';
 import { notify } from '~/lib/notify';
 import { cn } from '~/lib/utils';
-
-/** Maximum photos that can be flagged as gallery covers. */
-const MAX_COVER_PHOTOS = 3;
 
 interface AttachmentSectionProps {
   files: UploadingFile[];
@@ -327,7 +325,9 @@ function PhotosSubSection({
               <PhotoRow
                 item={item}
                 coverCount={coverCount}
-                onToggleCover={() => dispatch({ type: 'SET_COVER_PHOTO', localId: item.localId })}
+                onToggleCover={() =>
+                  dispatch({ type: 'TOGGLE_COVER_PHOTO', localId: item.localId })
+                }
                 onRemove={() =>
                   dispatch({ type: 'REMOVE_UPLOAD', kind: 'photo', localId: item.localId })
                 }
