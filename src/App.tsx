@@ -19,10 +19,15 @@ import {
   PostsListPage,
   postsListLoader,
   PostDetailPage,
-  postDetailLoader,
+  makePostDetailLoader,
   CreatePostPage,
-  createPostLoader,
+  makeCreatePostLoader,
 } from '~/features/posts';
+
+export interface PostRouteHandle {
+  postKind: 'announcement' | 'form';
+  draft: boolean;
+}
 
 const router = createBrowserRouter([
   {
@@ -73,17 +78,44 @@ const router = createBrowserRouter([
   {
     path: '/posts/new',
     element: <CreatePostPage />,
-    loader: createPostLoader,
+    loader: makeCreatePostLoader(),
+    handle: { postKind: 'announcement', draft: false } satisfies PostRouteHandle,
   },
   {
-    path: '/posts/:id',
+    path: '/posts/announcements/:id',
     element: <PostDetailPage />,
-    loader: postDetailLoader,
+    loader: makePostDetailLoader('announcement'),
+    handle: { postKind: 'announcement', draft: false } satisfies PostRouteHandle,
   },
   {
-    path: '/posts/:id/edit',
+    path: '/posts/announcements/:id/edit',
     element: <CreatePostPage />,
-    loader: createPostLoader,
+    loader: makeCreatePostLoader('announcement', false),
+    handle: { postKind: 'announcement', draft: false } satisfies PostRouteHandle,
+  },
+  {
+    path: '/posts/announcements/drafts/:id/edit',
+    element: <CreatePostPage />,
+    loader: makeCreatePostLoader('announcement', true),
+    handle: { postKind: 'announcement', draft: true } satisfies PostRouteHandle,
+  },
+  {
+    path: '/posts/consent-forms/:id',
+    element: <PostDetailPage />,
+    loader: makePostDetailLoader('form'),
+    handle: { postKind: 'form', draft: false } satisfies PostRouteHandle,
+  },
+  {
+    path: '/posts/consent-forms/:id/edit',
+    element: <CreatePostPage />,
+    loader: makeCreatePostLoader('form', false),
+    handle: { postKind: 'form', draft: false } satisfies PostRouteHandle,
+  },
+  {
+    path: '/posts/consent-forms/drafts/:id/edit',
+    element: <CreatePostPage />,
+    loader: makeCreatePostLoader('form', true),
+    handle: { postKind: 'form', draft: true } satisfies PostRouteHandle,
   },
 ]);
 

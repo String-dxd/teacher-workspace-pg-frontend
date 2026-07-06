@@ -135,7 +135,8 @@ export const CONSENT_FORM_STATUS_BADGE: Record<
 
 export interface AnnouncementPost {
   kind: 'announcement';
-  id: AnnouncementId | AnnouncementDraftId;
+  id: string;
+  numericId: number;
   title: string;
   description: string;
   richTextContent?: Record<string, unknown> | null;
@@ -164,7 +165,8 @@ export interface AnnouncementPost {
 
 export interface ConsentFormPost {
   kind: 'form';
-  id: ConsentFormId | ConsentFormDraftId;
+  id: string;
+  numericId: number;
   title: string;
   description: string;
   richTextContent?: Record<string, unknown> | null;
@@ -218,50 +220,16 @@ export function getPostStatusBadge(post: Post): { label: string; variant: BadgeV
     : POST_STATUS_BADGE[post.status];
 }
 
-// ─── Branded IDs + type guards ────────────────────────────────────────────────
+// ─── Post IDs ─────────────────────────────────────────────────────────────────
 
-export type AnnouncementId = string & { readonly __brand: 'AnnouncementId' };
-export type AnnouncementDraftId = `annDraft_${string}` & {
-  readonly __brand: 'AnnouncementDraftId';
-};
-export type ConsentFormId = `cf_${string}` & { readonly __brand: 'ConsentFormId' };
-export type ConsentFormDraftId = `cfDraft_${string}` & { readonly __brand: 'ConsentFormDraftId' };
-export type PostId = AnnouncementId | AnnouncementDraftId | ConsentFormId | ConsentFormDraftId;
+export function postHref(
+  post: Pick<Post, 'kind' | 'status' | 'numericId'>,
+  opts?: { edit?: boolean },
+): string {
+  const kind = post.kind === 'announcement' ? 'announcements' : 'consent-forms';
+  const isDraft = post.status === 'draft' || post.status === 'scheduled';
 
-export function isConsentFormId(id: PostId): id is ConsentFormId {
-  return id.startsWith('cf_') && !id.startsWith('cfDraft_');
-}
-
-export function isAnnouncementDraftId(id: PostId): id is AnnouncementDraftId {
-  return id.startsWith('annDraft_');
-}
-
-export function isConsentFormDraftId(id: PostId): id is ConsentFormDraftId {
-  return id.startsWith('cfDraft_');
-}
-
-export function parsePostId(raw: string): PostId | null {
-  if (/^cfDraft_\d+$/.test(raw)) return raw as ConsentFormDraftId;
-  if (/^cf_\d+$/.test(raw)) return raw as ConsentFormId;
-  if (/^annDraft_\d+$/.test(raw)) return raw as AnnouncementDraftId;
-  if (/^\d+$/.test(raw)) return raw as AnnouncementId;
-  return null;
-}
-
-export function postKindFromId(id: PostId): 'announcement' | 'form' {
-  return isConsentFormId(id) || isConsentFormDraftId(id) ? 'form' : 'announcement';
-}
-
-export function postHref(post: Post, opts?: { edit?: boolean }): string {
-  const base = opts?.edit ? `/posts/${post.id}/edit` : `/posts/${post.id}`;
-  return `${base}?kind=${post.kind}`;
-}
-
-export function validatePostRoute(rawId: string, kindParam: string | null): PostId | null {
-  const parsed = parsePostId(rawId);
-  if (!parsed) return null;
-  const isForm = isConsentFormId(parsed) || isConsentFormDraftId(parsed);
-  if (kindParam === 'form' && !isForm) return null;
-  if (kindParam === 'announcement' && isForm) return null;
-  return parsed;
+  if (isDraft) return `/posts/${kind}/drafts/${post.numericId}/edit`;
+  if (opts?.edit) return `/posts/${kind}/${post.numericId}/edit`;
+  return `/posts/${kind}/${post.numericId}`;
 }

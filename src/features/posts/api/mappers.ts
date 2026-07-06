@@ -1,10 +1,6 @@
 import type {
-  AnnouncementDraftId,
-  AnnouncementId,
   AnnouncementPost,
   AnnouncementTarget,
-  ConsentFormDraftId,
-  ConsentFormId,
   ConsentFormHistoryEntry,
   ConsentFormPost,
   ConsentFormRecipient,
@@ -66,18 +62,10 @@ export function mapAnnouncementSummary(
     ? Math.round(api.readMetrics.readPerStudent * api.readMetrics.totalStudents)
     : 0;
 
-  // SCHEDULED posts live in `pg_announcement_draft` (status=SCHEDULED) — same
-  // table as plain drafts. Brand both with `annDraft_` so the detail loader
-  // routes to `/announcements/drafts/:id` (not `/announcements/:id`, which
-  // 404s for unposted rows).
-  const id =
-    status === 'draft' || status === 'scheduled'
-      ? (`annDraft_${api.postId}` as AnnouncementDraftId)
-      : (String(api.postId) as AnnouncementId);
-
   return {
     kind: 'announcement',
-    id,
+    id: String(api.postId),
+    numericId: api.postId,
     title: api.title,
     description: '',
     status,
@@ -205,7 +193,8 @@ export function mapAnnouncementDetail(detail: ApiAnnouncementDetail): Announceme
 
   return {
     kind: 'announcement',
-    id: String(detail.announcementId) as AnnouncementId,
+    id: String(detail.announcementId),
+    numericId: detail.announcementId,
     title: detail.title,
     description: extractTextFromTiptap(detail.richTextContent),
     richTextContent,
@@ -265,7 +254,8 @@ export function mapAnnouncementDraftDetail(draft: ApiAnnouncementDraft): Announc
 
   return {
     kind: 'announcement',
-    id: `annDraft_${draft.announcementDraftId}` as AnnouncementDraftId,
+    id: String(draft.announcementDraftId),
+    numericId: draft.announcementDraftId,
     title: draft.title,
     description: richTextContent ? extractTextFromTiptap(richTextContent) : '',
     richTextContent,
@@ -357,7 +347,8 @@ export function mapConsentFormDraftDetail(draft: ApiConsentFormDraft): ConsentFo
 
   return {
     kind: 'form',
-    id: `cfDraft_${draft.consentFormDraftId}` as ConsentFormDraftId,
+    id: String(draft.consentFormDraftId),
+    numericId: draft.consentFormDraftId,
     title: draft.title,
     description: richTextContent ? extractTextFromTiptap(richTextContent) : '',
     richTextContent,
@@ -433,16 +424,10 @@ export function mapConsentFormSummaryToPost(
     ? Math.round(api.respondedMetrics.respondedPerStudent * totalCount)
     : 0;
 
-  // SCHEDULED forms live in the consent-form draft table — brand them as
-  // `cfDraft_` so the detail loader hits `/consentForms/drafts/:id`.
-  const id =
-    status === 'draft' || status === 'scheduled'
-      ? (`cfDraft_${api.postId}` as ConsentFormDraftId)
-      : (`cf_${api.postId}` as ConsentFormId);
-
   return {
     kind: 'form',
-    id,
+    id: String(api.postId),
+    numericId: api.postId,
     title: api.title,
     description: '',
     status,
@@ -559,7 +544,8 @@ export function mapConsentFormDetail(detail: ApiConsentFormDetail): ConsentFormP
 
   return {
     kind: 'form',
-    id: `cf_${detail.consentFormId}` as ConsentFormId,
+    id: String(detail.consentFormId),
+    numericId: detail.consentFormId,
     title: detail.title,
     description: extractTextFromTiptap(detail.richTextContent),
     richTextContent,

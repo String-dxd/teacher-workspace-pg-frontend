@@ -24,16 +24,7 @@ import {
   PopoverTrigger,
   Separator,
 } from '~/components/ui';
-import {
-  describeScheduledSendFailure,
-  isAnnouncementDraftId,
-  isConsentFormDraftId,
-  isConsentFormId,
-  validatePostRoute,
-  type AnnouncementId,
-  type ConsentFormId,
-  type Post,
-} from '~/data/posts-registry';
+import { describeScheduledSendFailure, type Post } from '~/data/posts-registry';
 import {
   createAnnouncement,
   createConsentForm,
@@ -126,31 +117,32 @@ interface CreatePostLoaderData {
   configs: ApiConfig;
 }
 
-async function loadPostByKind(rawId: string, kindParam: string | null): Promise<Post | null> {
-  const parsed = validatePostRoute(rawId, kindParam);
-  if (!parsed) return null;
-  if (isConsentFormDraftId(parsed)) return loadConsentFormDraftDetail(parsed);
-  if (isConsentFormId(parsed)) return loadConsentPostDetail(parsed);
-  if (isAnnouncementDraftId(parsed)) return loadAnnouncementDraftDetail(parsed);
-  return loadPostDetail(parsed as AnnouncementId);
-}
+export function makeCreatePostLoader(postKind?: 'announcement' | 'form', draft?: boolean) {
+  return async function loader({ params }: LoaderFunctionArgs): Promise<CreatePostLoaderData> {
+    let detail: Post | null = null;
+    if (params.id && /^\d+$/.test(params.id)) {
+      const numericId = Number(params.id);
+      if (postKind === 'form') {
+        detail = draft
+          ? await loadConsentFormDraftDetail(numericId)
+          : await loadConsentPostDetail(numericId);
+      } else if (postKind === 'announcement') {
+        detail = draft
+          ? await loadAnnouncementDraftDetail(numericId)
+          : await loadPostDetail(numericId);
+      }
+    }
 
-export async function loader({
-  params,
-  request,
-}: LoaderFunctionArgs): Promise<CreatePostLoaderData> {
-  const url = new URL(request.url);
-  const kindParam = url.searchParams.get('kind');
-  const [detail, classes, staff, staffGroups, students, session, configs] = await Promise.all([
-    params.id ? loadPostByKind(params.id, kindParam) : Promise.resolve(null),
-    fetchSchoolClasses(),
-    fetchSchoolStaff(),
-    fetchSchoolStaffGroups().catch(() => ({ level: [], school: [] }) as ApiStaffGroups),
-    fetchSchoolStudents(),
-    fetchSession(),
-    getConfigs(),
-  ]);
-  return { detail, classes, staff, staffGroups, students, session, configs };
+    const [classes, staff, staffGroups, students, session, configs] = await Promise.all([
+      fetchSchoolClasses(),
+      fetchSchoolStaff(),
+      fetchSchoolStaffGroups().catch(() => ({ level: [], school: [] }) as ApiStaffGroups),
+      fetchSchoolStudents(),
+      fetchSession(),
+      getConfigs(),
+    ]);
+    return { detail, classes, staff, staffGroups, students, session, configs };
+  };
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -426,13 +418,9 @@ function CreatePostPageInner({ editId }: { editId?: string }) {
     : null;
 
   const draftIdRef = useRef<{ kind: 'announcement' | 'form'; id: number } | null>(
-    editId?.startsWith('annDraft_')
-      ? { kind: 'announcement', id: Number(editId.slice('annDraft_'.length)) }
-      : editId?.startsWith('cfDraft_')
-        ? { kind: 'form', id: Number(editId.slice('cfDraft_'.length)) }
-        : editId?.startsWith('cf_')
-          ? { kind: 'form', id: Number(editId.slice('cf_'.length)) }
-          : null,
+    editId && detail
+      ? { kind: detail.kind === 'form' ? 'form' : 'announcement', id: detail.numericId }
+      : null,
   );
 
   const autoSave = useAutoSave({
@@ -525,19 +513,16 @@ function CreatePostPageInner({ editId }: { editId?: string }) {
       const staffIds = state.selectedStaff.map((s) => Number(s.id));
       const email = state.enquiryEmail ?? '';
       if (detail.kind === 'announcement') {
-        const id = detail.id as AnnouncementId;
         await Promise.all([
-          updateAnnouncementEnquiryEmail(id, { enquiryEmailAddress: email }),
-          updateAnnouncementStaffInCharge(id, staffIds),
+          updateAnnouncementEnquiryEmail(detail.numericId, { enquiryEmailAddress: email }),
+          updateAnnouncementStaffInCharge(detail.numericId, staffIds),
         ]);
       } else {
-        const id = detail.id as ConsentFormId;
-        const numericId = Number(id.slice(3));
         const consentByDate = state.dueDate.trim() ? `${state.dueDate}T23:59:59+08:00` : '';
         await Promise.all([
-          updateConsentFormEnquiryEmail(id, { enquiryEmailAddress: email }),
-          updateConsentFormStaffInCharge(id, staffIds),
-          updateConsentFormDueDate(numericId, { consentByDate }),
+          updateConsentFormEnquiryEmail(detail.numericId, { enquiryEmailAddress: email }),
+          updateConsentFormStaffInCharge(detail.numericId, staffIds),
+          ...(consentByDate ? [updateConsentFormDueDate(detail.numericId, { consentByDate })] : []),
         ]);
       }
       notify.success('Changes saved.');
@@ -557,8 +542,8 @@ function CreatePostPageInner({ editId }: { editId?: string }) {
       const payloadInput = stateToPayloadInput(state);
       if (state.kind === 'form') {
         const draftPayload = { ...buildConsentFormPayload(payloadInput), scheduledSendAt };
-        if (isEditing && editId?.startsWith('cf_')) {
-          await scheduleExistingConsentFormDraft(Number(editId.slice(3)), draftPayload);
+        if (isEditing && detail?.kind === 'form' && detail.numericId) {
+          await scheduleExistingConsentFormDraft(detail.numericId, draftPayload);
         } else {
           await scheduleNewConsentFormDraft(draftPayload);
         }

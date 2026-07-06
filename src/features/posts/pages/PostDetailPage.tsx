@@ -14,14 +14,8 @@ import { Badge, Button } from '~/components/ui';
 import {
   describeScheduledSendFailure,
   getPostStatusBadge,
-  isAnnouncementDraftId,
-  isConsentFormDraftId,
-  isConsentFormId,
   postHref,
-  validatePostRoute,
-  type AnnouncementId,
   type AnnouncementPost,
-  type ConsentFormId,
   type ConsentFormPost,
   type Post,
 } from '~/data/posts-registry';
@@ -72,34 +66,22 @@ interface PostDetailLoaderData {
 
 // ─── Route loader ───────────────────────────────────────────────────────────
 
-export async function loader({
-  params,
-  request,
-}: LoaderFunctionArgs): Promise<PostDetailLoaderData> {
-  const id = params.id;
-  if (!id) throw new Response('Not Found', { status: 404 });
+export function makePostDetailLoader(postKind: 'announcement' | 'form') {
+  return async function loader({ params }: LoaderFunctionArgs): Promise<PostDetailLoaderData> {
+    const id = params.id;
+    if (!id || !/^\d+$/.test(id)) throw new Response('Not Found', { status: 404 });
+    const numericId = Number(id);
 
-  const url = new URL(request.url);
-  const parsed = validatePostRoute(id, url.searchParams.get('kind'));
-  if (!parsed) throw new Response('Not Found', { status: 404 });
+    const { loadConsentPostDetail, loadPostDetail } = await import('~/features/posts/api/client');
 
-  // Drafts are only accessible via the edit route; a direct detail
-  // request for any draft ID is treated as 404.
-  if (isAnnouncementDraftId(parsed)) throw new Response('Not Found', { status: 404 });
-  if (isConsentFormDraftId(parsed)) throw new Response('Not Found', { status: 404 });
-
-  // Inline imports to avoid circular deps — client.ts provides the mapped loaders.
-  const { loadConsentPostDetail, loadPostDetail } = await import('~/features/posts/api/client');
-
-  const [post, configs, staff, session] = await Promise.all([
-    isConsentFormId(parsed)
-      ? loadConsentPostDetail(parsed)
-      : loadPostDetail(parsed as AnnouncementId),
-    getConfigs(),
-    fetchSchoolStaff().catch(() => [] as ApiSchoolStaff[]),
-    fetchSession(),
-  ]);
-  return { post, configs, staff, session };
+    const [post, configs, staff, session] = await Promise.all([
+      postKind === 'form' ? loadConsentPostDetail(numericId) : loadPostDetail(numericId),
+      getConfigs(),
+      fetchSchoolStaff().catch(() => [] as ApiSchoolStaff[]),
+      fetchSession(),
+    ]);
+    return { post, configs, staff, session };
+  };
 }
 
 // ─── Error boundary ─────────────────────────────────────────────────────────
@@ -130,14 +112,7 @@ export function ErrorBoundary() {
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
 function extractDraftNumericId(id: string): number | null {
-  const bare = id.startsWith('annDraft_')
-    ? id.slice('annDraft_'.length)
-    : id.startsWith('cfDraft_')
-      ? id.slice('cfDraft_'.length)
-      : id.startsWith('cf_')
-        ? id.slice('cf_'.length)
-        : id;
-  const n = Number(bare);
+  const n = Number(id);
   return Number.isFinite(n) && n > 0 ? n : null;
 }
 
@@ -347,22 +322,23 @@ const PostDetailPage: React.FC = () => {
     setSaving(true);
     try {
       if (post.kind === 'announcement') {
-        const id = post.id as AnnouncementId;
         await Promise.all([
-          updateAnnouncementEnquiryEmail(id, { enquiryEmailAddress: editState.enquiryEmail }),
-          updateAnnouncementStaffInCharge(id, editState.staffOwnerIds),
+          updateAnnouncementEnquiryEmail(post.numericId, {
+            enquiryEmailAddress: editState.enquiryEmail,
+          }),
+          updateAnnouncementStaffInCharge(post.numericId, editState.staffOwnerIds),
         ]);
       } else {
-        const id = post.id as ConsentFormId;
-        const numericId = Number(id.slice('cf_'.length));
         const initialDate = isoToSgtDate(post.consentByDate);
         const calls: Promise<unknown>[] = [
-          updateConsentFormEnquiryEmail(id, { enquiryEmailAddress: editState.enquiryEmail }),
-          updateConsentFormStaffInCharge(id, editState.staffOwnerIds),
+          updateConsentFormEnquiryEmail(post.numericId, {
+            enquiryEmailAddress: editState.enquiryEmail,
+          }),
+          updateConsentFormStaffInCharge(post.numericId, editState.staffOwnerIds),
         ];
         if (editState.consentByDate && editState.consentByDate !== initialDate) {
           calls.push(
-            updateConsentFormDueDate(numericId, {
+            updateConsentFormDueDate(post.numericId, {
               consentByDate: `${editState.consentByDate}T23:59:59+08:00`,
             }),
           );
@@ -387,9 +363,9 @@ const PostDetailPage: React.FC = () => {
     setDeleting(true);
     try {
       if (post.kind === 'announcement') {
-        await deleteAnnouncement(post.id as AnnouncementId);
+        await deleteAnnouncement(post.numericId);
       } else {
-        await deleteConsentForm(post.id as ConsentFormId);
+        await deleteConsentForm(post.numericId);
       }
       notify.success('Post deleted.');
       void navigate('/posts');
