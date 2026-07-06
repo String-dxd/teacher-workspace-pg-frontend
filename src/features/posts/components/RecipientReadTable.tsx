@@ -14,7 +14,8 @@ import {
 } from '~/components/ui';
 import type { ConsentFormRecipient, Recipient, ResponseType } from '~/data/posts-registry';
 import { formatDate } from '~/helpers/dateTime';
-import { downloadCsv, toCsv, type CsvColumn } from '~/helpers/exportCsv';
+import { downloadXlsx, type XlsxColumn } from '~/helpers/exportXlsx';
+import { useIsMobile } from '~/hooks/useIsMobile';
 
 import {
   countActiveFilters,
@@ -58,6 +59,7 @@ function Toolbar({
   timestampLabel,
   showParentGuardian,
   onExport,
+  exportDisabled,
 }: {
   filter: RecipientFilterValue;
   onFilterChange: (next: RecipientFilterValue) => void;
@@ -67,6 +69,7 @@ function Toolbar({
   timestampLabel: string;
   showParentGuardian: boolean;
   onExport: () => void;
+  exportDisabled?: boolean;
 }) {
   const active = countActiveFilters(filter);
 
@@ -131,7 +134,14 @@ function Toolbar({
           showParentGuardian={showParentGuardian}
         />
 
-        <Button variant="ghost" size="sm" onClick={onExport} aria-label="Export CSV">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={onExport}
+          disabled={exportDisabled}
+          title={exportDisabled ? 'Not supported on mobile' : undefined}
+          aria-label="Export to Excel"
+        >
           <Download className="h-4 w-4" />
           Export
         </Button>
@@ -400,9 +410,9 @@ function UnifiedTable({
   );
 }
 
-// ─── CSV export ───────────────────────────────────────────────────────────────
+// ─── Export helpers ──────────────────────────────────────────────────────────
 
-function rowToCsv(
+function rowToExport(
   recipient: Recipient | ConsentFormRecipient,
   responseType: ResponseType | 'acknowledge' | 'yes-no',
   isForm: boolean,
@@ -444,12 +454,12 @@ function rowToCsv(
   };
 }
 
-function buildCsvColumns(
+function buildExportColumns(
   columns: ColumnVisibility,
   isForm: boolean,
   tsLabel: string,
-): CsvColumn<Record<string, string>>[] {
-  const out: CsvColumn<Record<string, string>>[] = [{ key: 'studentName', header: 'Student' }];
+): XlsxColumn<Record<string, string>>[] {
+  const out: XlsxColumn<Record<string, string>>[] = [{ key: 'studentName', header: 'Student' }];
   if (columns.indexNumber) out.push({ key: 'indexNumber', header: 'Index No.' });
   out.push({ key: 'classLabel', header: 'Class' });
   out.push({ key: 'status', header: 'Status' });
@@ -469,6 +479,7 @@ function buildCsvColumns(
 
 export function RecipientReadTable(props: RecipientReadTableProps) {
   const isForm = props.kind === 'form';
+  const isMobile = useIsMobile();
   const controlled = props.filter !== undefined;
 
   const [uncontrolledFilter, setUncontrolledFilter] =
@@ -505,12 +516,12 @@ export function RecipientReadTable(props: RecipientReadTableProps) {
 
   const tsLabel = timestampLabel(responseType);
 
-  const handleExport = () => {
-    const csvCols = buildCsvColumns(filter.columns, isForm, tsLabel);
-    const rows = filteredRecipients.map((r) => rowToCsv(r, responseType, isForm));
+  const handleExport = async () => {
+    const exportCols = buildExportColumns(filter.columns, isForm, tsLabel);
+    const rows = filteredRecipients.map((r) => rowToExport(r, responseType, isForm));
     const today = new Date().toISOString().slice(0, 10);
     const stem = props.exportId ? `recipients-${props.exportId}-${today}` : `recipients-${today}`;
-    downloadCsv(`${stem}.csv`, toCsv({ columns: csvCols, rows }));
+    await downloadXlsx(`${stem}.xlsx`, { columns: exportCols, rows });
   };
 
   return (
@@ -524,6 +535,7 @@ export function RecipientReadTable(props: RecipientReadTableProps) {
         timestampLabel={tsLabel}
         showParentGuardian={true}
         onExport={handleExport}
+        exportDisabled={isMobile}
       />
 
       <div className="overflow-x-auto rounded-xl border">
