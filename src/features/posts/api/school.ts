@@ -18,8 +18,8 @@ export function fetchSchoolStaff(): Promise<ApiSchoolStaff[]> {
 }
 
 export async function fetchSchoolClasses(): Promise<ApiSchoolClass[]> {
-  const res = await fetchApi<{ data: { class: ApiSchoolClass[] } }>('/school/groups');
-  return res.data.class;
+  const res = await fetchApi<{ class: ApiSchoolClass[] }>('/school/groups');
+  return res.class ?? [];
 }
 
 export function fetchSchoolStudents(): Promise<ApiSchoolStudent[]> {

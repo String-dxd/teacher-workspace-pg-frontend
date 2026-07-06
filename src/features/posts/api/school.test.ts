@@ -33,8 +33,8 @@ describe('api/school', () => {
     expect(fetchApi).toHaveBeenCalledWith('/school/staff');
   });
 
-  it('fetchSchoolClasses extracts data.class from response', async () => {
-    vi.mocked(fetchApi).mockResolvedValue({ data: { class: [{ id: 1 }] } });
+  it('fetchSchoolClasses extracts class from response', async () => {
+    vi.mocked(fetchApi).mockResolvedValue({ class: [{ id: 1 }] });
     const result = await fetchSchoolClasses();
     expect(fetchApi).toHaveBeenCalledWith('/school/groups');
     expect(result).toEqual([{ id: 1 }]);
