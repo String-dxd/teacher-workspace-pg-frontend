@@ -21,21 +21,22 @@ import {
 } from '~/data/posts-registry';
 import {
   cancelAnnouncementSchedule,
-  cancelConsentFormSchedule,
   deleteAnnouncement,
-  deleteConsentForm,
-  fetchSchoolStaff,
-  fetchSession,
-  getConfigs,
   rescheduleAnnouncementDraft,
-  rescheduleConsentFormDraft,
   updateAnnouncementEnquiryEmail,
   updateAnnouncementStaffInCharge,
+} from '~/features/posts/api/announcements';
+import {
+  cancelConsentFormSchedule,
+  deleteConsentForm,
+  rescheduleConsentFormDraft,
   updateConsentFormDueDate,
   updateConsentFormEnquiryEmail,
   updateConsentFormStaffInCharge,
-} from '~/features/posts/api/client';
+} from '~/features/posts/api/consent-forms';
 import { AppError, NotFoundError } from '~/features/posts/api/errors';
+import { fetchSchoolStaff } from '~/features/posts/api/school';
+import { fetchSession, getConfigs } from '~/features/posts/api/session';
 import type { ApiConfig, ApiSchoolStaff, ApiSession } from '~/features/posts/api/types';
 import { ConsentFormHistoryList } from '~/features/posts/components/ConsentFormHistoryList';
 import { DeletePostDialog } from '~/features/posts/components/DeletePostDialog';
@@ -72,7 +73,8 @@ export function makePostDetailLoader(postKind: 'announcement' | 'form') {
     if (!id || !/^\d+$/.test(id)) throw new Response('Not Found', { status: 404 });
     const numericId = Number(id);
 
-    const { loadConsentPostDetail, loadPostDetail } = await import('~/features/posts/api/client');
+    const { loadPostDetail } = await import('~/features/posts/api/announcements');
+    const { loadConsentPostDetail } = await import('~/features/posts/api/consent-forms');
 
     const [post, configs, staff, session] = await Promise.all([
       postKind === 'form' ? loadConsentPostDetail(numericId) : loadPostDetail(numericId),

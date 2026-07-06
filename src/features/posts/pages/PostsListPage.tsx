@@ -19,18 +19,20 @@ import {
 import { getPostStatusBadge, postHref, type Post } from '~/data/posts-registry';
 import {
   deleteAnnouncement,
-  deleteConsentForm,
-  deleteConsentFormDraft,
   deleteDraft,
   duplicateAnnouncement,
   duplicateAnnouncementDraft,
+  loadPostsList,
+} from '~/features/posts/api/announcements';
+import {
+  deleteConsentForm,
+  deleteConsentFormDraft,
   duplicateConsentForm,
   duplicateConsentFormDraft,
-  getConfigs,
   loadConsentPostsList,
-  loadPostsList,
-} from '~/features/posts/api/client';
+} from '~/features/posts/api/consent-forms';
 import { NotFoundError } from '~/features/posts/api/errors';
+import { getConfigs } from '~/features/posts/api/session';
 import type { ApiConfig } from '~/features/posts/api/types';
 import { DeletePostDialog } from '~/features/posts/components/DeletePostDialog';
 import {
