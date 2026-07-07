@@ -478,7 +478,7 @@ function buildExportColumns(
       out.push({ key: 'contactNumber', header: 'Contact No.' });
     }
   }
-  if (columns.pgStatus && isForm) out.push({ key: 'pgStatus', header: 'PG Status' });
+  if (columns.pgStatus && isForm) out.push({ key: 'pgStatus', header: 'Status' });
   return out;
 }
 ```

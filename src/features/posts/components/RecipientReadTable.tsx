@@ -334,7 +334,7 @@ function UnifiedTable({
           <TableHead>Status</TableHead>
           {columns.timestamp && <TableHead>{tsLabel}</TableHead>}
           {columns.parentGuardian && <TableHead>Parent / Guardian</TableHead>}
-          {columns.pgStatus && isForm && <TableHead>PG Status</TableHead>}
+          {columns.pgStatus && isForm && <TableHead>Status</TableHead>}
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -471,7 +471,7 @@ function buildExportColumns(
       out.push({ key: 'contactNumber', header: 'Contact No.' });
     }
   }
-  if (columns.pgStatus && isForm) out.push({ key: 'pgStatus', header: 'PG Status' });
+  if (columns.pgStatus && isForm) out.push({ key: 'pgStatus', header: 'Status' });
   return out;
 }
 

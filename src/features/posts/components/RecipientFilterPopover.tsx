@@ -141,7 +141,7 @@ function RecipientFilterPopover({
         </FilterSection>
 
         {showPgStatus && (
-          <FilterSection label="PG status">
+          <FilterSection label="Status">
             <RadioGroup
               value={value.pg}
               onValueChange={(v) => onChange({ ...value, pg: v as PgStatusFilter })}
@@ -186,7 +186,7 @@ function RecipientColumnPopover({
     { key: 'indexNumber', label: 'Index No.', show: true },
     { key: 'timestamp', label: timestampLabel, show: true },
     { key: 'parentGuardian', label: 'Parent/Guardian', show: showParentGuardian },
-    { key: 'pgStatus', label: 'PG Status', show: true },
+    { key: 'pgStatus', label: 'Status', show: true },
   ];
 
   const visibleDefs = columnDefs.filter((d) => d.show);
