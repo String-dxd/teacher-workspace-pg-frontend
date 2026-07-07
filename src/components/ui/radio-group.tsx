@@ -2,6 +2,13 @@ import * as React from 'react';
 
 import { cn } from '~/lib/utils';
 
+interface RadioGroupContextValue {
+  value?: string;
+  onValueChange?: (value: string) => void;
+}
+
+const RadioGroupContext = React.createContext<RadioGroupContextValue>({});
+
 interface RadioGroupProps extends React.HTMLAttributes<HTMLDivElement> {
   value?: string;
   onValueChange?: (value: string) => void;
@@ -9,38 +16,34 @@ interface RadioGroupProps extends React.HTMLAttributes<HTMLDivElement> {
 
 const RadioGroup = React.forwardRef<HTMLDivElement, RadioGroupProps>(
   ({ className, value, onValueChange, children, ...props }, ref) => (
-    <div ref={ref} role="radiogroup" className={cn('grid gap-2', className)} {...props}>
-      {React.Children.map(children, (child) =>
-        React.isValidElement(child)
-          ? React.cloneElement(child as React.ReactElement<RadioGroupItemProps>, {
-              _groupValue: value,
-              _onGroupChange: onValueChange,
-            })
-          : child,
-      )}
-    </div>
+    <RadioGroupContext.Provider value={{ value, onValueChange }}>
+      <div ref={ref} role="radiogroup" className={cn('grid gap-2', className)} {...props}>
+        {children}
+      </div>
+    </RadioGroupContext.Provider>
   ),
 );
 RadioGroup.displayName = 'RadioGroup';
 
-interface RadioGroupItemProps extends React.InputHTMLAttributes<HTMLInputElement> {
+interface RadioGroupItemProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'value'> {
   value: string;
-  _groupValue?: string;
-  _onGroupChange?: (value: string) => void;
 }
 
 const RadioGroupItem = React.forwardRef<HTMLInputElement, RadioGroupItemProps>(
-  ({ className, value, _groupValue, _onGroupChange, ...props }, ref) => (
-    <input
-      type="radio"
-      ref={ref}
-      value={value}
-      checked={_groupValue === value}
-      onChange={() => _onGroupChange?.(value)}
-      className={cn('h-4 w-4', className)}
-      {...props}
-    />
-  ),
+  ({ className, value, ...props }, ref) => {
+    const ctx = React.useContext(RadioGroupContext);
+    return (
+      <input
+        type="radio"
+        ref={ref}
+        value={value}
+        checked={ctx.value === value}
+        onChange={() => ctx.onValueChange?.(value)}
+        className={cn('h-4 w-4', className)}
+        {...props}
+      />
+    );
+  },
 );
 RadioGroupItem.displayName = 'RadioGroupItem';
 export { RadioGroup, RadioGroupItem };
