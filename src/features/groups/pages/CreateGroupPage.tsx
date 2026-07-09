@@ -1,7 +1,6 @@
 import { Plus } from 'lucide-react';
 import { useCallback, useReducer, useState } from 'react';
-import type { LoaderFunctionArgs } from 'react-router';
-import { Link, useLoaderData, useLocation, useNavigate } from 'react-router';
+import { Link, useLocation, useNavigate, useParams } from 'react-router';
 
 import {
   Button,
@@ -11,10 +10,11 @@ import {
   DropdownMenuTrigger,
   Input,
 } from '~/components/ui';
+import { useQuery } from '~/hooks/useQuery';
 import { notify } from '~/lib/notify';
 
 import { createCustomGroup, fetchCustomGroupDetail, updateCustomGroup } from '../api/client';
-import type { ApiCustomGroupDetail, ApiSchoolStudent } from '../api/types';
+import type { ApiSchoolStudent } from '../api/types';
 import type { ValidateResult } from '../api/validate-upload-students';
 import { ExcelUploadPanel } from '../components/ExcelUploadPanel';
 import { groupFormReducer } from '../state/reducer';
@@ -24,29 +24,21 @@ type ViewMode = 'list' | 'excel-upload' | 'excel-results';
 
 const TITLE_MAX = 120;
 
-interface CreateGroupLoaderData {
-  detail: ApiCustomGroupDetail | null;
-}
-
-export async function loader({ params }: LoaderFunctionArgs): Promise<CreateGroupLoaderData> {
-  if (params.id) {
-    const detail = await fetchCustomGroupDetail(Number(params.id));
-    return { detail };
-  }
-  return { detail: null };
-}
-
 interface IncomingNavState {
   addedStudents?: ApiSchoolStudent[];
   groupName?: string;
 }
 
 export function CreateGroupPage() {
-  const { detail } = useLoaderData() as CreateGroupLoaderData;
+  const params = useParams();
+  const { data: detail } = useQuery(
+    () => (params.id ? fetchCustomGroupDetail(Number(params.id)) : Promise.resolve(null)),
+    [params.id],
+  );
   const location = useLocation();
   const navigate = useNavigate();
   const navState = (location.state as IncomingNavState | null) ?? {};
-  const isEdit = detail !== null;
+  const isEdit = detail !== undefined && detail !== null;
 
   const initialStudents = navState.addedStudents
     ? navState.addedStudents.map((s) => ({
@@ -93,28 +85,24 @@ export function CreateGroupPage() {
     if (!canSave) return;
     setSubmitting(true);
     try {
-      if (isEdit) {
+      if (isEdit && detail) {
         await updateCustomGroup(detail.customGroupId, {
           name: state.name.trim(),
           studentIds: state.students.map((s) => s.studentId),
         });
-        navigate(`/groups/${detail.customGroupId}`);
+        navigate(`../groups/${detail.customGroupId}`);
       } else {
         const { customGroupId } = await createCustomGroup({
           name: state.name.trim(),
           studentIds: state.students.map((s) => s.studentId),
         });
-        navigate(`/groups/${customGroupId}`);
+        navigate(`../groups/${customGroupId}`);
       }
     } catch {
       setSubmitting(false);
       notify.error(isEdit ? 'Could not update the group.' : 'Could not create the group.');
     }
   }
-
-  const addStudentsPath = isEdit
-    ? `/groups/${detail.customGroupId}/edit/add-students`
-    : '/groups/new/add-students';
 
   return (
     <div className="flex justify-center px-6 py-6">
@@ -158,7 +146,7 @@ export function CreateGroupPage() {
                       <DropdownMenuItem
                         render={
                           <Link
-                            to={addStudentsPath}
+                            to="add-students"
                             state={{
                               alreadyAdded: state.students.map((s) => s.studentId),
                               groupName: state.name,
@@ -257,7 +245,7 @@ export function CreateGroupPage() {
 
           <div className="mt-8 flex items-center justify-end gap-3">
             <Link
-              to="/groups"
+              to="../groups"
               className="text-sm font-medium text-muted-foreground hover:underline"
             >
               Cancel

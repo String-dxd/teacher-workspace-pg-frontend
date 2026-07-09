@@ -34,7 +34,7 @@ export function CustomGroupsTable({ groups }: CustomGroupsTableProps) {
           <TableRow key={g.customGroupId}>
             <TableCell>
               <Link
-                to={`/groups/${g.customGroupId}`}
+                to={`${g.customGroupId}`}
                 className="font-medium text-foreground hover:underline"
               >
                 {g.name}

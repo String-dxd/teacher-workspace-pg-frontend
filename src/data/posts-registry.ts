@@ -229,7 +229,7 @@ export function postHref(
   const kind = post.kind === 'announcement' ? 'announcements' : 'consent-forms';
   const isDraft = post.status === 'draft' || post.status === 'scheduled';
 
-  if (isDraft) return `/posts/${kind}/drafts/${post.numericId}/edit`;
-  if (opts?.edit) return `/posts/${kind}/${post.numericId}/edit`;
-  return `/posts/${kind}/${post.numericId}`;
+  if (isDraft) return `${kind}/drafts/${post.numericId}/edit`;
+  if (opts?.edit) return `${kind}/${post.numericId}/edit`;
+  return `${kind}/${post.numericId}`;
 }

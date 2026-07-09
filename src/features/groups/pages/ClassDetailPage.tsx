@@ -1,23 +1,22 @@
 import { ArrowLeft } from 'lucide-react';
-import type { LoaderFunctionArgs } from 'react-router';
-import { Link, useLoaderData } from 'react-router';
+import { Link, useParams } from 'react-router';
+
+import { useQuery } from '~/hooks/useQuery';
 
 import { fetchClassDetail } from '../api/client';
-import type { ApiClassDetail } from '../api/types';
-
-export async function loader({ params }: LoaderFunctionArgs): Promise<ApiClassDetail> {
-  return fetchClassDetail(Number(params.classId));
-}
 
 export function ClassDetailPage() {
-  const data = useLoaderData() as ApiClassDetail;
+  const { classId } = useParams();
+  const { data, isLoading } = useQuery(() => fetchClassDetail(Number(classId)), [classId]);
+
+  if (isLoading || !data) return null;
 
   return (
     <div className="flex justify-center px-6 py-6">
       <div className="w-full max-w-4xl">
         <header className="flex items-start gap-3">
           <Link
-            to="/groups"
+            to="../groups"
             aria-label="Back to Groups"
             className="mt-1 rounded-md p-2 text-muted-foreground hover:bg-muted"
           >

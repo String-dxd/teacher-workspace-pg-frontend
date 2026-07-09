@@ -22,7 +22,7 @@ export function AssignedGroupsSection({ assigned }: AssignedGroupsSectionProps) 
       {assigned.classes.map((c) => (
         <Link
           key={`class-${c.classId}`}
-          to={`/groups/classes/${c.classId}`}
+          to={`classes/${c.classId}`}
           className="rounded-md border border-border bg-card p-4 transition-colors hover:bg-muted"
         >
           <h3 className="font-medium">{c.className}</h3>
@@ -34,7 +34,7 @@ export function AssignedGroupsSection({ assigned }: AssignedGroupsSectionProps) 
       {assigned.ccaGroups.map((g) => (
         <Link
           key={`cca-${g.ccaId}`}
-          to={`/groups/cca/details/${g.ccaId}`}
+          to={`cca/details/${g.ccaId}`}
           className="rounded-md border border-border bg-card p-4 transition-colors hover:bg-muted"
         >
           <h3 className="font-medium">{g.ccaDescription || 'Untitled CCA'}</h3>
