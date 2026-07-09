@@ -2,6 +2,8 @@ import type { ReactNode } from 'react';
 import { BrowserRouter, Route, Routes, useInRouterContext } from 'react-router';
 import { Toaster } from 'sonner';
 
+import './index.css';
+
 import { AppErrorBoundary } from '~/components/AppErrorBoundary';
 import {
   AddStudentsPage,
