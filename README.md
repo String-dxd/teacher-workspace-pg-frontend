@@ -10,6 +10,7 @@ Micro-frontend for the Posts (Create & Send) feature in Teacher Workspace. Built
 - **TipTap** (rich text editor)
 - **TailwindCSS 4** + shadcn/ui components
 - **Vitest** + Testing Library
+- **Playwright** (e2e + visual regression)
 
 ## Getting Started
 
@@ -31,15 +32,17 @@ The dev server starts at `http://localhost:3001`. MSW intercepts all API calls w
 
 ## Scripts
 
-| Command           | Description                  |
-| ----------------- | ---------------------------- |
-| `pnpm dev`        | Start dev server (port 3001) |
-| `pnpm build`      | Production build             |
-| `pnpm test`       | Run tests (Vitest)           |
-| `pnpm test:watch` | Run tests in watch mode      |
-| `pnpm typecheck`  | TypeScript type checking     |
-| `pnpm lint`       | Lint with oxlint             |
-| `pnpm format`     | Format with oxfmt            |
+| Command                | Description                      |
+| ---------------------- | -------------------------------- |
+| `pnpm dev`             | Start dev server (port 3001)     |
+| `pnpm build`           | Production build                 |
+| `pnpm test`            | Run tests (Vitest)               |
+| `pnpm test:watch`      | Run tests in watch mode          |
+| `pnpm test:e2e`        | Run e2e tests (Playwright)       |
+| `pnpm test:e2e:update` | Refresh e2e screenshot baselines |
+| `pnpm typecheck`       | TypeScript type checking         |
+| `pnpm lint`            | Lint with oxlint                 |
+| `pnpm format`          | Format with oxfmt                |
 
 ## Project Structure
 
@@ -81,11 +84,13 @@ remotes: {
 
 ## Testing
 
+### Unit tests
+
 ```bash
 pnpm test
 ```
 
-87 tests across 8 files covering:
+329 tests across 25 files covering:
 
 - API client (CSRF retry, error handling, schedule operations)
 - API mappers (summary/detail/payload transformations)
@@ -93,6 +98,18 @@ pnpm test
 - Validation (field rules, upload gates)
 - Hooks (autosave, unsaved changes guard)
 - Components (schedule picker, recipient summary)
+
+### E2E tests (Playwright)
+
+```bash
+pnpm exec playwright install chromium  # one-time browser download
+pnpm test:e2e                          # run the e2e suite
+pnpm test:e2e:update                   # refresh screenshot baselines after intentional UI changes
+```
+
+Playwright boots the dev server automatically (or reuses one already running on port 3001) and runs against MSW mocks — no backend needed. The suite lives in `e2e/` and covers functional rendering of the posts dashboard plus a full-page screenshot comparison that fails on visual regressions.
+
+Screenshot baselines are committed under `e2e/*-snapshots/` and are platform-specific (currently macOS/Chromium — the suite is local-only until CI integration). Each run writes an HTML report to `playwright-report/`; view it with `pnpm exec playwright show-report`.
 
 ## Mock Server (MSW)
 
