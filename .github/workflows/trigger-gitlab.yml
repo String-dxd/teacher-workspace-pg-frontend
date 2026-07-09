@@ -1,0 +1,16 @@
+name: Trigger GitLab Pipeline
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger GitLab pipeline
+        run: |
+          curl --fail --request POST \
+            --form "token=${{ secrets.GITLAB_TRIGGER_TOKEN }}" \
+            --form "ref=main" \
+            "${{ secrets.GITLAB_TRIGGER_URL }}"
