@@ -23,6 +23,7 @@ import {
   CreatePostPage,
   makeCreatePostLoader,
 } from '~/features/posts';
+import TestPage from '~/pages/TestPage';
 
 export interface PostRouteHandle {
   postKind: 'announcement' | 'form';
@@ -30,6 +31,10 @@ export interface PostRouteHandle {
 }
 
 const router = createBrowserRouter([
+  {
+    path: '/test',
+    element: <TestPage />,
+  },
   {
     path: '/groups',
     element: <GroupsListPage />,
