@@ -61,9 +61,11 @@ import {
 } from '~/features/posts/api/school';
 import { fetchSession, getConfigs } from '~/features/posts/api/session';
 import type {
+  ApiConfig,
   ApiSchoolClass,
   ApiSchoolStaff,
   ApiSchoolStudent,
+  ApiSession,
   ApiStaffGroups,
 } from '~/features/posts/api/types';
 import { AttachmentSection } from '~/features/posts/components/AttachmentSection';
@@ -294,8 +296,17 @@ interface CreatePostPageInnerProps {
   draft: boolean;
 }
 
+interface CreatePostLoaderData {
+  detail: Post | null;
+  classes: ApiSchoolClass[];
+  staff: ApiSchoolStaff[];
+  staffGroups: ApiStaffGroups;
+  students: ApiSchoolStudent[];
+  session: ApiSession;
+  configs: ApiConfig;
+}
+
 function CreatePostPageInner({ editId, postKind, draft }: CreatePostPageInnerProps) {
-  const navigate = useNavigate();
   const { data: loaderData, isLoading } = useQuery(() => {
     let detailPromise: Promise<Post | null> = Promise.resolve(null);
     if (editId && /^\d+$/.test(editId)) {
@@ -329,6 +340,16 @@ function CreatePostPageInner({ editId, postKind, draft }: CreatePostPageInnerPro
 
   if (isLoading || !loaderData) return null;
 
+  return <CreatePostForm editId={editId} loaderData={loaderData} />;
+}
+
+interface CreatePostFormProps {
+  editId?: string;
+  loaderData: CreatePostLoaderData;
+}
+
+function CreatePostForm({ editId, loaderData }: CreatePostFormProps) {
+  const navigate = useNavigate();
   const { detail, classes, staff, session, configs } = loaderData;
 
   const scheduleEnabled = configs.flags.schedule_announcement_form_post?.enabled === true;

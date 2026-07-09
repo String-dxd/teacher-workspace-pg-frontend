@@ -14,7 +14,7 @@ import { useQuery } from '~/hooks/useQuery';
 import { notify } from '~/lib/notify';
 
 import { createCustomGroup, fetchCustomGroupDetail, updateCustomGroup } from '../api/client';
-import type { ApiSchoolStudent } from '../api/types';
+import type { ApiCustomGroupDetail, ApiSchoolStudent } from '../api/types';
 import type { ValidateResult } from '../api/validate-upload-students';
 import { ExcelUploadPanel } from '../components/ExcelUploadPanel';
 import { groupFormReducer } from '../state/reducer';
@@ -31,14 +31,21 @@ interface IncomingNavState {
 
 export function CreateGroupPage() {
   const params = useParams();
-  const { data: detail } = useQuery(
+  const { data: detail, isLoading } = useQuery(
     () => (params.id ? fetchCustomGroupDetail(Number(params.id)) : Promise.resolve(null)),
     [params.id],
   );
+
+  if (isLoading) return null;
+
+  return <CreateGroupPageInner key={params.id ?? 'new'} detail={detail ?? null} />;
+}
+
+function CreateGroupPageInner({ detail }: { detail: ApiCustomGroupDetail | null }) {
   const location = useLocation();
   const navigate = useNavigate();
   const navState = (location.state as IncomingNavState | null) ?? {};
-  const isEdit = detail !== undefined && detail !== null;
+  const isEdit = detail !== null;
 
   const initialStudents = navState.addedStudents
     ? navState.addedStudents.map((s) => ({

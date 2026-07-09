@@ -44,11 +44,7 @@ export function GroupDetailPage() {
 
   async function handleShare(staffIds: number[]) {
     await shareCustomGroup(groupData.customGroupId, staffIds);
-    try {
-      refetch();
-    } catch {
-      notify.error('Shared successfully, but could not refresh the page. Please reload.');
-    }
+    refetch();
   }
 
   async function handleRemoveAccess() {

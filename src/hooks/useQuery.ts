@@ -15,12 +15,14 @@ export function useQuery<T>(fetcher: () => Promise<T>, deps: unknown[]): UseQuer
   const fetcherRef = useRef(fetcher);
   fetcherRef.current = fetcher;
 
-  const execute = useCallback(() => {
+  const execute = useCallback((keepData?: boolean) => {
     abortRef.current?.abort();
     const controller = new AbortController();
     abortRef.current = controller;
 
-    setIsLoading(true);
+    if (!keepData) {
+      setIsLoading(true);
+    }
     setError(null);
 
     fetcherRef
@@ -47,5 +49,7 @@ export function useQuery<T>(fetcher: () => Promise<T>, deps: unknown[]): UseQuer
     // eslint-disable-next-line react-hooks/exhaustive-deps -- caller controls deps
   }, deps);
 
-  return { data, isLoading, error, refetch: execute };
+  const refetch = useCallback(() => execute(true), [execute]);
+
+  return { data, isLoading, error, refetch };
 }
