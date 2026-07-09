@@ -11,6 +11,9 @@ export default defineConfig({
     trace: 'on-first-retry',
   },
   expect: {
+    // The first page load after a cold dev-server start compiles the app and
+    // installs the MSW service worker, which can exceed the default 5s.
+    timeout: 15_000,
     toHaveScreenshot: {
       // Freeze CSS animations/transitions so pixel diffs stay deterministic.
       animations: 'disabled',
