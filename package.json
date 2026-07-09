@@ -10,7 +10,9 @@
     "format": "oxfmt \"**/*.{js,jsx,ts,tsx,md,html,css,json,jsonc,yaml,toml}\"",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "test:e2e": "playwright test",
+    "test:e2e:update": "playwright test --update-snapshots"
   },
   "dependencies": {
     "@base-ui/react": "^1.5.0",
@@ -36,6 +38,7 @@
   "devDependencies": {
     "@evilmartians/lefthook": "2.1.9",
     "@module-federation/rsbuild-plugin": "2.5.1",
+    "@playwright/test": "1.61.1",
     "@rsbuild/core": "2.0.12",
     "@rsbuild/plugin-react": "2.0.1",
     "@tailwindcss/postcss": "4.3.0",

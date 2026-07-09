@@ -61,4 +61,4 @@ In dev mode (`import.meta.env.DEV`), MSW starts before the app renders (dynamic 
 - **UI components:** `src/components/ui/` are shadcn-style primitives using `@base-ui/react`. App code imports from `~/components/ui`.
 - **CSS theme:** Radix Slate color scale + custom `twblue` brand, mapped to shadcn semantic tokens via CSS custom properties in `src/index.css`.
 - **Formatter/Linter:** oxfmt (not prettier) for formatting, oxlint for linting. Imports are auto-sorted by oxfmt (external before relative).
-- **GPG signing:** Commits require GPG signatures (configured in git). Use `git -c commit.gpgsign=false` if signing is unavailable in the environment.
+- **GPG signing:** Commits require GPG signatures. Never bypass signing (no `git -c commit.gpgsign=false`, no `--no-gpg-sign`). If signing fails because no secret key is available, stop and ask the user to configure their GPG key before committing.
