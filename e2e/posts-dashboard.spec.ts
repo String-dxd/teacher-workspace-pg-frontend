@@ -13,4 +13,13 @@ test.describe('posts dashboard', () => {
     await page.getByRole('tab', { name: 'View only' }).click();
     await expect(page.getByText('End-of-Year Concert Reminder')).toBeVisible();
   });
+
+  test('matches visual baseline', async ({ page }) => {
+    await page.goto('/posts');
+
+    // Wait for loader data to render before screenshotting.
+    await expect(page.getByText('Science Museum Learning Journey')).toBeVisible();
+
+    await expect(page).toHaveScreenshot('posts-dashboard.png', { fullPage: true });
+  });
 });
