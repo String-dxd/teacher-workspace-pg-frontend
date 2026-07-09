@@ -1,18 +1,14 @@
 import { X } from 'lucide-react';
 import { useMemo, useState } from 'react';
-import { Link, useLoaderData, useLocation, useNavigate } from 'react-router';
+import { Link, useLocation, useNavigate } from 'react-router';
 
 import { Button } from '~/components/ui';
+import { useQuery } from '~/hooks/useQuery';
 
 import { fetchSchoolClasses, fetchSchoolStudents } from '../api/client';
-import type { ApiSchoolClass, ApiSchoolStudent } from '../api/types';
+import type { ApiSchoolStudent } from '../api/types';
 import { StudentFilterBar } from '../components/StudentFilterBar';
 import { StudentResultsTable } from '../components/StudentResultsTable';
-
-interface AddStudentsLoaderData {
-  students: ApiSchoolStudent[];
-  classes: ApiSchoolClass[];
-}
 
 interface IncomingNavState {
   alreadyAdded?: number[];
@@ -26,13 +22,15 @@ interface OutgoingNavState {
 
 const PAGE_CAP = 200;
 
-export async function loader(): Promise<AddStudentsLoaderData> {
-  const [students, classes] = await Promise.all([fetchSchoolStudents(), fetchSchoolClasses()]);
-  return { students, classes };
-}
-
 export function AddStudentsPage() {
-  const data = useLoaderData() as AddStudentsLoaderData;
+  const { data, isLoading } = useQuery(
+    () =>
+      Promise.all([fetchSchoolStudents(), fetchSchoolClasses()]).then(([students, classes]) => ({
+        students,
+        classes,
+      })),
+    [],
+  );
   const navigate = useNavigate();
   const location = useLocation();
   const incoming = (location.state as IncomingNavState | null) ?? {};
@@ -42,20 +40,18 @@ export function AddStudentsPage() {
   const [classId, setClassId] = useState('');
 
   const levelOptions = useMemo(() => {
+    if (!data) return [];
     const set = new Set(data.students.map((s) => s.levelDescription));
     return Array.from(set).sort();
-  }, [data.students]);
+  }, [data]);
 
   const classOptions = useMemo(
-    () =>
-      data.classes.map((c) => ({
-        label: c.label,
-        value: c.value,
-      })),
-    [data.classes],
+    () => (data ? data.classes.map((c) => ({ label: c.label, value: c.value })) : []),
+    [data],
   );
 
   const filtered = useMemo(() => {
+    if (!data) return [];
     const q = query.toLowerCase();
     const selectedClass = data.classes.find((c) => c.value.toString() === classId);
     return data.students.filter((s) => {
@@ -67,7 +63,7 @@ export function AddStudentsPage() {
       }
       return true;
     });
-  }, [data.students, data.classes, level, classId, query]);
+  }, [data, level, classId, query]);
 
   const visibleRows = filtered.slice(0, PAGE_CAP);
 
@@ -95,10 +91,13 @@ export function AddStudentsPage() {
   const parentPath = location.pathname.replace(/\/add-students$/, '');
 
   function submit() {
+    if (!data) return;
     const addedStudents = data.students.filter((s) => selectedIds.has(s.studentId));
     const state: OutgoingNavState = { addedStudents, groupName: incoming.groupName };
     navigate(parentPath, { state });
   }
+
+  if (isLoading || !data) return null;
 
   return (
     <div className="flex h-[calc(100svh-3rem)] justify-center px-6 py-6">

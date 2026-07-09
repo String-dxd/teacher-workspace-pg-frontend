@@ -10,8 +10,7 @@ import {
   Send,
 } from 'lucide-react';
 import { useDeferredValue, useMemo, useReducer, useRef, useState } from 'react';
-import type { LoaderFunctionArgs } from 'react-router';
-import { Link, Navigate, useLoaderData, useNavigate, useParams } from 'react-router';
+import { Link, Navigate, useNavigate, useParams } from 'react-router';
 
 import {
   Button,
@@ -100,6 +99,7 @@ import {
   type PostKind as ValidationPostKind,
 } from '~/features/posts/validation/create-post-validation';
 import { textToTiptapDoc } from '~/helpers/tiptap';
+import { useQuery } from '~/hooks/useQuery';
 import { notify } from '~/lib/notify';
 import { cn } from '~/lib/utils';
 import {
@@ -108,45 +108,7 @@ import {
   type PostFormField,
 } from '~/lib/validation-errors';
 
-// ─── Route loader ───────────────────────────────────────────────────────────
-
-interface CreatePostLoaderData {
-  detail: Post | null;
-  classes: ApiSchoolClass[];
-  staff: ApiSchoolStaff[];
-  staffGroups: ApiStaffGroups;
-  students: ApiSchoolStudent[];
-  session: ApiSession;
-  configs: ApiConfig;
-}
-
-export function makeCreatePostLoader(postKind?: 'announcement' | 'form', draft?: boolean) {
-  return async function loader({ params }: LoaderFunctionArgs): Promise<CreatePostLoaderData> {
-    let detail: Post | null = null;
-    if (params.id && /^\d+$/.test(params.id)) {
-      const numericId = Number(params.id);
-      if (postKind === 'form') {
-        detail = draft
-          ? await loadConsentFormDraftDetail(numericId)
-          : await loadConsentPostDetail(numericId);
-      } else if (postKind === 'announcement') {
-        detail = draft
-          ? await loadAnnouncementDraftDetail(numericId)
-          : await loadPostDetail(numericId);
-      }
-    }
-
-    const [classes, staff, staffGroups, students, session, configs] = await Promise.all([
-      fetchSchoolClasses(),
-      fetchSchoolStaff(),
-      fetchSchoolStaffGroups().catch(() => ({ level: [], school: [] }) as ApiStaffGroups),
-      fetchSchoolStudents(),
-      fetchSession(),
-      getConfigs(),
-    ]);
-    return { detail, classes, staff, staffGroups, students, session, configs };
-  };
-}
+// ─── Types ──────────────────────────────────────────────────────────────────
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -328,9 +290,67 @@ function toValidationKind(kind: PostKind | null): ValidationPostKind | null {
 
 // ─── Inner component ─────────────────────────────────────────────────────────
 
-function CreatePostPageInner({ editId }: { editId?: string }) {
+interface CreatePostPageInnerProps {
+  editId?: string;
+  postKind: 'announcement' | 'form';
+  draft: boolean;
+}
+
+interface CreatePostLoaderData {
+  detail: Post | null;
+  classes: ApiSchoolClass[];
+  staff: ApiSchoolStaff[];
+  staffGroups: ApiStaffGroups;
+  students: ApiSchoolStudent[];
+  session: ApiSession;
+  configs: ApiConfig;
+}
+
+function CreatePostPageInner({ editId, postKind, draft }: CreatePostPageInnerProps) {
+  const { data: loaderData, isLoading } = useQuery(() => {
+    let detailPromise: Promise<Post | null> = Promise.resolve(null);
+    if (editId && /^\d+$/.test(editId)) {
+      const numericId = Number(editId);
+      if (postKind === 'form') {
+        detailPromise = draft
+          ? loadConsentFormDraftDetail(numericId)
+          : loadConsentPostDetail(numericId);
+      } else {
+        detailPromise = draft ? loadAnnouncementDraftDetail(numericId) : loadPostDetail(numericId);
+      }
+    }
+    return Promise.all([
+      detailPromise,
+      fetchSchoolClasses(),
+      fetchSchoolStaff(),
+      fetchSchoolStaffGroups().catch(() => ({ level: [], school: [] }) as ApiStaffGroups),
+      fetchSchoolStudents(),
+      fetchSession(),
+      getConfigs(),
+    ]).then(([detail, classes, staff, staffGroups, students, session, configs]) => ({
+      detail,
+      classes,
+      staff,
+      staffGroups,
+      students,
+      session,
+      configs,
+    }));
+  }, [editId, postKind, draft]);
+
+  if (isLoading || !loaderData) return null;
+
+  return <CreatePostForm editId={editId} loaderData={loaderData} />;
+}
+
+interface CreatePostFormProps {
+  editId?: string;
+  loaderData: CreatePostLoaderData;
+}
+
+function CreatePostForm({ editId, loaderData }: CreatePostFormProps) {
   const navigate = useNavigate();
-  const { detail, classes, staff, session, configs } = useLoaderData<CreatePostLoaderData>();
+  const { detail, classes, staff, session, configs } = loaderData;
 
   const scheduleEnabled = configs.flags.schedule_announcement_form_post?.enabled === true;
   const declareTravelsEnabled = configs.flags.absence_submission?.enabled === true;
@@ -444,7 +464,7 @@ function CreatePostPageInner({ editId }: { editId?: string }) {
   useUnsavedChangesGuard(isDirty);
 
   if (editId && !editData) {
-    return <Navigate to="/posts" replace />;
+    return <Navigate to="../posts" replace />;
   }
 
   function handlePostClick() {
@@ -560,7 +580,7 @@ function CreatePostPageInner({ editId }: { editId?: string }) {
       }
       setSaveState('submitted');
       notify.success('Post scheduled.');
-      navigate('/posts');
+      navigate('../posts');
     } catch (err) {
       setSaveState('idle');
       if (err instanceof ValidationError) {
@@ -585,7 +605,7 @@ function CreatePostPageInner({ editId }: { editId?: string }) {
       }
       setSaveState('submitted');
       notify.success('Post sent.');
-      navigate('/posts');
+      navigate('../posts');
     } catch (err) {
       setSaveState('idle');
       if (err instanceof ValidationError) {
@@ -604,7 +624,7 @@ function CreatePostPageInner({ editId }: { editId?: string }) {
       <div className="flex flex-col">
         <div className="sticky top-0 z-10 border-b bg-white/95 px-6 py-3 backdrop-blur-sm">
           <div className="flex items-center gap-3">
-            <Link to="/posts" className="text-muted-foreground hover:text-foreground">
+            <Link to="../posts" className="text-muted-foreground hover:text-foreground">
               <ArrowLeft className="h-5 w-5" />
             </Link>
             <h1 className="text-xl font-semibold tracking-tight">New Post</h1>
@@ -621,7 +641,7 @@ function CreatePostPageInner({ editId }: { editId?: string }) {
       <div className="sticky top-0 z-10 border-b bg-white/95 px-6 py-3 backdrop-blur-sm">
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <Link to="/posts" className="text-muted-foreground hover:text-foreground">
+            <Link to="../posts" className="text-muted-foreground hover:text-foreground">
               <ArrowLeft className="h-5 w-5" />
             </Link>
             <h1 className="text-xl font-semibold tracking-tight">
@@ -1179,9 +1199,14 @@ function CreatePostPageInner({ editId }: { editId?: string }) {
 
 // ─── Route component ─────────────────────────────────────────────────────────
 
-function CreatePostPage() {
+interface CreatePostPageProps {
+  postKind: 'announcement' | 'form';
+  draft: boolean;
+}
+
+function CreatePostPage({ postKind, draft }: CreatePostPageProps) {
   const { id } = useParams();
-  return <CreatePostPageInner key={id ?? 'new'} editId={id} />;
+  return <CreatePostPageInner key={id ?? 'new'} editId={id} postKind={postKind} draft={draft} />;
 }
 
 export { CreatePostPage };

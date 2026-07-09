@@ -1,20 +1,11 @@
 import { ArrowLeft, Loader2 } from 'lucide-react';
 import React, { useState } from 'react';
-import type { LoaderFunctionArgs } from 'react-router';
-import {
-  isRouteErrorResponse,
-  Link,
-  useLoaderData,
-  useNavigate,
-  useRevalidator,
-  useRouteError,
-} from 'react-router';
+import { Link, useNavigate, useParams } from 'react-router';
 
 import { Badge, Button } from '~/components/ui';
 import {
   describeScheduledSendFailure,
   getPostStatusBadge,
-  postHref,
   type AnnouncementPost,
   type ConsentFormPost,
   type Post,
@@ -22,6 +13,7 @@ import {
 import {
   cancelAnnouncementSchedule,
   deleteAnnouncement,
+  loadPostDetail,
   rescheduleAnnouncementDraft,
   updateAnnouncementEnquiryEmail,
   updateAnnouncementStaffInCharge,
@@ -29,6 +21,7 @@ import {
 import {
   cancelConsentFormSchedule,
   deleteConsentForm,
+  loadConsentPostDetail,
   rescheduleConsentFormDraft,
   updateConsentFormDueDate,
   updateConsentFormEnquiryEmail,
@@ -37,7 +30,7 @@ import {
 import { AppError, NotFoundError } from '~/features/posts/api/errors';
 import { fetchSchoolStaff } from '~/features/posts/api/school';
 import { fetchSession, getConfigs } from '~/features/posts/api/session';
-import type { ApiConfig, ApiSchoolStaff, ApiSession } from '~/features/posts/api/types';
+import type { ApiSchoolStaff, ApiSession } from '~/features/posts/api/types';
 import { ConsentFormHistoryList } from '~/features/posts/components/ConsentFormHistoryList';
 import { DeletePostDialog } from '~/features/posts/components/DeletePostDialog';
 import {
@@ -56,60 +49,8 @@ import {
 import { RecipientReadTable } from '~/features/posts/components/RecipientReadTable';
 import { SchedulePickerDialog } from '~/features/posts/components/SchedulePickerDialog';
 import { formatDate, formatDateTime } from '~/helpers/dateTime';
+import { useQuery } from '~/hooks/useQuery';
 import { notify } from '~/lib/notify';
-
-interface PostDetailLoaderData {
-  post: Post;
-  configs: ApiConfig;
-  staff: ApiSchoolStaff[];
-  session: ApiSession;
-}
-
-// ─── Route loader ───────────────────────────────────────────────────────────
-
-export function makePostDetailLoader(postKind: 'announcement' | 'form') {
-  return async function loader({ params }: LoaderFunctionArgs): Promise<PostDetailLoaderData> {
-    const id = params.id;
-    if (!id || !/^\d+$/.test(id)) throw new Response('Not Found', { status: 404 });
-    const numericId = Number(id);
-
-    const { loadPostDetail } = await import('~/features/posts/api/announcements');
-    const { loadConsentPostDetail } = await import('~/features/posts/api/consent-forms');
-
-    const [post, configs, staff, session] = await Promise.all([
-      postKind === 'form' ? loadConsentPostDetail(numericId) : loadPostDetail(numericId),
-      getConfigs(),
-      fetchSchoolStaff().catch(() => [] as ApiSchoolStaff[]),
-      fetchSession(),
-    ]);
-    return { post, configs, staff, session };
-  };
-}
-
-// ─── Error boundary ─────────────────────────────────────────────────────────
-
-export function ErrorBoundary() {
-  const error = useRouteError();
-  const navigate = useNavigate();
-  const isNotFound =
-    (isRouteErrorResponse(error) && error.status === 404) || error instanceof NotFoundError;
-
-  return (
-    <div className="flex flex-col items-center justify-center gap-4 px-6 py-16">
-      <h2 className="text-xl font-semibold tracking-tight">
-        {isNotFound ? 'Post not found' : 'Could not load post'}
-      </h2>
-      <p className="text-sm text-muted-foreground">
-        {isNotFound
-          ? 'This post may have been deleted.'
-          : 'The server may be unavailable. Please try again.'}
-      </p>
-      <Button variant="secondary" size="sm" onClick={() => navigate(-1)}>
-        Back to Posts
-      </Button>
-    </div>
-  );
-}
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -136,15 +77,22 @@ interface DetailHeaderProps {
   onSave: () => void;
   onCancel: () => void;
   onDelete: () => void;
+  onRefetch: () => void;
 }
 
-function DetailHeader({ post, isEditing, saving, onSave, onCancel, onDelete }: DetailHeaderProps) {
+function DetailHeader({
+  post,
+  isEditing,
+  saving,
+  onSave,
+  onCancel,
+  onDelete,
+  onRefetch,
+}: DetailHeaderProps) {
   const badge = getPostStatusBadge(post);
   const iso = post.postedAt ?? post.createdAt;
   const postedDate = formatDateTime(iso) ?? formatDate(iso);
-  const editHref = postHref(post, { edit: true });
   const navigate = useNavigate();
-  const revalidator = useRevalidator();
   const [rescheduleOpen, setRescheduleOpen] = useState(false);
   const [rescheduling, setRescheduling] = useState(false);
   const [cancelling, setCancelling] = useState(false);
@@ -165,7 +113,7 @@ function DetailHeader({ post, isEditing, saving, onSave, onCancel, onDelete }: D
       }
       notify.success('Post rescheduled.');
       setRescheduleOpen(false);
-      revalidator.revalidate();
+      onRefetch();
     } catch (err) {
       if (!(err instanceof AppError)) {
         notify.error('Failed to reschedule. Please try again.');
@@ -193,7 +141,7 @@ function DetailHeader({ post, isEditing, saving, onSave, onCancel, onDelete }: D
         await cancelAnnouncementSchedule(draftId);
       }
       notify.success('Scheduled send cancelled.');
-      revalidator.revalidate();
+      onRefetch();
     } catch (err) {
       if (!(err instanceof AppError)) {
         notify.error('Failed to cancel the scheduled send.');
@@ -276,12 +224,7 @@ function DetailHeader({ post, isEditing, saving, onSave, onCancel, onDelete }: D
             >
               Delete
             </Button>
-            <Button
-              variant="secondary"
-              size="sm"
-              render={<Link to={editHref} />}
-              nativeButton={false}
-            >
+            <Button variant="secondary" size="sm" render={<Link to="edit" />} nativeButton={false}>
               Edit
             </Button>
           </>
@@ -302,10 +245,62 @@ function DetailHeader({ post, isEditing, saving, onSave, onCancel, onDelete }: D
 
 // ─── Component ──────────────────────────────────────────────────────────────
 
-const PostDetailPage: React.FC = () => {
-  const { post, staff, session } = useLoaderData<PostDetailLoaderData>();
+interface PostDetailPageProps {
+  postKind: 'announcement' | 'form';
+}
+
+const PostDetailPage: React.FC<PostDetailPageProps> = ({ postKind }) => {
+  const { id } = useParams();
+  const numericId = Number(id);
+  const { data, isLoading, error, refetch } = useQuery(
+    () =>
+      Promise.all([
+        postKind === 'form' ? loadConsentPostDetail(numericId) : loadPostDetail(numericId),
+        getConfigs(),
+        fetchSchoolStaff().catch(() => [] as ApiSchoolStaff[]),
+        fetchSession(),
+      ]).then(([post, _configs, staff, session]) => ({ post, staff, session })),
+    [id, postKind],
+  );
   const navigate = useNavigate();
-  const revalidator = useRevalidator();
+
+  if (error) {
+    const isNotFound = error instanceof NotFoundError;
+    return (
+      <div className="flex flex-col items-center justify-center gap-4 px-6 py-16">
+        <h2 className="text-xl font-semibold tracking-tight">
+          {isNotFound ? 'Post not found' : 'Could not load post'}
+        </h2>
+        <p className="text-sm text-muted-foreground">
+          {isNotFound
+            ? 'This post may have been deleted.'
+            : 'The server may be unavailable. Please try again.'}
+        </p>
+        <Button variant="secondary" size="sm" onClick={() => navigate(-1)}>
+          Back to Posts
+        </Button>
+      </div>
+    );
+  }
+
+  if (isLoading || !data) return null;
+
+  const { post, staff, session } = data;
+
+  return <PostDetailContent post={post} staff={staff} session={session} refetch={refetch} />;
+};
+
+// ─── Inner content ──────────────────────────────────────────────────────────
+
+interface PostDetailContentProps {
+  post: Post;
+  staff: ApiSchoolStaff[];
+  session: ApiSession;
+  refetch: () => void;
+}
+
+const PostDetailContent: React.FC<PostDetailContentProps> = ({ post, staff, session, refetch }) => {
+  const navigate = useNavigate();
   const failureReason = describeScheduledSendFailure(post.scheduledSendFailureCode);
 
   // ── Inline edit state ──────────────────────────────────────────────────────
@@ -349,7 +344,7 @@ const PostDetailPage: React.FC = () => {
       }
       notify.success('Changes saved.');
       setIsEditing(false);
-      revalidator.revalidate();
+      refetch();
     } catch {
       notify.error('Failed to save. Please try again.');
     } finally {
@@ -370,7 +365,7 @@ const PostDetailPage: React.FC = () => {
         await deleteConsentForm(post.numericId);
       }
       notify.success('Post deleted.');
-      void navigate('/posts');
+      void navigate('../posts');
     } catch {
       notify.error('Failed to delete. Please try again.');
     } finally {
@@ -410,6 +405,7 @@ const PostDetailPage: React.FC = () => {
         onSave={handleSave}
         onCancel={handleCancel}
         onDelete={() => setDeleteOpen(true)}
+        onRefetch={refetch}
       />
 
       {failureReason && (

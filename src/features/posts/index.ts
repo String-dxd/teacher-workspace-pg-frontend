@@ -1,3 +1,3 @@
-export { PostsListPage, loader as postsListLoader } from './pages/PostsListPage';
-export { PostDetailPage, makePostDetailLoader } from './pages/PostDetailPage';
-export { CreatePostPage, makeCreatePostLoader } from './pages/CreatePostPage';
+export { PostsListPage } from './pages/PostsListPage';
+export { PostDetailPage } from './pages/PostDetailPage';
+export { CreatePostPage } from './pages/CreatePostPage';

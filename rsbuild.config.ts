@@ -18,9 +18,12 @@ export default defineConfig({
       exposes: {
         './App': './src/App.tsx',
       },
+      manifest: true,
+      dts: true,
       shared: {
         react: { singleton: true, requiredVersion: '^19.0.0' },
         'react-dom': { singleton: true, requiredVersion: '^19.0.0' },
+        'react-router': { singleton: true, requiredVersion: '^7.17.0' },
       },
     }),
   ],

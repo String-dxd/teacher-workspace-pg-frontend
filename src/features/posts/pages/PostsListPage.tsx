@@ -1,6 +1,6 @@
 import { AlertTriangle, Copy, MoreHorizontal, Plus, Search, Trash2, Users } from 'lucide-react';
 import React, { useCallback, useMemo, useState } from 'react';
-import { Link, useLoaderData, useNavigate, useRevalidator, useSearchParams } from 'react-router';
+import { Link, useNavigate, useSearchParams } from 'react-router';
 import { toast } from 'sonner';
 
 import {
@@ -44,6 +44,7 @@ import {
   type PostStatusFilter,
 } from '~/features/posts/components/PostFilterPopover';
 import { formatDate } from '~/helpers/dateTime';
+import { useQuery } from '~/hooks/useQuery';
 import { notify } from '~/lib/notify';
 
 // ─── Local helpers ───────────────────────────────────────────────────────────
@@ -71,40 +72,22 @@ function isLowReadRate(postedAt: string | undefined, readCount: number, total: n
 
 function duplicateDraftHref(kind: 'announcement' | 'form', draftId: number): string {
   return kind === 'announcement'
-    ? `/posts/announcements/drafts/${draftId}/edit`
-    : `/posts/consent-forms/drafts/${draftId}/edit`;
+    ? `announcements/drafts/${draftId}/edit`
+    : `consent-forms/drafts/${draftId}/edit`;
 }
 
 export const __duplicateDraftHref = duplicateDraftHref;
 
 type PostTab = 'view-only' | 'with-responses';
 
-// Row augmented with `_date` and `_dateTs` so sorts/renders don't allocate
-// a new `Date` per keystroke. Precomputed once in the loader.
 type PostRowData = Post & { _date: string | undefined; _dateTs: number };
 
-interface PostsLoaderData {
-  rows: PostRowData[];
-  configs: ApiConfig;
-}
-
-// ─── Route loader ───────────────────────────────────────────────────────────
+// ─── Helpers ────────────────────────────────────────────────────────────────
 
 const withDateTs = (p: Post): PostRowData => {
   const date = getRelevantDate(p);
   return { ...p, _date: date, _dateTs: date ? new Date(date).getTime() : 0 };
 };
-
-export async function loader(): Promise<PostsLoaderData> {
-  const [announcements, forms, configs] = await Promise.all([
-    loadPostsList(),
-    loadConsentPostsList(),
-    getConfigs(),
-  ]);
-  return { rows: [...announcements, ...forms].map(withDateTs), configs };
-}
-
-// ─── Helpers ────────────────────────────────────────────────────────────────
 
 function comparePosts(a: PostRowData, b: PostRowData): number {
   if (a._dateTs !== b._dateTs) return b._dateTs - a._dateTs;
@@ -161,15 +144,27 @@ export function matchesPostFilters(row: PostRowData, filters: PostFilterQuery): 
 // ─── Component ──────────────────────────────────────────────────────────────
 
 const PostsListPage: React.FC = () => {
-  const { rows: posts, configs } = useLoaderData<PostsLoaderData>();
-  const revalidator = useRevalidator();
+  const { data, isLoading, refetch } = useQuery(
+    () =>
+      Promise.all([loadPostsList(), loadConsentPostsList(), getConfigs()]).then(
+        ([announcements, forms, configs]) => ({
+          rows: [...announcements, ...forms].map(withDateTs),
+          configs,
+        }),
+      ),
+    [],
+  );
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const tab = (searchParams.get('tab') as PostTab | null) ?? 'with-responses';
   const [filters, setFilters] = useState<PostFilters>(DEFAULT_POST_FILTERS);
   const [searchQuery, setSearchQuery] = useState('');
+
+  const posts = data?.rows ?? [];
+  const configs: ApiConfig | undefined = data?.configs;
+
   const duplicateEnabled =
-    configs.flags.duplicate_announcement_form_post?.enabled === true ||
+    configs?.flags.duplicate_announcement_form_post?.enabled === true ||
     (import.meta as { env?: { DEV?: boolean } }).env?.DEV === true;
 
   const filtered = useMemo(() => {
@@ -202,7 +197,7 @@ const PostsListPage: React.FC = () => {
 
       promise
         .then((draftId) => {
-          revalidator.revalidate();
+          refetch();
           const href = duplicateDraftHref(row.kind, draftId);
           toast.success(`'${row.title}' has been duplicated.`, {
             action: { label: 'View draft', onClick: () => navigate(href) },
@@ -212,7 +207,7 @@ const PostsListPage: React.FC = () => {
           notify.error('Failed to duplicate post.');
         });
     },
-    [revalidator, navigate],
+    [refetch, navigate],
   );
 
   const [pendingDelete, setPendingDelete] = useState<PostRowData | null>(null);
@@ -241,7 +236,7 @@ const PostsListPage: React.FC = () => {
           await deleteAnnouncement(row.numericId);
         }
       }
-      revalidator.revalidate();
+      refetch();
       notify.success('Post deleted.');
       setPendingDelete(null);
     } catch (err) {
@@ -251,13 +246,15 @@ const PostsListPage: React.FC = () => {
     } finally {
       setDeleting(false);
     }
-  }, [pendingDelete, revalidator]);
+  }, [pendingDelete, refetch]);
 
   const deleteMode: 'draft' | 'posted' | null = !pendingDelete
     ? null
     : pendingDelete.status === 'draft' || pendingDelete.status === 'scheduled'
       ? 'draft'
       : 'posted';
+
+  if (isLoading) return null;
 
   return (
     <div className="flex flex-col">
@@ -270,12 +267,7 @@ const PostsListPage: React.FC = () => {
               Send posts to parents via Parents Gateway, send a view-only post or collect responses.
             </p>
           </div>
-          <Button
-            variant="default"
-            size="sm"
-            render={<Link to="/posts/new" />}
-            nativeButton={false}
-          >
+          <Button variant="default" size="sm" render={<Link to="new" />} nativeButton={false}>
             <Plus className="h-4 w-4" />
             Create
           </Button>
@@ -355,7 +347,7 @@ const PostsListPage: React.FC = () => {
                     variant="default"
                     size="sm"
                     className="mt-4"
-                    render={<Link to="/posts/new" />}
+                    render={<Link to="new" />}
                     nativeButton={false}
                   >
                     <Plus className="h-4 w-4" />
