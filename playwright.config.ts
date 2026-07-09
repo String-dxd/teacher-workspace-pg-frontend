@@ -30,7 +30,9 @@ export default defineConfig({
   webServer: {
     command: 'pnpm dev',
     url: 'http://localhost:3001',
-    reuseExistingServer: true,
+    // Reuse a dev server you already have running locally, but never in CI,
+    // where a stale process on :3001 would mask the checked-out revision.
+    reuseExistingServer: !process.env.CI,
     timeout: 120_000,
   },
 });
