@@ -1,4 +1,5 @@
-import { Route, Routes } from 'react-router';
+import type { ReactNode } from 'react';
+import { BrowserRouter, Route, Routes, useInRouterContext } from 'react-router';
 import { Toaster } from 'sonner';
 
 import { AppErrorBoundary } from '~/components/AppErrorBoundary';
@@ -13,7 +14,7 @@ import {
 import { CreatePostPage, PostDetailPage, PostsListPage } from '~/features/posts';
 import TestPage from '~/pages/TestPage';
 
-export default function App() {
+function AppRoutes() {
   return (
     <AppErrorBoundary>
       <Routes>
@@ -57,5 +58,19 @@ export default function App() {
       </Routes>
       <Toaster />
     </AppErrorBoundary>
+  );
+}
+
+function RouterGuard({ children }: { children: ReactNode }) {
+  const hasRouter = useInRouterContext();
+  if (hasRouter) return children;
+  return <BrowserRouter>{children}</BrowserRouter>;
+}
+
+export default function App() {
+  return (
+    <RouterGuard>
+      <AppRoutes />
+    </RouterGuard>
   );
 }

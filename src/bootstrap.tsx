@@ -1,5 +1,4 @@
 import { createRoot } from 'react-dom/client';
-import { BrowserRouter } from 'react-router';
 
 import './index.css';
 
@@ -11,11 +10,7 @@ async function boot() {
 
   const { default: App } = await import('./App');
   const root = createRoot(document.getElementById('root')!);
-  root.render(
-    <BrowserRouter>
-      <App />
-    </BrowserRouter>,
-  );
+  root.render(<App />);
 }
 
 boot();
