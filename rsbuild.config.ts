@@ -29,6 +29,9 @@ export default defineConfig({
       addPlugins([tailwindcss()]);
     },
   },
+  output: {
+    assetPrefix: process.env.ASSET_PREFIX || 'auto',
+  },
   server: {
     port: Number(process.env.PORT) || 3001,
     publicDir: {
