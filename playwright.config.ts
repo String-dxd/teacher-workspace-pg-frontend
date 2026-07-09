@@ -5,7 +5,9 @@ import { defineConfig, devices } from '@playwright/test';
 export default defineConfig({
   testDir: './e2e',
   fullyParallel: true,
-  reporter: 'list',
+  // Terminal output plus a browsable HTML report in playwright-report/;
+  // the report auto-opens on failure, or view it with `playwright show-report`.
+  reporter: [['list'], ['html', { open: 'on-failure' }]],
   use: {
     baseURL: 'http://localhost:3001',
     trace: 'on-first-retry',
