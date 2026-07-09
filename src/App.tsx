@@ -14,14 +14,11 @@ import {
   GroupsListPage,
 } from '~/features/groups';
 import { CreatePostPage, PostDetailPage, PostsListPage } from '~/features/posts';
-import TestPage from '~/pages/TestPage';
 
 function AppRoutes() {
   return (
     <AppErrorBoundary>
       <Routes>
-        <Route path="test" element={<TestPage />} />
-
         <Route path="groups" element={<GroupsListPage />} />
         <Route path="groups/new" element={<CreateGroupPage />} />
         <Route path="groups/new/add-students" element={<AddStudentsPage />} />
