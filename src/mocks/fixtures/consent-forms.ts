@@ -162,7 +162,7 @@ export const consentFormDetail: ApiConsentFormDetail = {
         studentId: 3001,
         studentName: 'Ahmad bin Ibrahim',
         className: '4A',
-        indexNumber: '4A001',
+        indexNumber: '01',
       },
     },
     {
@@ -183,7 +183,7 @@ export const consentFormDetail: ApiConsentFormDetail = {
         studentId: 3002,
         studentName: 'Chen Wei Jie',
         className: '4A',
-        indexNumber: '4A005',
+        indexNumber: '05',
       },
     },
     {
@@ -201,7 +201,7 @@ export const consentFormDetail: ApiConsentFormDetail = {
         studentId: 3003,
         studentName: 'Priya Nair',
         className: '4B',
-        indexNumber: '4B012',
+        indexNumber: '12',
       },
     },
     {
@@ -222,7 +222,7 @@ export const consentFormDetail: ApiConsentFormDetail = {
         studentId: 3004,
         studentName: 'Tan Li Ying',
         className: '4A',
-        indexNumber: '4A008',
+        indexNumber: '08',
       },
     },
     {
@@ -243,7 +243,7 @@ export const consentFormDetail: ApiConsentFormDetail = {
         studentId: 3005,
         studentName: 'Arun Kumar',
         className: '4B',
-        indexNumber: '4B003',
+        indexNumber: '03',
       },
     },
     {
@@ -261,7 +261,7 @@ export const consentFormDetail: ApiConsentFormDetail = {
         studentId: 3006,
         studentName: 'Siti Aminah',
         className: '4B',
-        indexNumber: '4B015',
+        indexNumber: '15',
       },
     },
     {
@@ -282,7 +282,7 @@ export const consentFormDetail: ApiConsentFormDetail = {
         studentId: 3007,
         studentName: 'Lim Jia En',
         className: '4A',
-        indexNumber: '4A006',
+        indexNumber: '06',
       },
     },
     {
@@ -301,7 +301,7 @@ export const consentFormDetail: ApiConsentFormDetail = {
         studentId: 3008,
         studentName: 'Wong Xin Yi',
         className: '4B',
-        indexNumber: '4B018',
+        indexNumber: '18',
       },
     },
     {
@@ -319,7 +319,7 @@ export const consentFormDetail: ApiConsentFormDetail = {
         studentId: 3009,
         studentName: 'Muhammad Irfan',
         className: '4A',
-        indexNumber: '4A007',
+        indexNumber: '07',
       },
     },
     {
@@ -340,7 +340,7 @@ export const consentFormDetail: ApiConsentFormDetail = {
         studentId: 3010,
         studentName: 'Ong Wei Ming',
         className: '4B',
-        indexNumber: '4B014',
+        indexNumber: '14',
       },
     },
   ],

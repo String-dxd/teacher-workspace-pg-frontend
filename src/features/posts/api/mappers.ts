@@ -514,10 +514,10 @@ export function mapConsentFormDetail(detail: ApiConsentFormDetail): ConsentFormP
     studentId: String(r.student.studentId),
     studentName: r.student.studentName,
     // PGW returns the group/CCA name as `className` when the form targets a CCA.
-    // Derive the real class from `indexNumber` (e.g. "4A001" → "4A") when available.
-    classLabel: r.student.indexNumber
-      ? r.student.indexNumber.replace(/\d+$/, '')
-      : r.student.className,
+    // Derive the real class from `indexNumber` (e.g. "4A001" → "4A") when it
+    // carries a class prefix; bare index numbers (e.g. "01") strip to an empty
+    // string, so fall back to `className`.
+    classLabel: r.student.indexNumber?.replace(/\d+$/, '') || r.student.className,
     indexNumber: r.student.indexNumber,
     response: r.reply,
     respondedAt: r.replyDate,

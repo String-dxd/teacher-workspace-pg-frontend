@@ -278,6 +278,38 @@ describe('mapConsentFormDetail — custom-question answers', () => {
   });
 });
 
+describe('mapConsentFormDetail — recipient class label', () => {
+  it('derives the class from a class-prefixed index number', () => {
+    const out = mapConsentFormDetail({
+      ...baseConsentFormDetail,
+      consentFormRecipients: [
+        {
+          ...baseConsentFormRecipient,
+          student: {
+            ...baseConsentFormRecipient.student,
+            indexNumber: '4A001',
+            className: 'Choir',
+          },
+        },
+      ],
+    });
+    expect(out.recipients[0].classLabel).toBe('4A');
+  });
+
+  it('falls back to className when the index number has no class prefix', () => {
+    const out = mapConsentFormDetail({
+      ...baseConsentFormDetail,
+      consentFormRecipients: [
+        {
+          ...baseConsentFormRecipient,
+          student: { ...baseConsentFormRecipient.student, indexNumber: '07', className: '4A' },
+        },
+      ],
+    });
+    expect(out.recipients[0].classLabel).toBe('4A');
+  });
+});
+
 describe('mapConsentFormSummaryToPost — status branching', () => {
   it('maps posted rows with id and numericId', () => {
     const out = mapConsentFormSummaryToPost(baseConsentFormSummary, 'mine');
