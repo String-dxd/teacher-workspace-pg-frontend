@@ -111,6 +111,8 @@ export interface ConsentFormRecipient {
   parentType?: string | null;
   contactNumber?: string | null;
   pgStatus: 'onboarded' | 'not-onboarded';
+  /** Answers keyed by question id (`String(questionId)`). Missing key = no answer. */
+  questionAnswers?: Record<string, string | null>;
 }
 
 export interface ConsentFormStats {

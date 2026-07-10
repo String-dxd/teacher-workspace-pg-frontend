@@ -38,6 +38,22 @@ export interface ApiConsentFormStudent {
   remarks: string | null;
   isIndividual: boolean;
   onBoardedCategory?: string;
+  /**
+   * Per-recipient answers to the form's `customQuestions`, as returned by the
+   * pgw-web consent-form detail endpoint (verified against the stable-pg
+   * swagger). Absent or null when the recipient has not responded. `text`
+   * carries free-text answers; `choice`/`choices` carry MCQ selections.
+   */
+  customQuestionReply?:
+    | {
+        customQuestionId: string;
+        answer: {
+          text?: string | null;
+          choices?: string[] | null;
+          choice?: string | null;
+        } | null;
+      }[]
+    | null;
   student: {
     studentId: number;
     studentName: string;

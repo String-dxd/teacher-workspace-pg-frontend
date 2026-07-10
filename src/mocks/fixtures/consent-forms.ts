@@ -154,6 +154,10 @@ export const consentFormDetail: ApiConsentFormDetail = {
       remarks: null,
       isIndividual: false,
       onBoardedCategory: 'ONBOARDED',
+      customQuestionReply: [
+        { customQuestionId: '1', answer: { text: 'No allergies' } },
+        { customQuestionId: '2', answer: { choice: 'Chicken Rice' } },
+      ],
       student: {
         studentId: 3001,
         studentName: 'Ahmad bin Ibrahim',
@@ -171,7 +175,16 @@ export const consentFormDetail: ApiConsentFormDetail = {
       remarks: 'Family event on that day',
       isIndividual: false,
       onBoardedCategory: 'ONBOARDED',
-      student: { studentId: 3002, studentName: 'Chen Wei Jie', className: '4A', indexNumber: '05' },
+      customQuestionReply: [
+        { customQuestionId: '1', answer: { text: 'Allergic to peanuts' } },
+        { customQuestionId: '2', answer: { choice: 'Vegetarian' } },
+      ],
+      student: {
+        studentId: 3002,
+        studentName: 'Chen Wei Jie',
+        className: '4A',
+        indexNumber: '05',
+      },
     },
     {
       studentId: 3003,
@@ -183,7 +196,13 @@ export const consentFormDetail: ApiConsentFormDetail = {
       remarks: null,
       isIndividual: false,
       onBoardedCategory: 'ONBOARDED',
-      student: { studentId: 3003, studentName: 'Priya Nair', className: '4B', indexNumber: '12' },
+      customQuestionReply: null,
+      student: {
+        studentId: 3003,
+        studentName: 'Priya Nair',
+        className: '4B',
+        indexNumber: '12',
+      },
     },
     {
       studentId: 3004,
@@ -195,7 +214,16 @@ export const consentFormDetail: ApiConsentFormDetail = {
       remarks: null,
       isIndividual: false,
       onBoardedCategory: 'ONBOARDED',
-      student: { studentId: 3004, studentName: 'Tan Li Ying', className: '4A', indexNumber: '08' },
+      customQuestionReply: [
+        { customQuestionId: '1', answer: { text: 'Lactose intolerant' } },
+        { customQuestionId: '2', answer: { choice: 'Nasi Lemak' } },
+      ],
+      student: {
+        studentId: 3004,
+        studentName: 'Tan Li Ying',
+        className: '4A',
+        indexNumber: '08',
+      },
     },
     {
       studentId: 3005,
@@ -207,7 +235,16 @@ export const consentFormDetail: ApiConsentFormDetail = {
       remarks: null,
       isIndividual: false,
       onBoardedCategory: 'ONBOARDED',
-      student: { studentId: 3005, studentName: 'Arun Kumar', className: '4B', indexNumber: '03' },
+      customQuestionReply: [
+        { customQuestionId: '1', answer: { text: 'No allergies' } },
+        { customQuestionId: '2', answer: { choice: 'Chicken Rice' } },
+      ],
+      student: {
+        studentId: 3005,
+        studentName: 'Arun Kumar',
+        className: '4B',
+        indexNumber: '03',
+      },
     },
     {
       studentId: 3006,
@@ -219,7 +256,13 @@ export const consentFormDetail: ApiConsentFormDetail = {
       remarks: null,
       isIndividual: false,
       onBoardedCategory: '',
-      student: { studentId: 3006, studentName: 'Siti Aminah', className: '4B', indexNumber: '15' },
+      customQuestionReply: null,
+      student: {
+        studentId: 3006,
+        studentName: 'Siti Aminah',
+        className: '4B',
+        indexNumber: '15',
+      },
     },
     {
       studentId: 3007,
@@ -231,7 +274,16 @@ export const consentFormDetail: ApiConsentFormDetail = {
       remarks: 'Child is unwell',
       isIndividual: false,
       onBoardedCategory: 'ONBOARDED',
-      student: { studentId: 3007, studentName: 'Lim Jia En', className: '4A', indexNumber: '06' },
+      customQuestionReply: [
+        { customQuestionId: '1', answer: { text: 'No allergies' } },
+        { customQuestionId: '2', answer: { choice: 'Nasi Lemak' } },
+      ],
+      student: {
+        studentId: 3007,
+        studentName: 'Lim Jia En',
+        className: '4A',
+        indexNumber: '06',
+      },
     },
     {
       studentId: 3008,
@@ -243,7 +295,14 @@ export const consentFormDetail: ApiConsentFormDetail = {
       remarks: null,
       isIndividual: false,
       onBoardedCategory: 'ONBOARDED',
-      student: { studentId: 3008, studentName: 'Wong Xin Yi', className: '4B', indexNumber: '18' },
+      // Partial answer set: question 2 was left unanswered.
+      customQuestionReply: [{ customQuestionId: '1', answer: { text: 'Shellfish allergy' } }],
+      student: {
+        studentId: 3008,
+        studentName: 'Wong Xin Yi',
+        className: '4B',
+        indexNumber: '18',
+      },
     },
     {
       studentId: 3009,
@@ -255,6 +314,7 @@ export const consentFormDetail: ApiConsentFormDetail = {
       remarks: null,
       isIndividual: false,
       onBoardedCategory: '',
+      customQuestionReply: null,
       student: {
         studentId: 3009,
         studentName: 'Muhammad Irfan',
@@ -272,7 +332,16 @@ export const consentFormDetail: ApiConsentFormDetail = {
       remarks: null,
       isIndividual: false,
       onBoardedCategory: 'ONBOARDED',
-      student: { studentId: 3010, studentName: 'Ong Wei Ming', className: '4B', indexNumber: '14' },
+      customQuestionReply: [
+        { customQuestionId: '1', answer: { text: 'No allergies' } },
+        { customQuestionId: '2', answer: { choice: 'Vegetarian' } },
+      ],
+      student: {
+        studentId: 3010,
+        studentName: 'Ong Wei Ming',
+        className: '4B',
+        indexNumber: '14',
+      },
     },
   ],
   consentFormHistory: [

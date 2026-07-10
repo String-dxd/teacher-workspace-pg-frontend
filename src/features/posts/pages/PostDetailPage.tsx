@@ -528,6 +528,7 @@ function ConsentFormDetail({
               recipients={post.recipients}
               responseType={post.responseType}
               exportId={String(post.id)}
+              questions={post.questions}
             />
           </div>
         )}

@@ -28,6 +28,7 @@ import type {
   ApiConsentFormDetail,
   ApiConsentFormDraft,
   ApiConsentFormStatus,
+  ApiConsentFormStudent,
   ApiConsentFormSummary,
   ApiCreateAnnouncementPayload,
   ApiCreateConsentFormDraftPayload,
@@ -473,6 +474,23 @@ export function mapReminder(type: ApiReminderType, date: string | null): Reminde
 }
 
 /**
+ * Flatten a structured pgw-web custom-question answer into a single display
+ * string: `text` for free-text questions, `choice` for single-select MCQ,
+ * `choices` joined for multi-select.
+ */
+function flattenCustomQuestionAnswer(
+  answer: NonNullable<NonNullable<ApiConsentFormStudent['customQuestionReply']>[number]>['answer'],
+): string | null {
+  if (!answer) return null;
+  if (answer.text) return answer.text;
+  // Prefer the full multi-select list: if PGW ever populates both, `choice`
+  // carries only the first selection.
+  if (answer.choices && answer.choices.length > 0) return answer.choices.join(', ');
+  if (answer.choice) return answer.choice;
+  return null;
+}
+
+/**
  * Map a consent-form detail response into the unified `ConsentFormPost`
  * shape the TW UI consumes.
  */
@@ -498,10 +516,10 @@ export function mapConsentFormDetail(detail: ApiConsentFormDetail): ConsentFormP
     studentId: String(r.student.studentId),
     studentName: r.student.studentName,
     // PGW returns the group/CCA name as `className` when the form targets a CCA.
-    // Derive the real class from `indexNumber` (e.g. "4A001" → "4A") when available.
-    classLabel: r.student.indexNumber
-      ? r.student.indexNumber.replace(/\d+$/, '')
-      : r.student.className,
+    // Derive the real class from `indexNumber` (e.g. "4A001" → "4A") when it
+    // carries a class prefix; bare index numbers (e.g. "01") strip to an empty
+    // string, so fall back to `className`.
+    classLabel: r.student.indexNumber?.replace(/\d+$/, '') || r.student.className,
     indexNumber: r.student.indexNumber,
     response: r.reply,
     respondedAt: r.replyDate,
@@ -509,6 +527,12 @@ export function mapConsentFormDetail(detail: ApiConsentFormDetail): ConsentFormP
     parentType: r.parentType ?? null,
     contactNumber: r.contactNumber ?? null,
     pgStatus: r.onBoardedCategory && r.onBoardedCategory.length > 0 ? 'onboarded' : 'not-onboarded',
+    questionAnswers: Object.fromEntries(
+      (r.customQuestionReply ?? []).map((reply) => [
+        reply.customQuestionId,
+        flattenCustomQuestionAnswer(reply.answer),
+      ]),
+    ),
   }));
 
   const richTextContent =
