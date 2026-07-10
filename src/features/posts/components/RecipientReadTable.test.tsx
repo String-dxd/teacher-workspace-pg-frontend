@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, within } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { ConsentFormRecipient, Recipient } from '~/data/posts-registry';
 
@@ -33,6 +33,10 @@ const RECIPIENTS: Recipient[] = [
     replyByParent: undefined,
   },
 ];
+
+beforeEach(() => {
+  vi.clearAllMocks();
+});
 
 const QUESTIONS = [
   { id: '1', text: 'Does your child have any food allergies?' },
@@ -108,6 +112,42 @@ describe('RecipientReadTable custom-question columns', () => {
     expect(
       screen.getByRole('columnheader', { name: 'Does your child have any food allergies?' }),
     ).toBeInTheDocument();
+  });
+
+  it('exports question columns after the Status column with answer values', async () => {
+    renderFormTable();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Export to Excel' }));
+    await vi.waitFor(() => expect(downloadXlsx).toHaveBeenCalled());
+
+    const [, input] = (downloadXlsx as ReturnType<typeof vi.fn>).mock.calls[0];
+    const headers = input.columns.map((c: { header: string }) => c.header);
+    const statusIndex = headers.indexOf('Status');
+    expect(headers.slice(statusIndex + 1, statusIndex + 3)).toEqual([
+      'Does your child have any food allergies?',
+      'Preferred lunch option',
+    ]);
+    // Pending recipients sort first, so Bob (unanswered) precedes Alice.
+    expect(input.rows[0].question_1).toBe('');
+    expect(input.rows[0].question_2).toBe('');
+    expect(input.rows[1].question_1).toBe('No allergies');
+    expect(input.rows[1].question_2).toBe('Chicken Rice');
+  });
+
+  it('excludes a question column hidden via the popover from the export', async () => {
+    renderFormTable();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Show/hide columns' }));
+    const optionText = await screen.findByText('Preferred lunch option', { selector: 'label' });
+    fireEvent.click(within(optionText.parentElement!).getByRole('checkbox'));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Export to Excel' }));
+    await vi.waitFor(() => expect(downloadXlsx).toHaveBeenCalled());
+
+    const [, input] = (downloadXlsx as ReturnType<typeof vi.fn>).mock.calls[0];
+    const headers = input.columns.map((c: { header: string }) => c.header);
+    expect(headers).toContain('Does your child have any food allergies?');
+    expect(headers).not.toContain('Preferred lunch option');
   });
 });
 

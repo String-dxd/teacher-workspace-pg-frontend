@@ -438,6 +438,7 @@ function rowToExport(
   recipient: Recipient | ConsentFormRecipient,
   responseType: ResponseType | 'acknowledge' | 'yes-no',
   isForm: boolean,
+  questions: QuestionColumn[],
 ): Record<string, string> {
   const status = deriveStatus(responseType, recipient);
   const statusLabels: Record<StatusFilter, string> = {
@@ -463,7 +464,7 @@ function rowToExport(
       ? 'Onboarded'
       : 'Not Onboarded'
     : '';
-  return {
+  const row: Record<string, string> = {
     studentName: recipient.studentName,
     indexNumber: indexNo,
     classLabel: recipient.classLabel,
@@ -474,17 +475,25 @@ function rowToExport(
     contactNumber,
     pgStatus,
   };
+  for (const q of questions) {
+    row[`question_${q.id}`] = isForm
+      ? ((recipient as ConsentFormRecipient).questionAnswers?.[q.id] ?? '')
+      : '';
+  }
+  return row;
 }
 
 function buildExportColumns(
   columns: ColumnVisibility,
   isForm: boolean,
   tsLabel: string,
+  questions: QuestionColumn[],
 ): XlsxColumn<Record<string, string>>[] {
   const out: XlsxColumn<Record<string, string>>[] = [{ key: 'studentName', header: 'Student' }];
   if (columns.indexNumber) out.push({ key: 'indexNumber', header: 'Index No.' });
   out.push({ key: 'classLabel', header: 'Class' });
   out.push({ key: 'status', header: 'Status' });
+  for (const q of questions) out.push({ key: `question_${q.id}`, header: q.text });
   if (columns.timestamp) out.push({ key: 'timestamp', header: tsLabel });
   if (columns.parentGuardian) {
     out.push({ key: 'parentGuardian', header: 'Parent / Guardian' });
@@ -542,8 +551,10 @@ export function RecipientReadTable(props: RecipientReadTableProps) {
   const tsLabel = timestampLabel(responseType);
 
   const handleExport = async () => {
-    const exportCols = buildExportColumns(filter.columns, isForm, tsLabel);
-    const rows = filteredRecipients.map((r) => rowToExport(r, responseType, isForm));
+    const exportCols = buildExportColumns(filter.columns, isForm, tsLabel, visibleQuestions);
+    const rows = filteredRecipients.map((r) =>
+      rowToExport(r, responseType, isForm, visibleQuestions),
+    );
     const today = new Date().toISOString().slice(0, 10);
     const stem = props.exportId ? `recipients-${props.exportId}-${today}` : `recipients-${today}`;
     await downloadXlsx(`${stem}.xlsx`, { columns: exportCols, rows });
