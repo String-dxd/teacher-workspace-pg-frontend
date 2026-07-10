@@ -25,7 +25,16 @@ export type StatusFilter =
 export type PgStatusFilter = 'all' | 'onboarded' | 'not-onboarded';
 
 export type ColumnKey = 'indexNumber' | 'timestamp' | 'parentGuardian' | 'pgStatus';
-export type ColumnVisibility = Record<ColumnKey, boolean>;
+export interface ColumnVisibility extends Record<ColumnKey, boolean> {
+  /** Visibility per custom question id. A question id missing from this map is visible. */
+  questions: Record<string, boolean>;
+}
+
+/** A custom question surfaced as a toggleable column. */
+export interface QuestionColumn {
+  id: string;
+  text: string;
+}
 
 export interface RecipientFilterValue {
   classId: string;
@@ -40,7 +49,13 @@ export const DEFAULT_COLUMN_VISIBILITY: ColumnVisibility = {
   timestamp: true,
   parentGuardian: true,
   pgStatus: true,
+  questions: {},
 };
+
+/** Question columns default to visible; only an explicit `false` hides one. */
+export function isQuestionColumnVisible(columns: ColumnVisibility, questionId: string): boolean {
+  return columns.questions[questionId] !== false;
+}
 
 export const DEFAULT_RECIPIENT_FILTER: RecipientFilterValue = {
   classId: 'all',
@@ -174,6 +189,7 @@ interface RecipientColumnPopoverProps {
   onChange: (next: ColumnVisibility) => void;
   timestampLabel: string;
   showParentGuardian?: boolean;
+  questions?: QuestionColumn[];
 }
 
 function RecipientColumnPopover({
@@ -181,6 +197,7 @@ function RecipientColumnPopover({
   onChange,
   timestampLabel,
   showParentGuardian = true,
+  questions = [],
 }: RecipientColumnPopoverProps) {
   const columnDefs: { key: ColumnKey; label: string; show: boolean }[] = [
     { key: 'indexNumber', label: 'Index No.', show: true },
@@ -191,13 +208,22 @@ function RecipientColumnPopover({
 
   const visibleDefs = columnDefs.filter((d) => d.show);
 
-  const allOn = visibleDefs.every((d) => value[d.key]);
-  const allOff = visibleDefs.every((d) => !value[d.key]);
+  const allOn =
+    visibleDefs.every((d) => value[d.key]) &&
+    questions.every((q) => isQuestionColumnVisible(value, q.id));
+  const allOff =
+    visibleDefs.every((d) => !value[d.key]) &&
+    questions.every((q) => !isQuestionColumnVisible(value, q.id));
 
   function setAll(visible: boolean) {
-    const next = { ...value };
+    const next = { ...value, questions: { ...value.questions } };
     for (const d of visibleDefs) next[d.key] = visible;
+    for (const q of questions) next.questions[q.id] = visible;
     onChange(next);
+  }
+
+  function setQuestion(questionId: string, visible: boolean) {
+    onChange({ ...value, questions: { ...value.questions, [questionId]: visible } });
   }
 
   return (
@@ -216,7 +242,25 @@ function RecipientColumnPopover({
         </p>
 
         <div className="flex flex-col gap-2">
-          {visibleDefs.map((def) => (
+          {/* Mirror the table's column order: Index No., then the question
+              columns (which follow the response Status column), then the rest. */}
+          {visibleDefs.slice(0, 1).map((def) => (
+            <CheckboxOption
+              key={def.key}
+              label={def.label}
+              checked={value[def.key]}
+              onCheckedChange={(checked) => onChange({ ...value, [def.key]: checked })}
+            />
+          ))}
+          {questions.map((q) => (
+            <CheckboxOption
+              key={q.id}
+              label={q.text}
+              checked={isQuestionColumnVisible(value, q.id)}
+              onCheckedChange={(checked) => setQuestion(q.id, checked)}
+            />
+          ))}
+          {visibleDefs.slice(1).map((def) => (
             <CheckboxOption
               key={def.key}
               label={def.label}

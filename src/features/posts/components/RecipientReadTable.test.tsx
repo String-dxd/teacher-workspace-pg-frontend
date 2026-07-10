@@ -1,7 +1,7 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
-import type { Recipient } from '~/data/posts-registry';
+import type { ConsentFormRecipient, Recipient } from '~/data/posts-registry';
 
 vi.mock('~/helpers/exportXlsx', () => ({
   downloadXlsx: vi.fn().mockResolvedValue(undefined),
@@ -33,6 +33,83 @@ const RECIPIENTS: Recipient[] = [
     replyByParent: undefined,
   },
 ];
+
+const QUESTIONS = [
+  { id: '1', text: 'Does your child have any food allergies?' },
+  { id: '2', text: 'Preferred lunch option' },
+];
+
+const FORM_RECIPIENTS: ConsentFormRecipient[] = [
+  {
+    studentId: 'f1',
+    studentName: 'Alice Tan',
+    classLabel: '3A',
+    response: 'YES',
+    respondedAt: '2026-07-01T10:00:00Z',
+    replyByParent: 'Mrs Tan',
+    pgStatus: 'onboarded',
+    questionAnswers: { '1': 'No allergies', '2': 'Chicken Rice' },
+  },
+  {
+    studentId: 'f2',
+    studentName: 'Bob Lee',
+    classLabel: '3B',
+    response: null,
+    respondedAt: null,
+    replyByParent: null,
+    pgStatus: 'not-onboarded',
+    questionAnswers: {},
+  },
+];
+
+function renderFormTable() {
+  return render(
+    <RecipientReadTable
+      kind="form"
+      recipients={FORM_RECIPIENTS}
+      responseType="yes-no"
+      exportId="cf-1"
+      questions={QUESTIONS}
+    />,
+  );
+}
+
+describe('RecipientReadTable custom-question columns', () => {
+  it('renders one column per question with each recipient answer', () => {
+    renderFormTable();
+
+    for (const q of QUESTIONS) {
+      expect(screen.getByRole('columnheader', { name: q.text })).toBeInTheDocument();
+    }
+
+    const aliceRow = screen.getByText('Alice Tan').closest('tr')!;
+    expect(within(aliceRow).getByText('No allergies')).toBeInTheDocument();
+    expect(within(aliceRow).getByText('Chicken Rice')).toBeInTheDocument();
+  });
+
+  it('renders a dash for a recipient without an answer', () => {
+    renderFormTable();
+
+    const bobRow = screen.getByText('Bob Lee').closest('tr')!;
+    expect(within(bobRow).queryByText('No allergies')).toBeNull();
+    // Two question cells plus the timestamp and parent/guardian cells fall back to a dash.
+    expect(within(bobRow).getAllByText('—').length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('hides a question column when unchecked in the column popover', async () => {
+    renderFormTable();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Show/hide columns' }));
+    // The option is a wrapping <label> holding the checkbox and a nested <label> with the text.
+    const optionText = await screen.findByText('Preferred lunch option', { selector: 'label' });
+    fireEvent.click(within(optionText.parentElement!).getByRole('checkbox'));
+
+    expect(screen.queryByRole('columnheader', { name: 'Preferred lunch option' })).toBeNull();
+    expect(
+      screen.getByRole('columnheader', { name: 'Does your child have any food allergies?' }),
+    ).toBeInTheDocument();
+  });
+});
 
 describe('RecipientReadTable export', () => {
   it('calls downloadXlsx with .xlsx filename when Export is clicked', async () => {
