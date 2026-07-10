@@ -307,7 +307,12 @@ interface CreatePostLoaderData {
 }
 
 function CreatePostPageInner({ editId, postKind, draft }: CreatePostPageInnerProps) {
-  const { data: loaderData, isLoading } = useQuery(() => {
+  const {
+    data: loaderData,
+    isLoading,
+    error,
+    refetch,
+  } = useQuery(() => {
     let detailPromise: Promise<Post | null> = Promise.resolve(null);
     if (editId && /^\d+$/.test(editId)) {
       const numericId = Number(editId);
@@ -337,6 +342,26 @@ function CreatePostPageInner({ editId, postKind, draft }: CreatePostPageInnerPro
       configs,
     }));
   }, [editId, postKind, draft]);
+
+  if (error) {
+    return (
+      <div className="flex min-h-[200px] items-center justify-center">
+        <div className="text-center">
+          <p className="text-lg font-medium">Failed to load page data</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Please check your connection and try again.
+          </p>
+          <button
+            type="button"
+            onClick={refetch}
+            className="mt-4 rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground hover:bg-primary/90"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   if (isLoading || !loaderData) return null;
 
