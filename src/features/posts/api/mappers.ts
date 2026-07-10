@@ -28,6 +28,7 @@ import type {
   ApiConsentFormDetail,
   ApiConsentFormDraft,
   ApiConsentFormStatus,
+  ApiConsentFormStudent,
   ApiConsentFormSummary,
   ApiCreateAnnouncementPayload,
   ApiCreateConsentFormDraftPayload,
@@ -473,6 +474,21 @@ export function mapReminder(type: ApiReminderType, date: string | null): Reminde
 }
 
 /**
+ * Flatten a structured pgw-web custom-question answer into a single display
+ * string: `text` for free-text questions, `choice` for single-select MCQ,
+ * `choices` joined for multi-select.
+ */
+function flattenCustomQuestionAnswer(
+  answer: NonNullable<NonNullable<ApiConsentFormStudent['customQuestionReply']>[number]>['answer'],
+): string | null {
+  if (!answer) return null;
+  if (answer.text) return answer.text;
+  if (answer.choice) return answer.choice;
+  if (answer.choices && answer.choices.length > 0) return answer.choices.join(', ');
+  return null;
+}
+
+/**
  * Map a consent-form detail response into the unified `ConsentFormPost`
  * shape the TW UI consumes.
  */
@@ -509,6 +525,12 @@ export function mapConsentFormDetail(detail: ApiConsentFormDetail): ConsentFormP
     parentType: r.parentType ?? null,
     contactNumber: r.contactNumber ?? null,
     pgStatus: r.onBoardedCategory && r.onBoardedCategory.length > 0 ? 'onboarded' : 'not-onboarded',
+    questionAnswers: Object.fromEntries(
+      (r.customQuestionReply ?? []).map((reply) => [
+        reply.customQuestionId,
+        flattenCustomQuestionAnswer(reply.answer),
+      ]),
+    ),
   }));
 
   const richTextContent =

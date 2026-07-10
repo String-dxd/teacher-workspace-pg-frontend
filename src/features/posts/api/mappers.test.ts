@@ -12,6 +12,7 @@ import {
 import type {
   ApiAnnouncementSummary,
   ApiConsentFormDetail,
+  ApiConsentFormStudent,
   ApiConsentFormSummary,
   ApiCreateAnnouncementPayload,
 } from './types';
@@ -206,6 +207,74 @@ describe('mapConsentFormDetail — attachments rehydration', () => {
   it('returns an empty array when attachments is an empty list', () => {
     const out = mapConsentFormDetail({ ...baseConsentFormDetail, attachments: [] });
     expect(out.attachments).toEqual([]);
+  });
+});
+
+const baseConsentFormRecipient: ApiConsentFormStudent = {
+  studentId: 3001,
+  reply: 'YES',
+  replyDate: '2026-04-02T00:00:00.000Z',
+  replyByParent: 'Mrs Tan',
+  remarks: null,
+  isIndividual: false,
+  onBoardedCategory: 'ONBOARDED',
+  student: {
+    studentId: 3001,
+    studentName: 'Alice Tan',
+    className: '3A',
+    indexNumber: '3A01',
+  },
+};
+
+describe('mapConsentFormDetail — custom-question answers', () => {
+  function mapSingleRecipient(recipient: ApiConsentFormStudent) {
+    const out = mapConsentFormDetail({
+      ...baseConsentFormDetail,
+      consentFormRecipients: [recipient],
+    });
+    return out.recipients[0];
+  }
+
+  it('maps customQuestionReply entries into questionAnswers keyed by question id', () => {
+    const recipient = mapSingleRecipient({
+      ...baseConsentFormRecipient,
+      customQuestionReply: [
+        { customQuestionId: '1', answer: { text: 'No allergies' } },
+        { customQuestionId: '2', answer: { choice: 'Chicken Rice' } },
+      ],
+    });
+    expect(recipient.questionAnswers).toEqual({ '1': 'No allergies', '2': 'Chicken Rice' });
+  });
+
+  it('joins multi-select choices into a single display string', () => {
+    const recipient = mapSingleRecipient({
+      ...baseConsentFormRecipient,
+      customQuestionReply: [
+        { customQuestionId: '2', answer: { choices: ['Chicken Rice', 'Vegetarian'] } },
+      ],
+    });
+    expect(recipient.questionAnswers).toEqual({ '2': 'Chicken Rice, Vegetarian' });
+  });
+
+  it('maps a null answer to a null entry', () => {
+    const recipient = mapSingleRecipient({
+      ...baseConsentFormRecipient,
+      customQuestionReply: [{ customQuestionId: '1', answer: null }],
+    });
+    expect(recipient.questionAnswers).toEqual({ '1': null });
+  });
+
+  it('maps a null customQuestionReply to an empty questionAnswers object', () => {
+    const recipient = mapSingleRecipient({
+      ...baseConsentFormRecipient,
+      customQuestionReply: null,
+    });
+    expect(recipient.questionAnswers).toEqual({});
+  });
+
+  it('maps an absent customQuestionReply to an empty questionAnswers object', () => {
+    const recipient = mapSingleRecipient(baseConsentFormRecipient);
+    expect(recipient.questionAnswers).toEqual({});
   });
 });
 

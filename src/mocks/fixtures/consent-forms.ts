@@ -154,6 +154,10 @@ export const consentFormDetail: ApiConsentFormDetail = {
       remarks: null,
       isIndividual: false,
       onBoardedCategory: 'ONBOARDED',
+      customQuestionReply: [
+        { customQuestionId: '1', answer: { text: 'No allergies' } },
+        { customQuestionId: '2', answer: { choice: 'Chicken Rice' } },
+      ],
       student: {
         studentId: 3001,
         studentName: 'Ahmad bin Ibrahim',
@@ -171,6 +175,10 @@ export const consentFormDetail: ApiConsentFormDetail = {
       remarks: 'Family event on that day',
       isIndividual: false,
       onBoardedCategory: 'ONBOARDED',
+      customQuestionReply: [
+        { customQuestionId: '1', answer: { text: 'Allergic to peanuts' } },
+        { customQuestionId: '2', answer: { choice: 'Vegetarian' } },
+      ],
       student: { studentId: 3002, studentName: 'Chen Wei Jie', className: '4A', indexNumber: '05' },
     },
     {
@@ -183,6 +191,7 @@ export const consentFormDetail: ApiConsentFormDetail = {
       remarks: null,
       isIndividual: false,
       onBoardedCategory: 'ONBOARDED',
+      customQuestionReply: null,
       student: { studentId: 3003, studentName: 'Priya Nair', className: '4B', indexNumber: '12' },
     },
     {
@@ -195,6 +204,10 @@ export const consentFormDetail: ApiConsentFormDetail = {
       remarks: null,
       isIndividual: false,
       onBoardedCategory: 'ONBOARDED',
+      customQuestionReply: [
+        { customQuestionId: '1', answer: { text: 'Lactose intolerant' } },
+        { customQuestionId: '2', answer: { choice: 'Nasi Lemak' } },
+      ],
       student: { studentId: 3004, studentName: 'Tan Li Ying', className: '4A', indexNumber: '08' },
     },
     {
@@ -207,6 +220,10 @@ export const consentFormDetail: ApiConsentFormDetail = {
       remarks: null,
       isIndividual: false,
       onBoardedCategory: 'ONBOARDED',
+      customQuestionReply: [
+        { customQuestionId: '1', answer: { text: 'No allergies' } },
+        { customQuestionId: '2', answer: { choice: 'Chicken Rice' } },
+      ],
       student: { studentId: 3005, studentName: 'Arun Kumar', className: '4B', indexNumber: '03' },
     },
     {
@@ -219,6 +236,7 @@ export const consentFormDetail: ApiConsentFormDetail = {
       remarks: null,
       isIndividual: false,
       onBoardedCategory: '',
+      customQuestionReply: null,
       student: { studentId: 3006, studentName: 'Siti Aminah', className: '4B', indexNumber: '15' },
     },
     {
@@ -231,6 +249,10 @@ export const consentFormDetail: ApiConsentFormDetail = {
       remarks: 'Child is unwell',
       isIndividual: false,
       onBoardedCategory: 'ONBOARDED',
+      customQuestionReply: [
+        { customQuestionId: '1', answer: { text: 'No allergies' } },
+        { customQuestionId: '2', answer: { choice: 'Nasi Lemak' } },
+      ],
       student: { studentId: 3007, studentName: 'Lim Jia En', className: '4A', indexNumber: '06' },
     },
     {
@@ -243,6 +265,8 @@ export const consentFormDetail: ApiConsentFormDetail = {
       remarks: null,
       isIndividual: false,
       onBoardedCategory: 'ONBOARDED',
+      // Partial answer set: question 2 was left unanswered.
+      customQuestionReply: [{ customQuestionId: '1', answer: { text: 'Shellfish allergy' } }],
       student: { studentId: 3008, studentName: 'Wong Xin Yi', className: '4B', indexNumber: '18' },
     },
     {
@@ -255,6 +279,7 @@ export const consentFormDetail: ApiConsentFormDetail = {
       remarks: null,
       isIndividual: false,
       onBoardedCategory: '',
+      customQuestionReply: null,
       student: {
         studentId: 3009,
         studentName: 'Muhammad Irfan',
@@ -272,6 +297,10 @@ export const consentFormDetail: ApiConsentFormDetail = {
       remarks: null,
       isIndividual: false,
       onBoardedCategory: 'ONBOARDED',
+      customQuestionReply: [
+        { customQuestionId: '1', answer: { text: 'No allergies' } },
+        { customQuestionId: '2', answer: { choice: 'Vegetarian' } },
+      ],
       student: { studentId: 3010, studentName: 'Ong Wei Ming', className: '4B', indexNumber: '14' },
     },
   ],
