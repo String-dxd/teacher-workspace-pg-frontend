@@ -49,9 +49,7 @@ test.describe('client-side navigation', () => {
     await expect(page.getByRole('heading', { name: 'Groups', exact: true })).toBeVisible();
 
     await page.getByRole('link', { name: 'Create custom group' }).click();
-    await expect(
-      page.getByRole('heading', { name: 'Create new custom group' }),
-    ).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Create new custom group' })).toBeVisible();
     await expect(page).toHaveURL(/\/groups\/new/);
   });
 });

@@ -12,6 +12,7 @@ import {
 import { useDeferredValue, useMemo, useReducer, useRef, useState } from 'react';
 import { Link, Navigate, useNavigate, useParams } from 'react-router';
 
+import { QueryError } from '~/components/QueryError';
 import {
   Button,
   Card,
@@ -307,7 +308,12 @@ interface CreatePostLoaderData {
 }
 
 function CreatePostPageInner({ editId, postKind, draft }: CreatePostPageInnerProps) {
-  const { data: loaderData, isLoading } = useQuery(() => {
+  const {
+    data: loaderData,
+    isLoading,
+    error,
+    refetch,
+  } = useQuery(() => {
     let detailPromise: Promise<Post | null> = Promise.resolve(null);
     if (editId && /^\d+$/.test(editId)) {
       const numericId = Number(editId);
@@ -337,6 +343,8 @@ function CreatePostPageInner({ editId, postKind, draft }: CreatePostPageInnerPro
       configs,
     }));
   }, [editId, postKind, draft]);
+
+  if (error) return <QueryError onRetry={refetch} />;
 
   if (isLoading || !loaderData) return null;
 

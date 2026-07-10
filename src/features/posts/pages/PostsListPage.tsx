@@ -3,6 +3,7 @@ import React, { useCallback, useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router';
 import { toast } from 'sonner';
 
+import { QueryError } from '~/components/QueryError';
 import {
   Badge,
   Button,
@@ -144,7 +145,7 @@ export function matchesPostFilters(row: PostRowData, filters: PostFilterQuery): 
 // ─── Component ──────────────────────────────────────────────────────────────
 
 const PostsListPage: React.FC = () => {
-  const { data, isLoading, refetch } = useQuery(
+  const { data, isLoading, error, refetch } = useQuery(
     () =>
       Promise.all([loadPostsList(), loadConsentPostsList(), getConfigs()]).then(
         ([announcements, forms, configs]) => ({
@@ -254,6 +255,7 @@ const PostsListPage: React.FC = () => {
       ? 'draft'
       : 'posted';
 
+  if (error) return <QueryError onRetry={refetch} />;
   if (isLoading) return null;
 
   return (

@@ -1,14 +1,19 @@
 import { ArrowLeft } from 'lucide-react';
 import { Link, useParams } from 'react-router';
 
+import { QueryError } from '~/components/QueryError';
 import { useQuery } from '~/hooks/useQuery';
 
 import { fetchCcaDetail } from '../api/client';
 
 export function CcaDetailPage() {
   const { ccaId } = useParams();
-  const { data, isLoading } = useQuery(() => fetchCcaDetail(Number(ccaId)), [ccaId]);
+  const { data, isLoading, error, refetch } = useQuery(
+    () => fetchCcaDetail(Number(ccaId)),
+    [ccaId],
+  );
 
+  if (error) return <QueryError onRetry={refetch} />;
   if (isLoading || !data) return null;
 
   return (

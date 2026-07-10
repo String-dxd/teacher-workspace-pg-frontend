@@ -1,14 +1,19 @@
 import { ArrowLeft } from 'lucide-react';
 import { Link, useParams } from 'react-router';
 
+import { QueryError } from '~/components/QueryError';
 import { useQuery } from '~/hooks/useQuery';
 
 import { fetchClassDetail } from '../api/client';
 
 export function ClassDetailPage() {
   const { classId } = useParams();
-  const { data, isLoading } = useQuery(() => fetchClassDetail(Number(classId)), [classId]);
+  const { data, isLoading, error, refetch } = useQuery(
+    () => fetchClassDetail(Number(classId)),
+    [classId],
+  );
 
+  if (error) return <QueryError onRetry={refetch} />;
   if (isLoading || !data) return null;
 
   return (

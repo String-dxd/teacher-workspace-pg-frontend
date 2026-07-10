@@ -2,6 +2,7 @@ import { Plus } from 'lucide-react';
 import { useCallback, useReducer, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router';
 
+import { QueryError } from '~/components/QueryError';
 import {
   Button,
   DropdownMenu,
@@ -31,11 +32,17 @@ interface IncomingNavState {
 
 export function CreateGroupPage() {
   const params = useParams();
-  const { data: detail, isLoading } = useQuery(
+  const {
+    data: detail,
+    isLoading,
+    error,
+    refetch,
+  } = useQuery(
     () => (params.id ? fetchCustomGroupDetail(Number(params.id)) : Promise.resolve(null)),
     [params.id],
   );
 
+  if (error) return <QueryError onRetry={refetch} />;
   if (isLoading) return null;
 
   return <CreateGroupPageInner key={params.id ?? 'new'} detail={detail ?? null} />;
