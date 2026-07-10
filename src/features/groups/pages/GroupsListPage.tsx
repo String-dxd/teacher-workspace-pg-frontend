@@ -1,6 +1,7 @@
 import { Plus } from 'lucide-react';
 import { Link } from 'react-router';
 
+import { QueryError } from '~/components/QueryError';
 import { buttonVariants } from '~/components/ui';
 import { useQuery } from '~/hooks/useQuery';
 
@@ -9,7 +10,7 @@ import { AssignedGroupsSection } from '../components/AssignedGroupsSection';
 import { CustomGroupsTable } from '../components/CustomGroupsTable';
 
 export function GroupsListPage() {
-  const { data, isLoading } = useQuery(
+  const { data, isLoading, error, refetch } = useQuery(
     () =>
       Promise.all([fetchCustomGroups(), fetchGroupsAssigned()]).then(([customList, assigned]) => ({
         customGroups: customList.customGroups,
@@ -18,6 +19,7 @@ export function GroupsListPage() {
     [],
   );
 
+  if (error) return <QueryError onRetry={refetch} />;
   if (isLoading || !data) return null;
 
   return (

@@ -2,6 +2,7 @@ import { X } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router';
 
+import { QueryError } from '~/components/QueryError';
 import { Button } from '~/components/ui';
 import { useQuery } from '~/hooks/useQuery';
 
@@ -23,7 +24,7 @@ interface OutgoingNavState {
 const PAGE_CAP = 200;
 
 export function AddStudentsPage() {
-  const { data, isLoading } = useQuery(
+  const { data, isLoading, error, refetch } = useQuery(
     () =>
       Promise.all([fetchSchoolStudents(), fetchSchoolClasses()]).then(([students, classes]) => ({
         students,
@@ -97,6 +98,7 @@ export function AddStudentsPage() {
     navigate(parentPath, { state });
   }
 
+  if (error) return <QueryError onRetry={refetch} />;
   if (isLoading || !data) return null;
 
   return (

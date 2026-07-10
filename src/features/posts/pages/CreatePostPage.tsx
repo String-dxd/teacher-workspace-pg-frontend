@@ -12,6 +12,7 @@ import {
 import { useDeferredValue, useMemo, useReducer, useRef, useState } from 'react';
 import { Link, Navigate, useNavigate, useParams } from 'react-router';
 
+import { QueryError } from '~/components/QueryError';
 import {
   Button,
   Card,
@@ -343,25 +344,7 @@ function CreatePostPageInner({ editId, postKind, draft }: CreatePostPageInnerPro
     }));
   }, [editId, postKind, draft]);
 
-  if (error) {
-    return (
-      <div className="flex min-h-[200px] items-center justify-center">
-        <div className="text-center">
-          <p className="text-lg font-medium">Failed to load page data</p>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Please check your connection and try again.
-          </p>
-          <button
-            type="button"
-            onClick={refetch}
-            className="mt-4 rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground hover:bg-primary/90"
-          >
-            Retry
-          </button>
-        </div>
-      </div>
-    );
-  }
+  if (error) return <QueryError onRetry={refetch} />;
 
   if (isLoading || !loaderData) return null;
 

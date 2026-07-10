@@ -2,6 +2,7 @@ import { ArrowLeft } from 'lucide-react';
 import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
 
+import { QueryError } from '~/components/QueryError';
 import { Button, Tabs, TabsContent, TabsList, TabsTrigger } from '~/components/ui';
 import { formatDate } from '~/helpers/dateTime';
 import { useQuery } from '~/hooks/useQuery';
@@ -21,7 +22,7 @@ import { StudentsByClassList } from '../components/StudentsByClassList';
 export function GroupDetailPage() {
   const { id } = useParams();
   const numericId = Number(id);
-  const { data, isLoading, refetch } = useQuery(
+  const { data, isLoading, error, refetch } = useQuery(
     () =>
       Promise.all([fetchCustomGroupDetail(numericId), fetchSchoolStaff()]).then(
         ([detail, staff]) => ({ detail, staff }),
@@ -32,6 +33,7 @@ export function GroupDetailPage() {
   const [shareOpen, setShareOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
 
+  if (error) return <QueryError onRetry={refetch} />;
   if (isLoading || !data) return null;
 
   const { detail: groupData, staff } = data;
