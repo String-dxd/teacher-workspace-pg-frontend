@@ -464,7 +464,7 @@ function CreatePostForm({ editId, loaderData }: CreatePostFormProps) {
   useUnsavedChangesGuard(isDirty);
 
   if (editId && !editData) {
-    return <Navigate to="../posts" replace />;
+    return <Navigate to=".." replace />;
   }
 
   function handlePostClick() {
@@ -580,7 +580,7 @@ function CreatePostForm({ editId, loaderData }: CreatePostFormProps) {
       }
       setSaveState('submitted');
       notify.success('Post scheduled.');
-      navigate('../posts');
+      navigate('..');
     } catch (err) {
       setSaveState('idle');
       if (err instanceof ValidationError) {
@@ -605,7 +605,7 @@ function CreatePostForm({ editId, loaderData }: CreatePostFormProps) {
       }
       setSaveState('submitted');
       notify.success('Post sent.');
-      navigate('../posts');
+      navigate('..');
     } catch (err) {
       setSaveState('idle');
       if (err instanceof ValidationError) {
@@ -624,7 +624,7 @@ function CreatePostForm({ editId, loaderData }: CreatePostFormProps) {
       <div className="flex flex-col">
         <div className="sticky top-0 z-10 border-b bg-white/95 px-6 py-3 backdrop-blur-sm">
           <div className="flex items-center gap-3">
-            <Link to="../posts" className="text-muted-foreground hover:text-foreground">
+            <Link to=".." className="text-muted-foreground hover:text-foreground">
               <ArrowLeft className="h-5 w-5" />
             </Link>
             <h1 className="text-xl font-semibold tracking-tight">New Post</h1>
@@ -641,7 +641,7 @@ function CreatePostForm({ editId, loaderData }: CreatePostFormProps) {
       <div className="sticky top-0 z-10 border-b bg-white/95 px-6 py-3 backdrop-blur-sm">
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <Link to="../posts" className="text-muted-foreground hover:text-foreground">
+            <Link to=".." className="text-muted-foreground hover:text-foreground">
               <ArrowLeft className="h-5 w-5" />
             </Link>
             <h1 className="text-xl font-semibold tracking-tight">

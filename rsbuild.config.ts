@@ -16,7 +16,8 @@ export default defineConfig({
     pluginModuleFederation({
       name: 'pg',
       exposes: {
-        './App': './src/App.tsx',
+        './Posts': './src/features/posts/App.tsx',
+        './Groups': './src/features/groups/App.tsx',
       },
       manifest: true,
       dts: true,

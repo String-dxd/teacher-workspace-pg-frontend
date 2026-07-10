@@ -97,13 +97,13 @@ function CreateGroupPageInner({ detail }: { detail: ApiCustomGroupDetail | null 
           name: state.name.trim(),
           studentIds: state.students.map((s) => s.studentId),
         });
-        navigate(`../groups/${detail.customGroupId}`);
+        navigate(`../${detail.customGroupId}`);
       } else {
         const { customGroupId } = await createCustomGroup({
           name: state.name.trim(),
           studentIds: state.students.map((s) => s.studentId),
         });
-        navigate(`../groups/${customGroupId}`);
+        navigate(`../${customGroupId}`);
       }
     } catch {
       setSubmitting(false);
@@ -251,10 +251,7 @@ function CreateGroupPageInner({ detail }: { detail: ApiCustomGroupDetail | null 
           </div>
 
           <div className="mt-8 flex items-center justify-end gap-3">
-            <Link
-              to="../groups"
-              className="text-sm font-medium text-muted-foreground hover:underline"
-            >
+            <Link to=".." className="text-sm font-medium text-muted-foreground hover:underline">
               Cancel
             </Link>
             <Button

@@ -16,7 +16,7 @@ export function ClassDetailPage() {
       <div className="w-full max-w-4xl">
         <header className="flex items-start gap-3">
           <Link
-            to="../groups"
+            to=".."
             aria-label="Back to Groups"
             className="mt-1 rounded-md p-2 text-muted-foreground hover:bg-muted"
           >

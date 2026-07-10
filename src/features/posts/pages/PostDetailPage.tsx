@@ -365,7 +365,7 @@ const PostDetailContent: React.FC<PostDetailContentProps> = ({ post, staff, sess
         await deleteConsentForm(post.numericId);
       }
       notify.success('Post deleted.');
-      void navigate('../posts');
+      void navigate('..');
     } catch {
       notify.error('Failed to delete. Please try again.');
     } finally {
