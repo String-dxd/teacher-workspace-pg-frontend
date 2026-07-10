@@ -1,5 +1,4 @@
-import type { ReactNode } from 'react';
-import { BrowserRouter, Route, Routes, useInRouterContext } from 'react-router';
+import { Outlet, Route, Routes } from 'react-router';
 import { Toaster } from 'sonner';
 
 import '~/index.css';
@@ -10,10 +9,19 @@ import { CreatePostPage } from './pages/CreatePostPage';
 import { PostDetailPage } from './pages/PostDetailPage';
 import { PostsListPage } from './pages/PostsListPage';
 
-function PostRoutes() {
+function PostsLayout() {
   return (
     <AppErrorBoundary>
-      <Routes>
+      <Outlet />
+      <Toaster />
+    </AppErrorBoundary>
+  );
+}
+
+function PostRoutes() {
+  return (
+    <Routes>
+      <Route element={<PostsLayout />}>
         <Route index element={<PostsListPage />} />
         <Route path="new" element={<CreatePostPage postKind="announcement" draft={false} />} />
         <Route path="announcements/:id" element={<PostDetailPage postKind="announcement" />} />
@@ -34,22 +42,13 @@ function PostRoutes() {
           path="consent-forms/drafts/:id/edit"
           element={<CreatePostPage postKind="form" draft={true} />}
         />
-      </Routes>
-      <Toaster />
-    </AppErrorBoundary>
+      </Route>
+    </Routes>
   );
 }
 
-function RouterGuard({ children }: { children: ReactNode }) {
-  const hasRouter = useInRouterContext();
-  if (hasRouter) return children;
-  return <BrowserRouter>{children}</BrowserRouter>;
-}
+export { PostRoutes };
 
 export default function App() {
-  return (
-    <RouterGuard>
-      <PostRoutes />
-    </RouterGuard>
-  );
+  return <PostRoutes />;
 }

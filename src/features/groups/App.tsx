@@ -1,5 +1,4 @@
-import type { ReactNode } from 'react';
-import { BrowserRouter, Route, Routes, useInRouterContext } from 'react-router';
+import { Outlet, Route, Routes } from 'react-router';
 import { Toaster } from 'sonner';
 
 import '~/index.css';
@@ -13,10 +12,19 @@ import { CreateGroupPage } from './pages/CreateGroupPage';
 import { GroupDetailPage } from './pages/GroupDetailPage';
 import { GroupsListPage } from './pages/GroupsListPage';
 
-function GroupRoutes() {
+function GroupsLayout() {
   return (
     <AppErrorBoundary>
-      <Routes>
+      <Outlet />
+      <Toaster />
+    </AppErrorBoundary>
+  );
+}
+
+function GroupRoutes() {
+  return (
+    <Routes>
+      <Route element={<GroupsLayout />}>
         <Route index element={<GroupsListPage />} />
         <Route path="new" element={<CreateGroupPage />} />
         <Route path="new/add-students" element={<AddStudentsPage />} />
@@ -25,22 +33,13 @@ function GroupRoutes() {
         <Route path=":id" element={<GroupDetailPage />} />
         <Route path=":id/edit" element={<CreateGroupPage />} />
         <Route path=":id/edit/add-students" element={<AddStudentsPage />} />
-      </Routes>
-      <Toaster />
-    </AppErrorBoundary>
+      </Route>
+    </Routes>
   );
 }
 
-function RouterGuard({ children }: { children: ReactNode }) {
-  const hasRouter = useInRouterContext();
-  if (hasRouter) return children;
-  return <BrowserRouter>{children}</BrowserRouter>;
-}
+export { GroupRoutes };
 
 export default function App() {
-  return (
-    <RouterGuard>
-      <GroupRoutes />
-    </RouterGuard>
-  );
+  return <GroupRoutes />;
 }

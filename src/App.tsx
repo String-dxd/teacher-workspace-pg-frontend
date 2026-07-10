@@ -1,15 +1,18 @@
+import { Suspense, lazy } from 'react';
 import { BrowserRouter, Route, Routes } from 'react-router';
 
-import GroupsApp from '~/features/groups/App';
-import PostsApp from '~/features/posts/App';
+const PostsApp = lazy(() => import('~/features/posts/App'));
+const GroupsApp = lazy(() => import('~/features/groups/App'));
 
 export default function App() {
   return (
     <BrowserRouter>
-      <Routes>
-        <Route path="/posts/*" element={<PostsApp />} />
-        <Route path="/groups/*" element={<GroupsApp />} />
-      </Routes>
+      <Suspense fallback={null}>
+        <Routes>
+          <Route path="/posts/*" element={<PostsApp />} />
+          <Route path="/groups/*" element={<GroupsApp />} />
+        </Routes>
+      </Suspense>
     </BrowserRouter>
   );
 }

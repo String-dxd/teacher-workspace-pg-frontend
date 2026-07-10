@@ -39,7 +39,7 @@ export function GroupDetailPage() {
   async function handleDelete() {
     await deleteCustomGroup(groupData.customGroupId);
     notify.success('Custom group deleted.');
-    navigate('/');
+    navigate('..');
   }
 
   async function handleShare(staffIds: number[]) {
@@ -50,7 +50,7 @@ export function GroupDetailPage() {
   async function handleRemoveAccess() {
     await removeAccessFromCustomGroup(groupData.customGroupId);
     notify.success('Access removed.');
-    navigate('/');
+    navigate('..');
   }
 
   return (
@@ -58,7 +58,7 @@ export function GroupDetailPage() {
       <div className="w-full max-w-4xl">
         <header className="flex items-start gap-3">
           <Link
-            to="/"
+            to=".."
             aria-label="Back to Groups"
             className="mt-1 rounded-md p-2 text-muted-foreground hover:bg-muted"
           >
