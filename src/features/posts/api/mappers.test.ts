@@ -256,6 +256,19 @@ describe('mapConsentFormDetail — custom-question answers', () => {
     expect(recipient.questionAnswers).toEqual({ '2': 'Chicken Rice, Vegetarian' });
   });
 
+  it('prefers the full choices list over a single choice when both are present', () => {
+    const recipient = mapSingleRecipient({
+      ...baseConsentFormRecipient,
+      customQuestionReply: [
+        {
+          customQuestionId: '2',
+          answer: { choice: 'Chicken Rice', choices: ['Chicken Rice', 'Vegetarian'] },
+        },
+      ],
+    });
+    expect(recipient.questionAnswers).toEqual({ '2': 'Chicken Rice, Vegetarian' });
+  });
+
   it('maps a null answer to a null entry', () => {
     const recipient = mapSingleRecipient({
       ...baseConsentFormRecipient,

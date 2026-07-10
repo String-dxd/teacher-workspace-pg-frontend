@@ -483,8 +483,10 @@ function flattenCustomQuestionAnswer(
 ): string | null {
   if (!answer) return null;
   if (answer.text) return answer.text;
-  if (answer.choice) return answer.choice;
+  // Prefer the full multi-select list: if PGW ever populates both, `choice`
+  // carries only the first selection.
   if (answer.choices && answer.choices.length > 0) return answer.choices.join(', ');
+  if (answer.choice) return answer.choice;
   return null;
 }
 
