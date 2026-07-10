@@ -162,7 +162,7 @@ export const consentFormDetail: ApiConsentFormDetail = {
         studentId: 3001,
         studentName: 'Ahmad bin Ibrahim',
         className: '4A',
-        indexNumber: '01',
+        indexNumber: '4A001',
       },
     },
     {
@@ -179,7 +179,12 @@ export const consentFormDetail: ApiConsentFormDetail = {
         { customQuestionId: '1', answer: { text: 'Allergic to peanuts' } },
         { customQuestionId: '2', answer: { choice: 'Vegetarian' } },
       ],
-      student: { studentId: 3002, studentName: 'Chen Wei Jie', className: '4A', indexNumber: '05' },
+      student: {
+        studentId: 3002,
+        studentName: 'Chen Wei Jie',
+        className: '4A',
+        indexNumber: '4A005',
+      },
     },
     {
       studentId: 3003,
@@ -192,7 +197,12 @@ export const consentFormDetail: ApiConsentFormDetail = {
       isIndividual: false,
       onBoardedCategory: 'ONBOARDED',
       customQuestionReply: null,
-      student: { studentId: 3003, studentName: 'Priya Nair', className: '4B', indexNumber: '12' },
+      student: {
+        studentId: 3003,
+        studentName: 'Priya Nair',
+        className: '4B',
+        indexNumber: '4B012',
+      },
     },
     {
       studentId: 3004,
@@ -208,7 +218,12 @@ export const consentFormDetail: ApiConsentFormDetail = {
         { customQuestionId: '1', answer: { text: 'Lactose intolerant' } },
         { customQuestionId: '2', answer: { choice: 'Nasi Lemak' } },
       ],
-      student: { studentId: 3004, studentName: 'Tan Li Ying', className: '4A', indexNumber: '08' },
+      student: {
+        studentId: 3004,
+        studentName: 'Tan Li Ying',
+        className: '4A',
+        indexNumber: '4A008',
+      },
     },
     {
       studentId: 3005,
@@ -224,7 +239,12 @@ export const consentFormDetail: ApiConsentFormDetail = {
         { customQuestionId: '1', answer: { text: 'No allergies' } },
         { customQuestionId: '2', answer: { choice: 'Chicken Rice' } },
       ],
-      student: { studentId: 3005, studentName: 'Arun Kumar', className: '4B', indexNumber: '03' },
+      student: {
+        studentId: 3005,
+        studentName: 'Arun Kumar',
+        className: '4B',
+        indexNumber: '4B003',
+      },
     },
     {
       studentId: 3006,
@@ -237,7 +257,12 @@ export const consentFormDetail: ApiConsentFormDetail = {
       isIndividual: false,
       onBoardedCategory: '',
       customQuestionReply: null,
-      student: { studentId: 3006, studentName: 'Siti Aminah', className: '4B', indexNumber: '15' },
+      student: {
+        studentId: 3006,
+        studentName: 'Siti Aminah',
+        className: '4B',
+        indexNumber: '4B015',
+      },
     },
     {
       studentId: 3007,
@@ -253,7 +278,12 @@ export const consentFormDetail: ApiConsentFormDetail = {
         { customQuestionId: '1', answer: { text: 'No allergies' } },
         { customQuestionId: '2', answer: { choice: 'Nasi Lemak' } },
       ],
-      student: { studentId: 3007, studentName: 'Lim Jia En', className: '4A', indexNumber: '06' },
+      student: {
+        studentId: 3007,
+        studentName: 'Lim Jia En',
+        className: '4A',
+        indexNumber: '4A006',
+      },
     },
     {
       studentId: 3008,
@@ -267,7 +297,12 @@ export const consentFormDetail: ApiConsentFormDetail = {
       onBoardedCategory: 'ONBOARDED',
       // Partial answer set: question 2 was left unanswered.
       customQuestionReply: [{ customQuestionId: '1', answer: { text: 'Shellfish allergy' } }],
-      student: { studentId: 3008, studentName: 'Wong Xin Yi', className: '4B', indexNumber: '18' },
+      student: {
+        studentId: 3008,
+        studentName: 'Wong Xin Yi',
+        className: '4B',
+        indexNumber: '4B018',
+      },
     },
     {
       studentId: 3009,
@@ -284,7 +319,7 @@ export const consentFormDetail: ApiConsentFormDetail = {
         studentId: 3009,
         studentName: 'Muhammad Irfan',
         className: '4A',
-        indexNumber: '07',
+        indexNumber: '4A007',
       },
     },
     {
@@ -301,7 +336,12 @@ export const consentFormDetail: ApiConsentFormDetail = {
         { customQuestionId: '1', answer: { text: 'No allergies' } },
         { customQuestionId: '2', answer: { choice: 'Vegetarian' } },
       ],
-      student: { studentId: 3010, studentName: 'Ong Wei Ming', className: '4B', indexNumber: '14' },
+      student: {
+        studentId: 3010,
+        studentName: 'Ong Wei Ming',
+        className: '4B',
+        indexNumber: '4B014',
+      },
     },
   ],
   consentFormHistory: [
