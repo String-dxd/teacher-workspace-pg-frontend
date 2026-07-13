@@ -560,9 +560,7 @@ const PostsListPage: React.FC = () => {
                 <TableRow className="border-0 hover:bg-transparent">
                   <TableHead className="sticky left-0 z-10 w-[44px] bg-background pl-6">
                     <Checkbox
-                      ref={(el) => {
-                        if (el) el.indeterminate = someInViewSelected;
-                      }}
+                      indeterminate={someInViewSelected}
                       checked={allInViewSelected}
                       onCheckedChange={toggleSelectAllInView}
                       aria-label="Select all"

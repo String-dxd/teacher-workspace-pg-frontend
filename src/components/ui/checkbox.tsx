@@ -1,23 +1,31 @@
-import * as React from 'react';
+import { Checkbox as CheckboxPrimitive } from '@base-ui/react/checkbox';
+import { CheckIcon, MinusIcon } from 'lucide-react';
 
 import { cn } from '~/lib/utils';
 
-interface CheckboxProps extends React.InputHTMLAttributes<HTMLInputElement> {
-  checked?: boolean;
-  onCheckedChange?: (checked: boolean) => void;
+interface CheckboxProps extends CheckboxPrimitive.Root.Props {
+  indeterminate?: boolean;
 }
 
-const Checkbox = React.forwardRef<HTMLInputElement, CheckboxProps>(
-  ({ className, checked, onCheckedChange, ...props }, ref) => (
-    <input
-      type="checkbox"
-      ref={ref}
-      checked={checked}
-      onChange={(e) => onCheckedChange?.(e.target.checked)}
-      className={cn('h-4 w-4 rounded border border-gray-300', className)}
+function Checkbox({ className, indeterminate, ...props }: CheckboxProps) {
+  return (
+    <CheckboxPrimitive.Root
+      data-slot="checkbox"
+      indeterminate={indeterminate}
+      className={cn(
+        'peer relative flex size-[18px] shrink-0 items-center justify-center rounded-sm border-[1.5px] border-muted-foreground/50 bg-background outline-none transition-all after:absolute after:-inset-x-3 after:-inset-y-2 hover:border-muted-foreground/80 hover:bg-muted/50 focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 data-checked:border-primary data-checked:bg-primary data-checked:text-primary-foreground data-disabled:cursor-not-allowed data-disabled:opacity-50 data-indeterminate:border-primary data-indeterminate:bg-primary data-indeterminate:text-primary-foreground aria-invalid:border-destructive aria-invalid:ring-[3px] aria-invalid:ring-destructive/20 aria-invalid:aria-checked:border-primary',
+        className,
+      )}
       {...props}
-    />
-  ),
-);
-Checkbox.displayName = 'Checkbox';
+    >
+      <CheckboxPrimitive.Indicator
+        data-slot="checkbox-indicator"
+        className="grid place-content-center text-current transition-none [&>svg]:size-4"
+      >
+        {indeterminate ? <MinusIcon /> : <CheckIcon />}
+      </CheckboxPrimitive.Indicator>
+    </CheckboxPrimitive.Root>
+  );
+}
+
 export { Checkbox };

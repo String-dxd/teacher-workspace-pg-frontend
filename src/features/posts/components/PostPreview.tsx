@@ -543,7 +543,7 @@ const PostPreview = React.memo(function PostPreview({
                     <button
                       type="button"
                       className={cn(
-                        'rounded-full bg-muted px-3 py-1.5 text-[11px] font-medium text-foreground',
+                        'rounded-md bg-[#c9826b] px-3 py-1.5 text-[11px] font-medium text-white',
                         questions.length > 0 ? 'cursor-pointer' : 'cursor-default',
                       )}
                       onClick={() => {
@@ -557,7 +557,7 @@ const PostPreview = React.memo(function PostPreview({
                     </button>
                     <button
                       disabled
-                      className="rounded-full border border-border px-3 py-1.5 text-[11px] font-medium text-foreground"
+                      className="rounded-md border border-[#c9826b] px-3 py-1.5 text-[11px] font-medium text-[#c9826b]"
                     >
                       No
                     </button>
