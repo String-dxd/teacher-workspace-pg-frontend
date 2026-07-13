@@ -90,11 +90,11 @@ describe('SchedulePickerDialog', () => {
         scheduleWindow={{ start: '08:00', end: '20:00' }}
       />,
     );
-    expect(screen.getByText('08:00–20:00')).toBeInTheDocument();
+    expect(screen.getByText('08:00–20:00 SGT')).toBeInTheDocument();
   });
 
-  it('disables the Schedule button when no date is selected', () => {
+  it('disables the Continue button when no date is selected', () => {
     render(<SchedulePickerDialog open={true} onOpenChange={vi.fn()} onConfirm={vi.fn()} />);
-    expect(screen.getByRole('button', { name: 'Schedule' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Continue' })).toBeDisabled();
   });
 });

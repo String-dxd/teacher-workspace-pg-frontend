@@ -132,7 +132,7 @@ export function EnquiryEmailSelector({
               onClick={() => handleSelectPreset(email)}
               className="flex w-full items-center gap-3 px-4 py-2.5 text-sm hover:bg-accent hover:text-accent-foreground"
             >
-              <RadioDot selected={value === email} />
+              <RadioDot selected={!showOther && value === email} />
               <span className="truncate">{email}</span>
             </button>
           ))}

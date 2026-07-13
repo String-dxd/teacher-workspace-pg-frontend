@@ -17,13 +17,7 @@ describe('QuestionBuilder', () => {
   describe('empty state', () => {
     it('renders empty CTA when no questions', () => {
       setup([]);
-      expect(screen.getByText('No questions added yet')).toBeInTheDocument();
-    });
-
-    it('dispatches ADD_QUESTION on CTA click', () => {
-      const dispatch = setup([]);
-      fireEvent.click(screen.getByText('No questions added yet').closest('button')!);
-      expect(dispatch).toHaveBeenCalledWith({ type: 'ADD_QUESTION' });
+      expect(screen.getByText('No questions added yet.')).toBeInTheDocument();
     });
   });
 

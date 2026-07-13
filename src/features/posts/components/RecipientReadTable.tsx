@@ -159,11 +159,11 @@ function Toolbar({
           {chips.map((chip) => (
             <span
               key={chip.key}
-              className="inline-flex items-center gap-1 rounded-full border border-blue-200 bg-blue-50 px-2.5 py-0.5 text-xs font-medium text-blue-700"
+              className="inline-flex items-center gap-1 rounded-full border border-twblue-6 bg-twblue-3 px-2.5 py-0.5 text-xs font-medium text-twblue-11"
             >
               {chip.label}
               <button
-                className="ml-0.5 cursor-pointer rounded-full hover:bg-blue-100"
+                className="ml-0.5 cursor-pointer rounded-full hover:bg-twblue-4"
                 onClick={() => clearChip(chip.key)}
                 aria-label={`Remove ${chip.label} filter`}
               >
@@ -414,11 +414,11 @@ function UnifiedTable({
               {columns.pgStatus && isForm && (
                 <TableCell>
                   {pgStatus === 'onboarded' ? (
-                    <span className="inline-flex items-center rounded-full bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700 ring-1 ring-blue-700/10 ring-inset">
+                    <span className="inline-flex items-center rounded-full bg-twblue-3 px-2 py-0.5 text-xs font-medium text-twblue-11 ring-1 ring-twblue-6 ring-inset">
                       Onboarded
                     </span>
                   ) : (
-                    <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600 ring-1 ring-slate-500/10 ring-inset">
+                    <span className="inline-flex items-center rounded-full bg-slate-3 px-2 py-0.5 text-xs font-medium text-slate-11 ring-1 ring-slate-6 ring-inset">
                       Not Onboarded
                     </span>
                   )}

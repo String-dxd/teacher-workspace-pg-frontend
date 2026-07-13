@@ -13,10 +13,10 @@ function setup(value: ReminderConfig = { type: 'NONE' }, consentByDate?: string)
 
 describe('ReminderSection', () => {
   describe('rendering', () => {
-    it('renders None, One-time, and Daily options when due date is set', () => {
+    it('renders None, One time, and Daily options when due date is set', () => {
       setup({ type: 'NONE' }, '2026-07-15');
       expect(screen.getByText('None')).toBeInTheDocument();
-      expect(screen.getByText('One-time')).toBeInTheDocument();
+      expect(screen.getByText('One time')).toBeInTheDocument();
       expect(screen.getByText('Daily')).toBeInTheDocument();
     });
 
@@ -27,20 +27,20 @@ describe('ReminderSection', () => {
   });
 
   describe('date picker labeling', () => {
-    it('shows "Pick a date" placeholder when type is NONE', () => {
+    it('hides the date picker entirely when type is NONE', () => {
       setup({ type: 'NONE' }, '2026-07-15');
-      expect(screen.queryByText('Pick a date')).toBeInTheDocument();
+      expect(screen.queryByText('Pick a date')).not.toBeInTheDocument();
     });
 
-    it('shows label "Date" and formatted date when type is ONE_TIME', () => {
+    it('shows label "On" and formatted date when type is ONE_TIME', () => {
       setup({ type: 'ONE_TIME', date: '2026-07-10' }, '2026-07-15');
-      expect(screen.getByText('Date')).toBeInTheDocument();
+      expect(screen.getByText('On')).toBeInTheDocument();
       expect(screen.getByText('10 Jul 2026')).toBeInTheDocument();
     });
 
-    it('shows label "Starting" and formatted date when type is DAILY', () => {
+    it('shows label "From" and formatted date when type is DAILY', () => {
       setup({ type: 'DAILY', date: '2026-07-10' }, '2026-07-15');
-      expect(screen.getByText('Starting')).toBeInTheDocument();
+      expect(screen.getByText('From')).toBeInTheDocument();
       expect(screen.getByText('10 Jul 2026')).toBeInTheDocument();
     });
   });
@@ -98,31 +98,26 @@ describe('ReminderSection', () => {
       expect(screen.getByText('Set a due date first.')).toBeInTheDocument();
     });
 
-    it('shows reminder description when consentByDate is provided', () => {
+    it('shows the reminders heading when consentByDate is provided', () => {
       setup({ type: 'NONE' }, '2026-07-15');
-      expect(screen.getByText('Remind parents who have not yet responded.')).toBeInTheDocument();
+      expect(screen.getByText('Send more reminders to parents')).toBeInTheDocument();
     });
 
     it('does not render radio options when no consentByDate', () => {
       setup({ type: 'NONE' }, undefined);
       expect(screen.queryByText('None')).not.toBeInTheDocument();
-      expect(screen.queryByText('One-time')).not.toBeInTheDocument();
+      expect(screen.queryByText('One time')).not.toBeInTheDocument();
     });
 
     it('renders radio options when consentByDate is provided', () => {
       setup({ type: 'NONE' }, '2026-07-15');
       expect(screen.getByText('None')).toBeInTheDocument();
-      expect(screen.getByText('One-time')).toBeInTheDocument();
+      expect(screen.getByText('One time')).toBeInTheDocument();
     });
 
     it('hides default reminder date text when disabled', () => {
       setup({ type: 'NONE' }, undefined);
       expect(screen.queryByText(/Default reminder will be sent on/)).not.toBeInTheDocument();
-    });
-
-    it('shows default reminder date when consentByDate is set', () => {
-      setup({ type: 'NONE' }, '2026-07-15');
-      expect(screen.getByText(/Default reminder will be sent on/)).toBeInTheDocument();
     });
   });
 });

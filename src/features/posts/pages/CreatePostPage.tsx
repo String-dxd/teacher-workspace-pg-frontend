@@ -4,10 +4,12 @@ import {
   CalendarClock,
   Eye,
   EyeOff,
+  Info,
   Lock,
   Plus,
   Save,
   Send,
+  X,
 } from 'lucide-react';
 import { useDeferredValue, useMemo, useReducer, useRef, useState } from 'react';
 import { Link, Navigate, useNavigate, useParams } from 'react-router';
@@ -72,6 +74,10 @@ import type {
 import { AttachmentSection } from '~/features/posts/components/AttachmentSection';
 import { DueDateSection } from '~/features/posts/components/DueDateSection';
 import { EnquiryEmailSelector } from '~/features/posts/components/EnquiryEmailSelector';
+import type {
+  GroupType as SelectorGroupType,
+  SelectedEntity as SelectorEntity,
+} from '~/features/posts/components/EntitySelector';
 import { EventScheduleSection } from '~/features/posts/components/EventScheduleSection';
 import { PostPreview } from '~/features/posts/components/PostPreview';
 import { PostTypePicker, type PostKind } from '~/features/posts/components/PostTypePicker';
@@ -85,6 +91,8 @@ import {
 } from '~/features/posts/components/SchedulePickerDialog';
 import { SendConfirmationDialog } from '~/features/posts/components/SendConfirmationDialog';
 import { ShortcutsSection } from '~/features/posts/components/ShortcutsSection';
+import { StaffSearchSelector } from '~/features/posts/components/StaffSearchSelector';
+import { StudentRecipientSelector } from '~/features/posts/components/StudentRecipientSelector';
 import { VenueSection } from '~/features/posts/components/VenueSection';
 import { WebsiteLinksSection } from '~/features/posts/components/WebsiteLinksSection';
 import { useAutoSave, type AutoSaveStatus } from '~/features/posts/hooks/useAutoSave';
@@ -102,7 +110,7 @@ import {
 import { textToTiptapDoc } from '~/helpers/tiptap';
 import { useQuery } from '~/hooks/useQuery';
 import { notify } from '~/lib/notify';
-import { cn } from '~/lib/utils';
+import { cn, stripSalutation } from '~/lib/utils';
 import {
   fieldForValidationError,
   reportValidationError,
@@ -180,13 +188,23 @@ function postToFormState(
       ? post.staffOwnerIds.map((id) => {
           const s = byStaffId.get(id);
           return s
-            ? { id: s.staffId.toString(), label: s.name, type: 'individual', count: 1 }
+            ? {
+                id: s.staffId.toString(),
+                label: stripSalutation(s.name),
+                type: 'individual',
+                count: 1,
+              }
             : { id: id.toString(), label: 'Unknown staff', type: 'individual', count: 1 };
         })
       : post.staffInCharge
         ? staff
             .filter((s) => s.name === post.staffInCharge)
-            .map((s) => ({ id: s.staffId.toString(), label: s.name, type: 'individual', count: 1 }))
+            .map((s) => ({
+              id: s.staffId.toString(),
+              label: stripSalutation(s.name),
+              type: 'individual',
+              count: 1,
+            }))
         : [];
 
   const common = {
@@ -252,12 +270,6 @@ function editorHasContent(doc: typeof INITIAL_STATE.descriptionDoc): boolean {
   return Array.isArray(content) && content.length > 0;
 }
 
-function staffHelperText(kind: 'announcement' | 'form'): string {
-  return kind === 'announcement'
-    ? 'These staff will be able to view read status, and delete the announcement.'
-    : 'These staff will be able to view and edit responses, and delete the form.';
-}
-
 /**
  * Coerce `PostFormState` to `BuildPostPayloadInput`. The only mismatch is
  * `SelectedEntity.id: string | number` vs the mapper's `id: string`, so we
@@ -305,6 +317,19 @@ interface CreatePostLoaderData {
   students: ApiSchoolStudent[];
   session: ApiSession;
   configs: ApiConfig;
+}
+
+/** Widen loose form-state entities into the EntitySelector's stricter shape. */
+function toSelectorEntities(entities: SelectedEntity[]): SelectorEntity[] {
+  return entities.map((e) => ({
+    id: String(e.id),
+    label: e.label,
+    type: e.type === 'individual' ? ('individual' as const) : ('group' as const),
+    count: e.count ?? 1,
+    groupType: e.groupType as SelectorGroupType | undefined,
+    memberNames: e.memberNames,
+    excludedMemberNames: e.excludedMemberNames,
+  }));
 }
 
 function CreatePostPageInner({ editId, postKind, draft }: CreatePostPageInnerProps) {
@@ -358,7 +383,7 @@ interface CreatePostFormProps {
 
 function CreatePostForm({ editId, loaderData }: CreatePostFormProps) {
   const navigate = useNavigate();
-  const { detail, classes, staff, session, configs } = loaderData;
+  const { detail, classes, staff, students, session, configs } = loaderData;
 
   const scheduleEnabled = configs.flags.schedule_announcement_form_post?.enabled === true;
   const declareTravelsEnabled = configs.flags.absence_submission?.enabled === true;
@@ -367,7 +392,15 @@ function CreatePostForm({ editId, loaderData }: CreatePostFormProps) {
 
   const [showSendDialog, setShowSendDialog] = useState(false);
   const [showScheduleDialog, setShowScheduleDialog] = useState(false);
-  const [showPreview, setShowPreview] = useState(true);
+  // Set between schedule step 1 (picker) and step 2 (review). Null for post-now.
+  const [pendingScheduledAt, setPendingScheduledAt] = useState<string | null>(null);
+  const [fileBannerDismissed, setFileBannerDismissed] = useState(false);
+  // Open by default only when the side-by-side layout has room (lg+). On
+  // narrower viewports the preview is a slide-over drawer that would cover
+  // the form, so it starts closed and opens via the header toggle.
+  const [showPreview, setShowPreview] = useState(
+    () => typeof window !== 'undefined' && window.matchMedia('(min-width: 1024px)').matches,
+  );
   const [focusSection, setFocusSection] = useState<
     'header' | 'content' | 'attachments' | 'links' | 'questions' | 'response'
   >('header');
@@ -429,7 +462,34 @@ function CreatePostForm({ editId, loaderData }: CreatePostFormProps) {
     (k) => FIELD_LABELS[k],
   );
 
-  const recipientCount = state.selectedRecipients.reduce((sum, r) => sum + (r.count ?? 1), 0);
+  const recipientCount = state.selectedRecipients.reduce(
+    (sum, r) => sum + Math.max((r.count ?? 1) - (r.excludedMemberNames?.length ?? 0), 0),
+    0,
+  );
+
+  // Chips shown in the send/schedule review — same labels and counts as the
+  // compose page, minus any per-member exclusions.
+  const recipientGroups = useMemo(
+    () =>
+      state.selectedRecipients.map((r) => ({
+        label: r.label,
+        count: Math.max((r.count ?? 1) - (r.excludedMemberNames?.length ?? 0), 0),
+      })),
+    [state.selectedRecipients],
+  );
+
+  // "2 files and 1 photo" — media loaded back from a saved draft, for the
+  // 30-day retention banner. Empty string when the draft has no media.
+  const draftMediaLabel = useMemo(() => {
+    const fileCount = state.attachments.filter((f) => f.status === 'ready').length;
+    const photoCount = state.photos.filter((p) => p.status === 'ready').length;
+    return [
+      fileCount > 0 ? `${fileCount} file${fileCount > 1 ? 's' : ''}` : '',
+      photoCount > 0 ? `${photoCount} photo${photoCount > 1 ? 's' : ''}` : '',
+    ]
+      .filter(Boolean)
+      .join(' and ');
+  }, [state.attachments, state.photos]);
   const isEditing = Boolean(editId);
   const isPostedEdit =
     isEditing &&
@@ -481,6 +541,14 @@ function CreatePostForm({ editId, loaderData }: CreatePostFormProps) {
       setShowValidationPopover(true);
       return;
     }
+    setPendingScheduledAt(null);
+    setShowSendDialog(true);
+  }
+
+  /** Schedule step 1 → step 2: stash the picked time, swap dialogs. */
+  function handleScheduleContinue(scheduledSendAt: string) {
+    setPendingScheduledAt(scheduledSendAt);
+    setShowScheduleDialog(false);
     setShowSendDialog(true);
   }
 
@@ -568,6 +636,8 @@ function CreatePostForm({ editId, loaderData }: CreatePostFormProps) {
   async function handleScheduleConfirm(scheduledSendAt: string) {
     if (saveState !== 'idle') return;
     setShowScheduleDialog(false);
+    setShowSendDialog(false);
+    setPendingScheduledAt(null);
     setSaveState('submitting');
     try {
       const payloadInput = stateToPayloadInput(state);
@@ -674,20 +744,6 @@ function CreatePostForm({ editId, loaderData }: CreatePostFormProps) {
                 <Button variant="ghost" size="sm" onClick={() => setShowPreview((s) => !s)}>
                   {showPreview ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </Button>
-                {scheduleEnabled && (
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    disabled={isSaving}
-                    onClick={handleScheduleClick}
-                    className={cn(
-                      !isFormValid && '!bg-muted !text-muted-foreground/40 hover:!bg-muted',
-                    )}
-                  >
-                    <CalendarClock className="mr-1.5 h-4 w-4" />
-                    Schedule
-                  </Button>
-                )}
                 <Popover open={showValidationPopover} onOpenChange={setShowValidationPopover}>
                   <PopoverTrigger
                     render={
@@ -701,7 +757,7 @@ function CreatePostForm({ editId, loaderData }: CreatePostFormProps) {
                         )}
                       >
                         <Send className="mr-1.5 h-4 w-4" />
-                        Post
+                        Post now
                       </Button>
                     }
                   />
@@ -720,6 +776,20 @@ function CreatePostForm({ editId, loaderData }: CreatePostFormProps) {
                     </ul>
                   </PopoverContent>
                 </Popover>
+                {scheduleEnabled && (
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    disabled={isSaving}
+                    onClick={handleScheduleClick}
+                    className={cn(
+                      !isFormValid && '!bg-muted !text-muted-foreground/40 hover:!bg-muted',
+                    )}
+                  >
+                    <CalendarClock className="mr-1.5 h-4 w-4" />
+                    Schedule
+                  </Button>
+                )}
                 {uploadsPending && (
                   <span className="text-xs text-muted-foreground">Attachments uploading…</span>
                 )}
@@ -764,8 +834,34 @@ function CreatePostForm({ editId, loaderData }: CreatePostFormProps) {
       {/* Body */}
       <div className="flex justify-center gap-8 px-6 py-6">
         <div className="flex w-full max-w-2xl flex-1 flex-col gap-6">
-          {/* RECIPIENTS Card */}
-          <Card>
+          {/* 30-day media retention banner — dismissable per entry. The API
+              doesn't expose upload timestamps, so no per-file countdown. */}
+          {!fileBannerDismissed && isEditing && !isPostedEdit && draftMediaLabel && (
+            <div className="flex items-start gap-3 rounded-xl border border-amber-6 bg-amber-3 px-4 py-3 text-xs">
+              <Info className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-11" />
+              <div className="flex-1">
+                <p className="font-semibold text-amber-12">
+                  {draftMediaLabel} from this draft expire 30 days after upload
+                </p>
+                <p className="mt-0.5 text-amber-11">
+                  Files and photos are retained for 30 days from upload. Re-upload them before
+                  posting to avoid losing them.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setFileBannerDismissed(true)}
+                className="shrink-0 rounded p-0.5 text-amber-11 hover:bg-amber-4 hover:text-amber-12"
+                aria-label="Dismiss"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          )}
+
+          {/* RECIPIENTS Card — overflow-visible so selector dropdowns aren't
+              clipped by the card's rounded-corner overflow trap */}
+          <Card className="overflow-visible">
             <CardContent className="space-y-5 p-6">
               <p className="text-xs font-medium tracking-widest text-muted-foreground uppercase">
                 Recipients
@@ -780,41 +876,15 @@ function CreatePostForm({ editId, loaderData }: CreatePostFormProps) {
                   <p className="text-sm text-muted-foreground">
                     Parents of the selected students will receive this post via Parents Gateway.
                   </p>
-                  {/* Simple class-based selector from available components */}
-                  <div className="space-y-2">
-                    {classes.map((cls) => {
-                      const isSelected = state.selectedRecipients.some(
-                        (r) => r.id === cls.value.toString(),
-                      );
-                      return (
-                        <label key={cls.value} className="flex cursor-pointer items-center gap-2">
-                          <input
-                            type="checkbox"
-                            checked={isSelected}
-                            onChange={() => {
-                              clearFieldError('recipients');
-                              const next = isSelected
-                                ? state.selectedRecipients.filter(
-                                    (r) => r.id !== cls.value.toString(),
-                                  )
-                                : [
-                                    ...state.selectedRecipients,
-                                    {
-                                      id: cls.value.toString(),
-                                      label: cls.label,
-                                      type: 'group',
-                                      count: 0,
-                                      groupType: 'class',
-                                    } satisfies SelectedEntity,
-                                  ];
-                              dispatch({ type: 'SET_RECIPIENTS', payload: next });
-                            }}
-                          />
-                          <span className="text-sm">{cls.label}</span>
-                        </label>
-                      );
-                    })}
-                  </div>
+                  <StudentRecipientSelector
+                    classes={classes}
+                    students={students}
+                    value={toSelectorEntities(state.selectedRecipients)}
+                    onChange={(next) => {
+                      clearFieldError('recipients');
+                      dispatch({ type: 'SET_RECIPIENTS', payload: next });
+                    }}
+                  />
                   {fieldErrors.recipients && (
                     <p role="alert" className="text-sm text-destructive">
                       {fieldErrors.recipients}
@@ -831,7 +901,7 @@ function CreatePostForm({ editId, loaderData }: CreatePostFormProps) {
                   Enquiry email <span className="text-destructive">*</span>
                 </Label>
                 <p className="text-sm text-muted-foreground">
-                  Select the preferred email address to receive enquiries from parents.
+                  Parents’ enquiries go to this email address.
                 </p>
                 <EnquiryEmailSelector
                   emailOptions={emailOptions}
@@ -857,37 +927,14 @@ function CreatePostForm({ editId, loaderData }: CreatePostFormProps) {
                   Staff-in-charge{' '}
                   <span className="text-xs font-normal text-muted-foreground">(optional)</span>
                 </Label>
-                <div className="space-y-2">
-                  {staff.slice(0, 20).map((s) => {
-                    const isSelected = state.selectedStaff.some(
-                      (sel) => sel.id === s.staffId.toString(),
-                    );
-                    return (
-                      <label key={s.staffId} className="flex cursor-pointer items-center gap-2">
-                        <input
-                          type="checkbox"
-                          checked={isSelected}
-                          onChange={() => {
-                            const next = isSelected
-                              ? state.selectedStaff.filter((sel) => sel.id !== s.staffId.toString())
-                              : [
-                                  ...state.selectedStaff,
-                                  {
-                                    id: s.staffId.toString(),
-                                    label: s.name,
-                                    type: 'individual',
-                                    count: 1,
-                                  } satisfies SelectedEntity,
-                                ];
-                            dispatch({ type: 'SET_STAFF', payload: next });
-                          }}
-                        />
-                        <span className="text-sm">{s.name}</span>
-                      </label>
-                    );
-                  })}
-                </div>
-                <p className="text-sm text-muted-foreground">{staffHelperText(state.kind)}</p>
+                <p className="text-sm text-muted-foreground">
+                  These staff will be able to view read status, and delete this post.
+                </p>
+                <StaffSearchSelector
+                  staff={staff}
+                  value={toSelectorEntities(state.selectedStaff)}
+                  onChange={(next) => dispatch({ type: 'SET_STAFF', payload: next })}
+                />
               </div>
             </CardContent>
           </Card>
@@ -919,7 +966,6 @@ function CreatePostForm({ editId, loaderData }: CreatePostFormProps) {
                   </div>
                   <Input
                     id="post-title"
-                    placeholder="e.g. Term 3 School Camp Consent & Payment"
                     value={state.title}
                     aria-invalid={
                       fieldErrors.title || state.title.length > TITLE_MAX_LENGTH ? true : undefined
@@ -1040,8 +1086,6 @@ function CreatePostForm({ editId, loaderData }: CreatePostFormProps) {
                     </p>
                   </div>
 
-                  <Separator />
-
                   <div onFocus={() => setFocusSection('response')}>
                     <ResponseTypeSelector
                       value={state.responseType}
@@ -1094,16 +1138,14 @@ function CreatePostForm({ editId, loaderData }: CreatePostFormProps) {
           </div>
           {/* end locked-for-posted-edit */}
 
-          {/* DUE DATE & REMINDER Card */}
+          {/* SETTINGS Card (due date + reminders) */}
           {selectedType === 'post-with-response' &&
             (state.responseType === 'acknowledge' || state.responseType === 'yes-no') && (
               <Card>
                 <CardContent className="space-y-5 p-6">
                   <p className="text-xs font-medium tracking-widest text-muted-foreground uppercase">
-                    Due Date &amp; Reminder
+                    Settings
                   </p>
-
-                  <Separator />
 
                   <div onFocus={() => setFocusSection('response')}>
                     <DueDateSection
@@ -1138,12 +1180,14 @@ function CreatePostForm({ editId, loaderData }: CreatePostFormProps) {
             <Card>
               <CardContent className="space-y-4 p-5">
                 <div className="flex items-center justify-between gap-2">
-                  <p className="text-base font-medium">Preview</p>
+                  <p className="text-xs font-medium tracking-widest text-muted-foreground uppercase">
+                    Preview
+                  </p>
                   <p className="text-xs text-muted-foreground">As seen by parents</p>
                 </div>
                 <PostPreview
                   formState={deferredState}
-                  currentUserName={session.staffName ?? 'Daniel Tan'}
+                  currentUserName={stripSalutation(session.staffName ?? 'Daniel Tan')}
                   defaultEnquiryEmail={session.schoolEmailAddress ?? 'enquiry@school.edu.sg'}
                   focusSection={focusSection}
                   focusQuestionIndex={focusedQuestionIndex}
@@ -1178,28 +1222,45 @@ function CreatePostForm({ editId, loaderData }: CreatePostFormProps) {
           </div>
           <PostPreview
             formState={deferredState}
-            currentUserName={session.staffName ?? 'Daniel Tan'}
+            currentUserName={stripSalutation(session.staffName ?? 'Daniel Tan')}
             defaultEnquiryEmail={session.schoolEmailAddress ?? 'enquiry@school.edu.sg'}
           />
         </div>
       </div>
 
-      <SendConfirmationDialog
-        open={showSendDialog}
-        onOpenChange={setShowSendDialog}
-        title={state.title}
-        recipientCount={recipientCount}
-        responseType={state.responseType}
-        onConfirm={handleSendConfirm}
-      />
-
+      {/* Schedule step 1 — pick the release date and time. */}
       <SchedulePickerDialog
         open={showScheduleDialog}
         onOpenChange={setShowScheduleDialog}
-        onConfirm={handleScheduleConfirm}
+        onConfirm={handleScheduleContinue}
         busy={isSaving}
         scheduleWindow={scheduleWindow}
         dueDate={selectedType === 'post-with-response' ? state.dueDate : undefined}
+      />
+
+      {/* Schedule step 2 (and the Post-now confirm) — review, then send.
+          Closing the scheduled summary steps back to the picker with the
+          chosen date and time retained. */}
+      <SendConfirmationDialog
+        open={showSendDialog}
+        onOpenChange={(next) => {
+          setShowSendDialog(next);
+          if (!next && pendingScheduledAt) setShowScheduleDialog(true);
+        }}
+        title={state.title}
+        recipientGroups={recipientGroups}
+        totalRecipients={recipientCount}
+        scheduledAt={pendingScheduledAt ?? undefined}
+        responseType={state.responseType}
+        dueDate={selectedType === 'post-with-response' ? state.dueDate : undefined}
+        busy={isSaving}
+        onConfirm={() => {
+          if (pendingScheduledAt) {
+            void handleScheduleConfirm(pendingScheduledAt);
+          } else {
+            void handleSendConfirm();
+          }
+        }}
       />
     </div>
   );

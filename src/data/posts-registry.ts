@@ -147,6 +147,8 @@ export interface AnnouncementPost {
   ownership: Ownership;
   role?: 'owner' | 'viewer';
   recipients: Recipient[];
+  /** Class labels from the list endpoint; detail endpoints use `recipients` instead. */
+  toParentsOf?: string[];
   stats: AnnouncementStats;
   postedAt?: string;
   scheduledAt?: string;
@@ -177,6 +179,8 @@ export interface ConsentFormPost {
   ownership: Ownership;
   role?: 'owner' | 'viewer';
   recipients: ConsentFormRecipient[];
+  /** Class labels from the list endpoint; detail endpoints use `recipients` instead. */
+  toParentsOf?: string[];
   stats: ConsentFormStats;
   postedAt?: string;
   scheduledAt?: string;

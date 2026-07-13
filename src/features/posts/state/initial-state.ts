@@ -13,6 +13,8 @@ export interface SelectedEntity {
   count?: number;
   groupType?: string;
   memberNames?: string[];
+  /** Member names deselected from an otherwise-selected group. */
+  excludedMemberNames?: string[];
 }
 
 export interface UploadingFile {
