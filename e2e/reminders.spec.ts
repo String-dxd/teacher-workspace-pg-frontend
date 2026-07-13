@@ -5,6 +5,7 @@ import { expect, test } from '@playwright/test';
 // Posted fixture: consentByDate '2026-06-18', reminderDate '2026-06-16'
 test.use({
   timezoneId: 'Asia/Singapore',
+  locale: 'en-US',
 });
 
 test.beforeEach(async ({ page }) => {
