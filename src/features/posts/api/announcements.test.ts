@@ -7,15 +7,21 @@ vi.mock('./http', () => ({
 }));
 
 import {
+  cancelAnnouncementSchedule,
   createAnnouncement,
   createDraft,
   deleteAnnouncement,
   deleteDraft,
+  duplicateAnnouncement,
+  duplicateAnnouncementDraft,
   fetchAnnouncementDetail,
   fetchAnnouncementDraftDetail,
   fetchAnnouncements,
   fetchSharedAnnouncements,
   rescheduleAnnouncementDraft,
+  scheduleExistingAnnouncementDraft,
+  scheduleNewAnnouncementDraft,
+  updateAnnouncementEnquiryEmail,
   updateAnnouncementStaffInCharge,
   updateDraft,
 } from './announcements';
@@ -99,6 +105,69 @@ describe('api/announcements', () => {
           { type: 'individual', label: '', value: 10 },
           { type: 'individual', label: '', value: 20 },
         ],
+      });
+    });
+
+    it('scheduleNewAnnouncementDraft POSTs to /announcements/drafts/schedule', async () => {
+      const payload = { title: 'Scheduled', scheduledSendAt: '2026-07-01T09:00:00Z' } as any;
+      vi.mocked(mutateApi).mockResolvedValue({ announcementDraftId: 50, updatedAt: '2026-07-01' });
+      const result = await scheduleNewAnnouncementDraft(payload);
+      expect(mutateApi).toHaveBeenCalledWith(
+        'POST',
+        '/announcements/drafts/schedule',
+        payload,
+        undefined,
+      );
+      expect(result).toEqual({ announcementDraftId: 50, updatedAt: '2026-07-01' });
+    });
+
+    it('scheduleExistingAnnouncementDraft PUTs to /announcements/drafts/schedule/:id', async () => {
+      const payload = { title: 'Rescheduled', scheduledSendAt: '2026-08-01T09:00:00Z' } as any;
+      vi.mocked(mutateApi).mockResolvedValue({ announcementDraftId: 3, updatedAt: '2026-08-01' });
+      const result = await scheduleExistingAnnouncementDraft(3, payload);
+      expect(mutateApi).toHaveBeenCalledWith(
+        'PUT',
+        '/announcements/drafts/schedule/3',
+        payload,
+        undefined,
+      );
+      expect(result).toEqual({ announcementDraftId: 3, updatedAt: '2026-08-01' });
+    });
+
+    it('cancelAnnouncementSchedule POSTs to /announcements/drafts/:id/cancelSchedule', async () => {
+      vi.mocked(mutateApi).mockResolvedValue(undefined);
+      await cancelAnnouncementSchedule(9);
+      expect(mutateApi).toHaveBeenCalledWith(
+        'POST',
+        '/announcements/drafts/9/cancelSchedule',
+        {},
+        undefined,
+      );
+    });
+
+    it('duplicateAnnouncement POSTs to /announcements/duplicate', async () => {
+      vi.mocked(mutateApi).mockResolvedValue({ announcementDraftId: 77, updatedAt: '2026-07-01' });
+      const result = await duplicateAnnouncement(5);
+      expect(mutateApi).toHaveBeenCalledWith('POST', '/announcements/duplicate', {
+        announcementId: 5,
+      });
+      expect(result).toEqual({ announcementDraftId: 77, updatedAt: '2026-07-01' });
+    });
+
+    it('duplicateAnnouncementDraft POSTs to /announcements/drafts/duplicate', async () => {
+      vi.mocked(mutateApi).mockResolvedValue({ announcementDraftId: 78, updatedAt: '2026-07-01' });
+      const result = await duplicateAnnouncementDraft(6);
+      expect(mutateApi).toHaveBeenCalledWith('POST', '/announcements/drafts/duplicate', {
+        announcementDraftId: 6,
+      });
+      expect(result).toEqual({ announcementDraftId: 78, updatedAt: '2026-07-01' });
+    });
+
+    it('updateAnnouncementEnquiryEmail PUTs to /announcements/:id/enquiryEmailAddress', async () => {
+      vi.mocked(mutateApi).mockResolvedValue(undefined);
+      await updateAnnouncementEnquiryEmail(11, { enquiryEmailAddress: 'test@school.edu.sg' });
+      expect(mutateApi).toHaveBeenCalledWith('PUT', '/announcements/11/enquiryEmailAddress', {
+        enquiryEmailAddress: 'test@school.edu.sg',
       });
     });
 
