@@ -38,10 +38,7 @@ function DueDateSection({ value, onChange, required = false }: DueDateSectionPro
 
   return (
     <div className="space-y-1.5">
-      <Label>Due Date{required && <span className="text-destructive"> *</span>}</Label>
-      <p className="text-sm text-muted-foreground">
-        The latest date by which parents must respond.
-      </p>
+      <Label>Respond by{required && <span className="text-destructive"> *</span>}</Label>
 
       <Popover>
         <PopoverTrigger className="inline-flex h-9 w-[240px] items-center gap-2 rounded-[14px] border border-input bg-background px-3 text-left text-sm font-normal transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none">
@@ -59,6 +56,13 @@ function DueDateSection({ value, onChange, required = false }: DueDateSectionPro
           />
         </PopoverContent>
       </Popover>
+
+      {formattedDate && (
+        <p className="text-sm text-muted-foreground">
+          We&rsquo;ll send a default reminder on{' '}
+          <span className="font-semibold text-foreground">{formattedDate}</span>.
+        </p>
+      )}
     </div>
   );
 }

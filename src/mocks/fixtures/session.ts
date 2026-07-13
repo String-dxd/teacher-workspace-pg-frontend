@@ -22,6 +22,8 @@ export const session: ApiSession = {
 export const configs: ApiConfig = {
   flags: {
     schedule_send: { enabled: true },
+    schedule_announcement_form_post: { enabled: true },
+    duplicate_announcement_form_post: { enabled: true },
     duplicate_post: { enabled: true },
     shortcut_travel_declaration: { enabled: true },
     shortcut_edit_contact_details: { enabled: true },

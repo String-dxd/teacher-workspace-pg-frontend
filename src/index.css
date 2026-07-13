@@ -44,8 +44,50 @@
   --red-11: #cd2b31;
 
   /* Radix Amber scale */
-  --amber-3: #fff1d6;
-  --amber-11: #ad5700;
+  --amber-1: #fefdfb;
+  --amber-2: #fefbe9;
+  --amber-3: #fff7c2;
+  --amber-4: #ffee9c;
+  --amber-5: #fbe577;
+  --amber-6: #f3d673;
+  --amber-7: #e9c162;
+  --amber-8: #e2a336;
+  --amber-9: #ffc53d;
+  --amber-10: #ffba18;
+  --amber-11: #ab6400;
+  --amber-12: #4f3422;
+
+  /* Radix Lime scale */
+  --lime-1: #fcfdfa;
+  --lime-2: #f8faf3;
+  --lime-3: #eef6d6;
+  --lime-4: #e2f0bd;
+  --lime-5: #d3e7a6;
+  --lime-6: #c2da91;
+  --lime-7: #abc978;
+  --lime-8: #8db654;
+  --lime-9: #bdee63;
+  --lime-10: #b0e64c;
+  --lime-11: #5c7c2f;
+  --lime-12: #37401c;
+
+  /* Radix Violet scale */
+  --violet-1: #fdfcfe;
+  --violet-2: #faf8ff;
+  --violet-3: #f4f0fe;
+  --violet-4: #ebe4ff;
+  --violet-5: #e1d9ff;
+  --violet-6: #d4cafe;
+  --violet-7: #c2b5f5;
+  --violet-8: #aa99ec;
+  --violet-9: #6e56cf;
+  --violet-10: #654dc4;
+  --violet-11: #6550b9;
+  --violet-12: #2f265f;
+
+  /* Radix Crimson scale */
+  --crimson-9: #e93d82;
+  --crimson-11: #cb1d63;
 
   /* Shadcn semantic tokens — rebased on Radix slate + twblue */
   --background: var(--slate-1);
@@ -62,15 +104,15 @@
   --muted-foreground: var(--slate-11);
   --accent: var(--slate-4);
   --accent-foreground: var(--slate-12);
-  --destructive: var(--red-9);
+  --destructive: var(--crimson-9);
 
-  /* Status tokens */
-  --success: var(--green-3);
-  --success-foreground: var(--green-11);
+  /* Status tokens — Flow DS mappings: success→lime, caution→amber, info→brand */
+  --success: var(--lime-3);
+  --success-foreground: var(--lime-11);
   --warning: var(--amber-3);
   --warning-foreground: var(--amber-11);
-  --info: var(--blue-3);
-  --info-foreground: var(--blue-11);
+  --info: var(--twblue-3);
+  --info-foreground: var(--twblue-11);
 
   --border: var(--slate-6);
   --input: var(--slate-7);
@@ -117,8 +159,26 @@
   --color-slate-11: var(--slate-11);
   --color-slate-12: var(--slate-12);
 
+  --color-twblue-1: var(--twblue-1);
+  --color-twblue-2: var(--twblue-2);
+  --color-twblue-3: var(--twblue-3);
+  --color-twblue-4: var(--twblue-4);
+  --color-twblue-6: var(--twblue-6);
   --color-twblue-9: var(--twblue-9);
   --color-twblue-11: var(--twblue-11);
+
+  --color-amber-2: var(--amber-2);
+  --color-amber-6: var(--amber-6);
+  --color-amber-9: var(--amber-9);
+  --color-amber-11: var(--amber-11);
+  --color-amber-12: var(--amber-12);
+
+  --color-lime-3: var(--lime-3);
+  --color-lime-11: var(--lime-11);
+
+  --color-violet-3: var(--violet-3);
+  --color-violet-6: var(--violet-6);
+  --color-violet-11: var(--violet-11);
 
   --radius-sm: 0.25rem;
   --radius-md: calc(var(--radius) - 0.25rem);

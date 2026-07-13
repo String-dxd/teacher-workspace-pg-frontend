@@ -131,7 +131,7 @@ function QuestionScreen({
         <button
           disabled
           type="button"
-          className="w-full rounded-full bg-foreground py-3 text-sm font-semibold text-background"
+          className="w-full rounded-md bg-[#c9826b] py-3 text-sm font-semibold text-white"
         >
           {current < total ? 'Next' : 'Submit'}
         </button>
@@ -566,7 +566,7 @@ const PostPreview = React.memo(function PostPreview({
                 {responseType === 'acknowledge' && (
                   <button
                     disabled
-                    className="shrink-0 rounded-full bg-[#c9826b] px-4 py-1.5 text-[11px] font-medium text-white"
+                    className="shrink-0 rounded-md bg-[#c9826b] px-4 py-1.5 text-[11px] font-medium text-white"
                   >
                     Acknowledge
                   </button>

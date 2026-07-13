@@ -51,6 +51,7 @@ import { SchedulePickerDialog } from '~/features/posts/components/SchedulePicker
 import { formatDate, formatDateTime } from '~/helpers/dateTime';
 import { useQuery } from '~/hooks/useQuery';
 import { notify } from '~/lib/notify';
+import { stripSalutation } from '~/lib/utils';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -171,7 +172,7 @@ function DetailHeader({
           </div>
           <p className="text-sm text-muted-foreground">
             Posted {postedDate}
-            {post.createdBy ? ` · ${post.createdBy}` : ''}
+            {post.createdBy ? ` · ${stripSalutation(post.createdBy)}` : ''}
           </p>
         </div>
       </div>

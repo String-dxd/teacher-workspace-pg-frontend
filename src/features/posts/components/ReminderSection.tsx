@@ -1,14 +1,6 @@
 import { CalendarIcon } from 'lucide-react';
 
-import {
-  Calendar,
-  Collapsible,
-  CollapsiblePanel,
-  Label,
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '~/components/ui';
+import { Calendar, Label, Popover, PopoverContent, PopoverTrigger } from '~/components/ui';
 import type { ReminderConfig } from '~/data/posts-registry';
 import { formatLocalDate } from '~/helpers/dateTime';
 
@@ -16,7 +8,7 @@ type ReminderRadioValue = 'NONE' | 'ONE_TIME' | 'DAILY';
 
 const REMINDER_OPTIONS: { value: ReminderRadioValue; label: string }[] = [
   { value: 'NONE', label: 'None' },
-  { value: 'ONE_TIME', label: 'One-time' },
+  { value: 'ONE_TIME', label: 'One time' },
   { value: 'DAILY', label: 'Daily' },
 ];
 
@@ -50,11 +42,9 @@ function ReminderSection({ value, onChange, consentByDate }: ReminderSectionProp
   }
 
   const showPicker = value.type === 'ONE_TIME' || value.type === 'DAILY';
-  const pickerLabel = value.type === 'DAILY' ? 'Starting' : 'Date';
+  const pickerLabel = value.type === 'DAILY' ? 'From' : 'On';
   // Empty display on NONE so the hidden picker doesn't flash a stale date.
   const displayDate = value.type === 'NONE' ? '' : value.date;
-
-  const defaultReminderFormatted = consentByDate ? (formatLocalDate(consentByDate) ?? '-') : '-';
 
   // PGW's reminder window is `[tomorrow, consentByDate - 1 day]` inclusive.
   // Reminders outside this window blow up with a server-side "Bad request" — gate them at the picker.
@@ -69,7 +59,7 @@ function ReminderSection({ value, onChange, consentByDate }: ReminderSectionProp
     return (
       <div className="space-y-3 opacity-50">
         <div>
-          <p className="text-sm font-medium">Reminder</p>
+          <p className="text-sm font-medium">Send more reminders to parents</p>
           <p className="text-sm text-muted-foreground">Set a due date first.</p>
         </div>
       </div>
@@ -77,71 +67,58 @@ function ReminderSection({ value, onChange, consentByDate }: ReminderSectionProp
   }
 
   return (
-    <div className="space-y-3">
-      <div>
-        <p className="text-sm font-medium">Reminder</p>
-        <p className="text-sm text-muted-foreground">Remind parents who have not yet responded.</p>
-      </div>
+    <div className="space-y-2">
+      <p className="text-sm font-medium">Send more reminders to parents</p>
 
-      <p className="text-sm">
-        Default reminder will be sent on{' '}
-        <span className="font-medium">{defaultReminderFormatted}</span>
-      </p>
-
-      <div className="grid gap-2" role="radiogroup">
+      <div className="space-y-2" role="radiogroup">
         {REMINDER_OPTIONS.map((option) => (
-          <label
-            key={option.value}
-            className="flex cursor-pointer items-center gap-3 rounded-2xl border px-4 py-3 transition-colors hover:bg-muted/40"
-          >
+          <label key={option.value} className="flex cursor-pointer items-center gap-2">
             <input
               type="radio"
-              className="h-4 w-4"
+              className="h-3.5 w-3.5 accent-primary"
               name="reminder-type"
               value={option.value}
               checked={value.type === option.value}
               onChange={() => handleRadioChange(option.value)}
             />
-            <span className="text-sm leading-none font-medium">{option.label}</span>
+            <span className="text-sm">{option.label}</span>
           </label>
         ))}
       </div>
 
-      <Collapsible open={showPicker}>
-        <CollapsiblePanel keepMounted>
-          <div className="space-y-1.5 pt-1">
-            <Label>{pickerLabel}</Label>
-            <Popover>
-              <PopoverTrigger className="inline-flex h-9 w-[240px] items-center gap-2 rounded-[14px] border border-input bg-background px-3 text-left text-sm font-normal transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none">
-                <CalendarIcon className="h-4 w-4 shrink-0 text-muted-foreground" />
-                {displayDate ? (
-                  (formatLocalDate(displayDate) ?? displayDate)
-                ) : (
-                  <span className="text-muted-foreground">Pick a date</span>
-                )}
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <Calendar
-                  mode="single"
-                  selected={isoToLocalDate(displayDate)}
-                  onSelect={(date) => {
-                    if (date) handleDateChange(localDateToIso(date));
-                  }}
-                  disabled={{
-                    before: isoToLocalDate(minDate),
-                    after: maxDate ? isoToLocalDate(maxDate) : undefined,
-                  }}
-                />
-              </PopoverContent>
-            </Popover>
-            {dateOutOfRange && (
-              <p id="reminder-date-error" className="text-sm text-destructive">
-                Reminder must fall between tomorrow and the day before the due date.
-              </p>
-            )}
-          </div>
-        </CollapsiblePanel>
-      </Collapsible>
+      {showPicker && (
+        <div className="space-y-1.5 pt-1">
+          <Label>{pickerLabel}</Label>
+          <Popover>
+            <PopoverTrigger className="inline-flex h-9 w-[240px] items-center gap-2 rounded-[14px] border border-input bg-background px-3 text-left text-sm font-normal transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none">
+              <CalendarIcon className="h-4 w-4 shrink-0 text-muted-foreground" />
+              {displayDate ? (
+                (formatLocalDate(displayDate) ?? displayDate)
+              ) : (
+                <span className="text-muted-foreground">Pick a date</span>
+              )}
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <Calendar
+                mode="single"
+                selected={isoToLocalDate(displayDate)}
+                onSelect={(date) => {
+                  if (date) handleDateChange(localDateToIso(date));
+                }}
+                disabled={{
+                  before: isoToLocalDate(minDate),
+                  after: maxDate ? isoToLocalDate(maxDate) : undefined,
+                }}
+              />
+            </PopoverContent>
+          </Popover>
+          {dateOutOfRange && (
+            <p id="reminder-date-error" className="text-sm text-destructive">
+              Reminder must fall between tomorrow and the day before the due date.
+            </p>
+          )}
+        </div>
+      )}
     </div>
   );
 }

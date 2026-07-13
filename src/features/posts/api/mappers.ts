@@ -73,6 +73,7 @@ export function mapAnnouncementSummary(
     responseType: mapResponseType(api.responseType),
     ownership,
     recipients: [],
+    toParentsOf: api.toParentsOf,
     stats: {
       totalCount,
       readCount,
@@ -436,6 +437,7 @@ export function mapConsentFormSummaryToPost(
     responseType: 'yes-no',
     ownership,
     recipients: [],
+    toParentsOf: api.toParentsOf,
     stats: {
       totalCount,
       yesCount: 0,
