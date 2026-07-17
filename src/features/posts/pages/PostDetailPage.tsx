@@ -8,6 +8,7 @@ import {
   getPostStatusBadge,
   type AnnouncementPost,
   type ConsentFormPost,
+  type ConsentFormRecipient,
   type Post,
 } from '~/data/posts-registry';
 import {
@@ -22,6 +23,7 @@ import {
   cancelConsentFormSchedule,
   deleteConsentForm,
   loadConsentPostDetail,
+  replyOnBehalf,
   rescheduleConsentFormDraft,
   updateConsentFormDueDate,
   updateConsentFormEnquiryEmail,
@@ -34,12 +36,17 @@ import type { ApiSchoolStaff, ApiSession } from '~/features/posts/api/types';
 import { ConsentFormHistoryList } from '~/features/posts/components/ConsentFormHistoryList';
 import { DeletePostDialog } from '~/features/posts/components/DeletePostDialog';
 import {
+  EditResponseDialog,
+  type EditResponseSubmitPayload,
+} from '~/features/posts/components/EditResponseDialog';
+import {
   PostCard,
   isoToSgtDate,
   type PostCardEditState,
 } from '~/features/posts/components/PostCard';
 import {
   ReadTrackingCards,
+  type ConsentFormStatFilter,
   type ReadCardFilter,
 } from '~/features/posts/components/ReadTrackingCards';
 import {
@@ -422,7 +429,12 @@ const PostDetailContent: React.FC<PostDetailContentProps> = ({ post, staff, sess
       {post.kind === 'announcement' ? (
         <AnnouncementDetail post={post} attachments={attachments} {...cardProps} />
       ) : (
-        <ConsentFormDetail post={post} attachments={attachments} {...cardProps} />
+        <ConsentFormDetail
+          post={post}
+          attachments={attachments}
+          actorName={session.displayName || session.staffName}
+          {...cardProps}
+        />
       )}
 
       <DeletePostDialog
@@ -507,34 +519,119 @@ function AnnouncementDetail({
 function ConsentFormDetail({
   post,
   attachments,
+  actorName,
   isEditing,
   editState,
   onEditStateChange,
   staffList,
   emailOptions,
-}: { post: ConsentFormPost } & DetailCardProps) {
+}: { post: ConsentFormPost; actorName: string } & DetailCardProps) {
   const showTable =
     (post.status === 'open' || post.status === 'closed') && post.stats.totalCount > 0;
+
+  // Local copies so an edit-on-behalf reflects immediately without depending
+  // on a refetch (the mock reply endpoint doesn't mutate server-side state).
+  const [recipients, setRecipients] = useState(post.recipients);
+  const [history, setHistory] = useState(post.history);
+  const [filter, setFilter] = useState<RecipientFilterValue>(DEFAULT_RECIPIENT_FILTER);
+  const [editingRecipient, setEditingRecipient] = useState<ConsentFormRecipient | null>(null);
+
+  const statFilter: ConsentFormStatFilter =
+    filter.status === 'yes' || filter.status === 'no' || filter.status === 'no-response'
+      ? filter.status
+      : 'all';
+
+  function isEditRestricted(recipient: ConsentFormRecipient): boolean {
+    return recipient.pgStatus === 'onboarded' && post.status === 'open';
+  }
+
+  async function handleEditResponseSubmit(payload: EditResponseSubmitPayload) {
+    if (!editingRecipient) return;
+    const studentId = Number(editingRecipient.studentId);
+    const customQuestionReply = post.questions.map((q) => {
+      const value = payload.answers[q.id] ?? '';
+      return q.type === 'mcq'
+        ? { customQuestionId: q.id, answer: { choice: value } }
+        : { customQuestionId: q.id, answer: { text: value } };
+    });
+
+    try {
+      await replyOnBehalf(post.numericId, studentId, {
+        consentType: payload.consentType,
+        remarks: payload.comments,
+        customQuestionReply,
+      });
+
+      setRecipients((prev) =>
+        prev.map((r) =>
+          r.studentId === editingRecipient.studentId
+            ? {
+                ...r,
+                response: payload.consentType,
+                respondedAt: new Date().toISOString(),
+                comments: payload.comments,
+                questionAnswers: payload.answers,
+              }
+            : r,
+        ),
+      );
+      setHistory((prev) => [
+        ...prev,
+        {
+          historyId: -Date.now(),
+          action: 'Response updated',
+          actionAt: new Date().toISOString(),
+          actionBy: actorName,
+        },
+      ]);
+      notify.success('Response updated.');
+    } catch (err) {
+      if (!(err instanceof AppError)) {
+        notify.error('Failed to update the response. Please try again.');
+      }
+      throw err;
+    }
+  }
 
   return (
     <div className="grid gap-6 lg:grid-cols-3">
       <div className="space-y-6 lg:col-span-2">
-        <ReadTrackingCards kind="form" responseType={post.responseType} stats={post.stats} />
+        {post.status === 'open' && (
+          <div
+            role="status"
+            className="rounded-lg border border-info/40 bg-info/5 px-4 py-3 text-sm text-info-foreground"
+          >
+            Custodians may edit their responses till the due date. Please collate the responses only
+            after the due date.
+          </div>
+        )}
+
+        <ReadTrackingCards
+          kind="form"
+          responseType={post.responseType}
+          stats={post.stats}
+          statFilter={statFilter}
+          onStatFilterChange={(next) => setFilter((f) => ({ ...f, status: next }))}
+        />
 
         {showTable && (
           <div className="space-y-4 rounded-lg border bg-background p-6">
             <p className="text-sm font-semibold">Status</p>
             <RecipientReadTable
               kind="form"
-              recipients={post.recipients}
+              recipients={recipients}
               responseType={post.responseType}
               exportId={String(post.id)}
               questions={post.questions}
+              filter={filter}
+              onFilterChange={setFilter}
+              onEditResponse={setEditingRecipient}
+              isEditRestricted={isEditRestricted}
             />
           </div>
         )}
 
-        <ConsentFormHistoryList entries={post.history} />
+        <ConsentFormHistoryList entries={history} />
       </div>
 
       <div className="lg:sticky lg:top-6 lg:self-start">
@@ -548,6 +645,18 @@ function ConsentFormDetail({
           emailOptions={emailOptions}
         />
       </div>
+
+      {editingRecipient && (
+        <EditResponseDialog
+          open={editingRecipient !== null}
+          onOpenChange={(open) => {
+            if (!open) setEditingRecipient(null);
+          }}
+          recipient={editingRecipient}
+          questions={post.questions}
+          onSubmit={handleEditResponseSubmit}
+        />
+      )}
     </div>
   );
 }

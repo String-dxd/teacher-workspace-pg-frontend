@@ -259,6 +259,10 @@ export const handlers = [
     return HttpResponse.json(envelope({ consentFormId: 999 }));
   }),
 
+  http.post(`${BASE}/consentForms/:formId/student/:studentId/reply`, () => {
+    return HttpResponse.json(envelope(null));
+  }),
+
   http.post(`${BASE}/consentForms/drafts`, () => {
     return HttpResponse.json(envelope({ consentFormDraftId: 888 }));
   }),

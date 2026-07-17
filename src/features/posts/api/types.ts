@@ -63,6 +63,12 @@ export interface ApiConsentFormStudent {
   };
 }
 
+export interface ApiConsentFormReplyPayload {
+  consentType: 'YES' | 'NO';
+  remarks: string;
+  customQuestionReply: { customQuestionId: string; answer: { text?: string; choice?: string } }[];
+}
+
 export interface ApiImage {
   imageId: number;
   isCover: boolean;
