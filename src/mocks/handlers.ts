@@ -255,6 +255,16 @@ export const handlers = [
     return new HttpResponse(null, { status: 204 });
   }),
 
+  // Posted-edit: staff-in-charge + enquiry email (the only fields editable
+  // on a sent announcement).
+  http.put(`${BASE}/announcements/:postId/enquiryEmailAddress`, () => {
+    return new HttpResponse(null, { status: 204 });
+  }),
+
+  http.post(`${BASE}/announcements/:postId/addStaffInCharge`, () => {
+    return new HttpResponse(null, { status: 204 });
+  }),
+
   http.post(`${BASE}/consentForms`, () => {
     return HttpResponse.json(envelope({ consentFormId: 999 }));
   }),
@@ -290,6 +300,20 @@ export const handlers = [
   }),
 
   http.delete(`${BASE}/consentForms/drafts/:draftId`, () => {
+    return new HttpResponse(null, { status: 204 });
+  }),
+
+  // Posted-edit: staff-in-charge, enquiry email, and due date (the fields
+  // editable on a sent post-with-response).
+  http.put(`${BASE}/consentForms/:formId/updateEnquiryEmail`, () => {
+    return new HttpResponse(null, { status: 204 });
+  }),
+
+  http.post(`${BASE}/consentForms/:formId/addStaffInCharge`, () => {
+    return new HttpResponse(null, { status: 204 });
+  }),
+
+  http.put(`${BASE}/consentForms/:formId/updateDueDate`, () => {
     return new HttpResponse(null, { status: 204 });
   }),
 

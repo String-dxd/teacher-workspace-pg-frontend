@@ -26,7 +26,7 @@ import {
   PopoverTrigger,
   Separator,
 } from '~/components/ui';
-import { describeScheduledSendFailure, type Post } from '~/data/posts-registry';
+import { describeScheduledSendFailure, postHref, type Post } from '~/data/posts-registry';
 import {
   createAnnouncement,
   createDraft,
@@ -72,6 +72,7 @@ import type {
   ApiStaffGroups,
 } from '~/features/posts/api/types';
 import { AttachmentSection } from '~/features/posts/components/AttachmentSection';
+import { DiscardChangesDialog } from '~/features/posts/components/DiscardChangesDialog';
 import { DueDateSection } from '~/features/posts/components/DueDateSection';
 import { EnquiryEmailSelector } from '~/features/posts/components/EnquiryEmailSelector';
 import type {
@@ -223,11 +224,7 @@ function postToFormState(
   };
 
   if (post.kind === 'form') {
-    const dueDateRaw = post.consentByDate
-      ? new Date(post.consentByDate) < new Date()
-        ? ''
-        : sgtIsoToLocalDate(post.consentByDate)
-      : '';
+    const dueDateRaw = post.consentByDate ? sgtIsoToLocalDate(post.consentByDate) : '';
     return {
       ...INITIAL_STATE,
       ...common,
@@ -392,6 +389,7 @@ function CreatePostForm({ editId, loaderData }: CreatePostFormProps) {
 
   const [showSendDialog, setShowSendDialog] = useState(false);
   const [showScheduleDialog, setShowScheduleDialog] = useState(false);
+  const [showDiscardDialog, setShowDiscardDialog] = useState(false);
   // Set between schedule step 1 (picker) and step 2 (review). Null for post-now.
   const [pendingScheduledAt, setPendingScheduledAt] = useState<string | null>(null);
   const [fileBannerDismissed, setFileBannerDismissed] = useState(false);
@@ -444,6 +442,7 @@ function CreatePostForm({ editId, loaderData }: CreatePostFormProps) {
 
   const initialDescriptionDocRef = useRef(state.descriptionDoc);
   const initialDescriptionDoc = initialDescriptionDocRef.current;
+  const initialStateRef = useRef(state);
 
   const deferredState = useDeferredValue(state);
 
@@ -501,6 +500,11 @@ function CreatePostForm({ editId, loaderData }: CreatePostFormProps) {
         detail.status === 'posting'),
     );
 
+  // Staff already on a sent post can't be removed by the creator — only added to.
+  const lockedStaffIds = isPostedEdit
+    ? new Set(initialStateRef.current.selectedStaff.map((s) => String(s.id)))
+    : undefined;
+
   const isFailedScheduledEdit =
     isEditing &&
     Boolean(detail && detail.status === 'scheduled' && detail.scheduledSendFailureCode);
@@ -524,12 +528,21 @@ function CreatePostForm({ editId, loaderData }: CreatePostFormProps) {
     shouldSave: (s) => s.title.trim().length > 0 || editorHasContent(s.descriptionDoc),
   });
 
-  const isDirty =
-    autoSave.lastSavedSerialized !== null
-      ? JSON.stringify(state) !== autoSave.lastSavedSerialized
-      : state.title.trim().length > 0 || editorHasContent(state.descriptionDoc);
+  const isDirty = JSON.stringify(state) !== JSON.stringify(initialStateRef.current);
 
   useUnsavedChangesGuard(isDirty);
+
+  // Editing a sent post has a read-status page to return to; everything else
+  // (new posts, drafts) falls back to the posts list.
+  const backHref = isPostedEdit && detail ? `/posts/${postHref(detail)}` : '..';
+
+  function handleBackClick() {
+    if (isDirty) {
+      setShowDiscardDialog(true);
+    } else {
+      navigate(backHref);
+    }
+  }
 
   if (editId && !editData) {
     return <Navigate to=".." replace />;
@@ -719,9 +732,13 @@ function CreatePostForm({ editId, loaderData }: CreatePostFormProps) {
       <div className="sticky top-0 z-10 border-b bg-white/95 px-6 py-3 backdrop-blur-sm">
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <Link to=".." className="text-muted-foreground hover:text-foreground">
+            <button
+              type="button"
+              onClick={handleBackClick}
+              className="text-muted-foreground hover:text-foreground"
+            >
               <ArrowLeft className="h-5 w-5" />
-            </Link>
+            </button>
             <h1 className="text-xl font-semibold tracking-tight">
               {isEditing ? 'Edit Post' : 'New Post'}
             </h1>
@@ -802,7 +819,7 @@ function CreatePostForm({ editId, loaderData }: CreatePostFormProps) {
       {/* Posted-edit notice banner */}
       {isPostedEdit && (
         <div className="border-b bg-muted px-6 py-3">
-          <p className="flex items-center gap-2 text-sm text-muted-foreground">
+          <p className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
             <Lock className="h-3.5 w-3.5 shrink-0" />
             <span>
               This post has been sent. Only{' '}
@@ -934,6 +951,7 @@ function CreatePostForm({ editId, loaderData }: CreatePostFormProps) {
                   staff={staff}
                   value={toSelectorEntities(state.selectedStaff)}
                   onChange={(next) => dispatch({ type: 'SET_STAFF', payload: next })}
+                  lockedStaffIds={lockedStaffIds}
                 />
               </div>
             </CardContent>
@@ -1260,6 +1278,15 @@ function CreatePostForm({ editId, loaderData }: CreatePostFormProps) {
           } else {
             void handleSendConfirm();
           }
+        }}
+      />
+
+      <DiscardChangesDialog
+        open={showDiscardDialog}
+        onOpenChange={setShowDiscardDialog}
+        onConfirm={() => {
+          setShowDiscardDialog(false);
+          navigate(backHref);
         }}
       />
     </div>
