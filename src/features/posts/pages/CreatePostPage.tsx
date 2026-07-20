@@ -24,7 +24,7 @@ import {
   PopoverTrigger,
   Separator,
 } from '~/components/ui';
-import { describeScheduledSendFailure, type Post } from '~/data/posts-registry';
+import { describeScheduledSendFailure, postHref, type Post } from '~/data/posts-registry';
 import {
   createAnnouncement,
   createDraft,
@@ -484,6 +484,11 @@ function CreatePostForm({ editId, loaderData }: CreatePostFormProps) {
   }, [state.attachments, state.photos]);
   const isEditing = Boolean(editId);
 
+  // Staff already on a sent post can't be removed by the creator — only added to.
+  const lockedStaffIds = isPostedEdit
+    ? new Set(initialStateRef.current.selectedStaff.map((s) => String(s.id)))
+    : undefined;
+
   const isFailedScheduledEdit =
     isEditing &&
     Boolean(detail && detail.status === 'scheduled' && detail.scheduledSendFailureCode);
@@ -511,11 +516,15 @@ function CreatePostForm({ editId, loaderData }: CreatePostFormProps) {
 
   useUnsavedChangesGuard(isDirty);
 
+  // Editing a sent post has a read-status page to return to; everything else
+  // (new posts, drafts) falls back to the posts list.
+  const backHref = isPostedEdit && detail ? `/posts/${postHref(detail)}` : '..';
+
   function handleBackClick() {
     if (isDirty) {
       setShowDiscardDialog(true);
     } else {
-      navigate('..');
+      navigate(backHref);
     }
   }
 
@@ -746,6 +755,25 @@ function CreatePostForm({ editId, loaderData }: CreatePostFormProps) {
         </div>
       </div>
 
+      {/* Posted-edit notice banner */}
+      {isPostedEdit && (
+        <div className="border-b bg-muted px-6 py-3">
+          <p className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+            <Lock className="h-3.5 w-3.5 shrink-0" />
+            <span>
+              This post has been sent. Only{' '}
+              <span className="font-medium text-foreground">Staff-in-charge</span>
+              {', '}
+              <span className="font-medium text-foreground">Enquiry email</span>
+              {', '}
+              <span className="font-medium text-foreground">Due date</span>
+              {' and '}
+              <span className="font-medium text-foreground">Reminder</span> can be changed.
+            </span>
+          </p>
+        </div>
+      )}
+
       {/* Failed-scheduled error banner */}
       {isFailedScheduledEdit && (
         <div className="border-b border-destructive/20 bg-destructive/5 px-6 py-3">
@@ -860,6 +888,7 @@ function CreatePostForm({ editId, loaderData }: CreatePostFormProps) {
                   staff={staff}
                   value={toSelectorEntities(state.selectedStaff)}
                   onChange={(next) => dispatch({ type: 'SET_STAFF', payload: next })}
+                  lockedStaffIds={lockedStaffIds}
                 />
               </div>
             </CardContent>
@@ -1190,7 +1219,7 @@ function CreatePostForm({ editId, loaderData }: CreatePostFormProps) {
         onOpenChange={setShowDiscardDialog}
         onConfirm={() => {
           setShowDiscardDialog(false);
-          navigate('..');
+          navigate(backHref);
         }}
       />
     </div>
