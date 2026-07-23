@@ -26,6 +26,11 @@ export function fetchSharedConsentForms(): Promise<ApiConsentFormList> {
   return fetchApi('/consentForms/shared');
 }
 
+/** Every consent form in the school, regardless of creator — admin oversight only. */
+export function fetchSchoolConsentForms(): Promise<ApiConsentFormList> {
+  return fetchApi('/consentForms/schoolAdmins');
+}
+
 export async function fetchConsentFormDetail(formId: number): Promise<ApiConsentFormDetail> {
   const list = await fetchApi<ApiConsentFormDetail[]>(`/consentForms/${formId}`);
   return list[0];
@@ -153,6 +158,16 @@ export async function loadConsentPostsList(): Promise<ConsentFormPost[]> {
   const mappedOwn = own.map((p) => mapConsentFormSummaryToPost(p, 'mine'));
   const mappedShared = shared.map((p) => mapConsentFormSummaryToPost(p, 'shared'));
   return mergeAndDedup(mappedOwn, mappedShared);
+}
+
+/** Every consent form in the school, for the admin "School Posts" view. */
+export async function loadSchoolConsentPostsList(): Promise<ConsentFormPost[]> {
+  const all = await fetchSchoolConsentForms();
+  // Admin oversight only covers posts that have actually been sent — not
+  // other teachers' unsent drafts or not-yet-sent scheduled posts.
+  return all
+    .map((p) => mapConsentFormSummaryToPost(p, 'mine'))
+    .filter((p) => p.status === 'open' || p.status === 'closed' || p.status === 'posting');
 }
 
 export async function loadConsentPostDetail(formId: number): Promise<ConsentFormPost> {

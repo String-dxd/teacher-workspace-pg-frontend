@@ -25,6 +25,11 @@ export function fetchSharedAnnouncements(): Promise<ApiAnnouncementList> {
   return fetchApi('/announcements/shared');
 }
 
+/** Every announcement in the school, regardless of creator — admin oversight only. */
+export function fetchSchoolAnnouncements(): Promise<ApiAnnouncementList> {
+  return fetchApi('/announcements/schoolAdmins');
+}
+
 export async function fetchAnnouncementDetail(postId: number): Promise<ApiAnnouncementDetail> {
   const list = await fetchApi<ApiAnnouncementDetail[]>(`/announcements/${postId}`);
   return list[0];
@@ -135,6 +140,16 @@ export async function loadPostsList(): Promise<AnnouncementPost[]> {
   const mappedOwn = own.map((p) => mapAnnouncementSummary(p, 'mine'));
   const mappedShared = shared.map((p) => mapAnnouncementSummary(p, 'shared'));
   return mergeAndDedup(mappedOwn, mappedShared);
+}
+
+/** Every announcement in the school, for the admin "School Posts" view. */
+export async function loadSchoolAnnouncementsList(): Promise<AnnouncementPost[]> {
+  const all = await fetchSchoolAnnouncements();
+  // Admin oversight only covers posts that have actually been sent — not
+  // other teachers' unsent drafts or not-yet-sent scheduled posts.
+  return all
+    .map((p) => mapAnnouncementSummary(p, 'mine'))
+    .filter((p) => p.status === 'posted' || p.status === 'posting');
 }
 
 export async function loadPostDetail(postId: number): Promise<AnnouncementPost> {

@@ -46,6 +46,7 @@ import {
   duplicateAnnouncement,
   duplicateAnnouncementDraft,
   loadPostsList,
+  loadSchoolAnnouncementsList,
 } from '~/features/posts/api/announcements';
 import {
   deleteConsentForm,
@@ -53,9 +54,10 @@ import {
   duplicateConsentForm,
   duplicateConsentFormDraft,
   loadConsentPostsList,
+  loadSchoolConsentPostsList,
 } from '~/features/posts/api/consent-forms';
 import { NotFoundError } from '~/features/posts/api/errors';
-import { getConfigs } from '~/features/posts/api/session';
+import { fetchSession, getConfigs } from '~/features/posts/api/session';
 import type { ApiConfig } from '~/features/posts/api/types';
 import { DeletePostDialog } from '~/features/posts/components/DeletePostDialog';
 import {
@@ -110,6 +112,7 @@ function duplicateDraftHref(kind: 'announcement' | 'form', draftId: number): str
 export const __duplicateDraftHref = duplicateDraftHref;
 
 type PostTab = 'view-only' | 'with-responses';
+type PostScope = 'mine' | 'school';
 
 type PostRowData = Post & { _date: string | undefined; _dateTs: number };
 
@@ -140,8 +143,11 @@ export interface PostFilterQuery extends PostFilters {
 }
 
 export function matchesPostFilters(row: PostRowData, filters: PostFilterQuery): boolean {
-  if (filters.tab === 'view-only' && row.kind === 'form') return false;
-  if (filters.tab === 'with-responses' && row.kind !== 'form') return false;
+  // The tab is about whether a response is required, not the post kind — an
+  // announcement with an Acknowledge/Yes-No response type still belongs in
+  // "Response Required", not "Read Only", even though it isn't a form.
+  if (filters.tab === 'view-only' && row.responseType !== 'view-only') return false;
+  if (filters.tab === 'with-responses' && row.responseType === 'view-only') return false;
   if (filters.query && !row.title.toLowerCase().includes(filters.query.toLowerCase())) return false;
 
   if (
@@ -178,7 +184,8 @@ function dateLabel(status: Post['status']): string {
   return 'Posted on';
 }
 
-function createdByLabel(row: PostRowData): string {
+function createdByLabel(row: PostRowData, scope: PostScope): string {
+  if (scope === 'school') return stripSalutation(row.createdBy);
   return row.ownership === 'shared' ? stripSalutation(row.createdBy) : 'Me';
 }
 
@@ -194,13 +201,16 @@ function classLabelsFor(row: PostRowData): string | null {
 function responseCounts(row: PostRowData): { count: number; total: number } | null {
   if (row.kind === 'announcement') {
     if (row.status !== 'posted') return null;
-    return { count: row.stats.readCount, total: row.stats.totalCount };
+    // View-only announcements track reads; Acknowledge/Yes-No ones track
+    // actual responses — the two aren't the same number.
+    const count = row.responseType === 'view-only' ? row.stats.readCount : row.stats.responseCount;
+    return { count, total: row.stats.totalCount };
   }
   if (row.status !== 'open' && row.status !== 'closed') return null;
   return { count: row.stats.totalCount - row.stats.pendingCount, total: row.stats.totalCount };
 }
 
-function compareBySort(a: PostRowData, b: PostRowData, sort: SortState): number {
+function compareBySort(a: PostRowData, b: PostRowData, sort: SortState, scope: PostScope): number {
   const dir = sort.direction === 'asc' ? 1 : -1;
   switch (sort.column) {
     case 'title':
@@ -210,7 +220,7 @@ function compareBySort(a: PostRowData, b: PostRowData, sort: SortState): number 
     case 'status':
       return a.status.localeCompare(b.status) * dir;
     case 'created-by':
-      return createdByLabel(a).localeCompare(createdByLabel(b)) * dir;
+      return createdByLabel(a, scope).localeCompare(createdByLabel(b, scope)) * dir;
     default:
       return 0;
   }
@@ -226,21 +236,24 @@ function deletePostRow(row: PostRowData): Promise<unknown> {
 
 const PAGE_SIZE = 20;
 
-// Prototype: hardcoded as admin. In production this comes from the session.
-const IS_ADMIN = true;
-
 // ─── Component ──────────────────────────────────────────────────────────────
 
 const PostsListPage: React.FC = () => {
+  const [scope, setScope] = useState<PostScope>('mine');
   const { data, isLoading, error, refetch } = useQuery(
     () =>
-      Promise.all([loadPostsList(), loadConsentPostsList(), getConfigs()]).then(
-        ([announcements, forms, configs]) => ({
-          rows: [...announcements, ...forms].map(withDateTs),
-          configs,
-        }),
-      ),
-    [],
+      Promise.all([
+        scope === 'school'
+          ? Promise.all([loadSchoolAnnouncementsList(), loadSchoolConsentPostsList()])
+          : Promise.all([loadPostsList(), loadConsentPostsList()]),
+        getConfigs(),
+        fetchSession(),
+      ]).then(([[announcements, forms], configs, session]) => ({
+        rows: [...announcements, ...forms].map(withDateTs),
+        configs,
+        isAdmin: session.isA,
+      })),
+    [scope],
   );
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -250,6 +263,7 @@ const PostsListPage: React.FC = () => {
   const [sort, setSort] = useState<SortState | null>(null);
   const [scopeOpen, setScopeOpen] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const isAdmin = data?.isAdmin ?? false;
 
   const posts = data?.rows ?? [];
   const configs: ApiConfig | undefined = data?.configs;
@@ -262,9 +276,11 @@ const PostsListPage: React.FC = () => {
     const rows = posts.filter((p) =>
       matchesPostFilters(p, { tab, query: searchQuery, ...filters }),
     );
-    rows.sort(sort ? (a, b) => compareBySort(a, b, sort) || comparePosts(a, b) : comparePosts);
+    rows.sort(
+      sort ? (a, b) => compareBySort(a, b, sort, scope) || comparePosts(a, b) : comparePosts,
+    );
     return rows;
-  }, [posts, searchQuery, tab, filters, sort]);
+  }, [posts, searchQuery, tab, filters, sort, scope]);
 
   const pagination = usePagination({ totalItems: sorted.length, pageSize: PAGE_SIZE });
   const paged = sorted.slice(pagination.startIndex, pagination.startIndex + PAGE_SIZE);
@@ -273,6 +289,13 @@ const PostsListPage: React.FC = () => {
   useEffect(() => {
     setSelectedIds(new Set());
   }, [tab]);
+
+  // Status/Ownership filters are hidden in School scope (see PostFilterPopover
+  // props below) — clear them so a stale selection from My Posts can't
+  // silently filter out every row.
+  useEffect(() => {
+    setFilters(DEFAULT_POST_FILTERS);
+  }, [scope]);
 
   const pagedSelectedCount = paged.filter((r) => selectedIds.has(r.id)).length;
   const allInViewSelected = paged.length > 0 && pagedSelectedCount === paged.length;
@@ -378,8 +401,11 @@ const PostsListPage: React.FC = () => {
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   const [bulkDeleting, setBulkDeleting] = useState(false);
   const selectedRows = useMemo(
-    () => posts.filter((p) => selectedIds.has(p.id) && p.ownership !== 'shared'),
-    [posts, selectedIds],
+    () =>
+      posts.filter(
+        (p) => selectedIds.has(p.id) && (scope === 'school' || p.ownership !== 'shared'),
+      ),
+    [posts, selectedIds, scope],
   );
   const bulkDeleteMode: 'draft' | 'posted' = selectedRows.some(
     (r) => r.status !== 'draft' && r.status !== 'scheduled',
@@ -413,12 +439,14 @@ const PostsListPage: React.FC = () => {
   return (
     <div className="flex flex-col">
       {/* Admin banner */}
-      {IS_ADMIN && (
+      {isAdmin && (
         <div className="flex items-center justify-center gap-2 border-b border-amber-6 bg-amber-2 px-6 py-2 text-sm text-amber-11">
           <Crown className="h-3.5 w-3.5 shrink-0 text-amber-9" />
           <span>
-            <span className="font-semibold">You have admin access.</span> To view school posts, use
-            the dropdown next to My Posts.
+            <span className="font-semibold">You have admin access.</span>{' '}
+            {scope === 'school'
+              ? 'To view your own posts, use the dropdown next to School Posts.'
+              : 'To view school posts, use the dropdown next to My Posts.'}
           </span>
         </div>
       )}
@@ -427,10 +455,10 @@ const PostsListPage: React.FC = () => {
       <div className="px-6 pt-6">
         <div className="flex items-start justify-between gap-4">
           <div>
-            {IS_ADMIN ? (
+            {isAdmin ? (
               <Popover open={scopeOpen} onOpenChange={setScopeOpen}>
                 <PopoverTrigger className="inline-flex cursor-pointer items-center gap-1.5 bg-transparent p-0 text-2xl font-semibold tracking-tight outline-none">
-                  My Posts
+                  {scope === 'school' ? 'School Posts' : 'My Posts'}
                   <ChevronDown className="h-5 w-5 text-muted-foreground" />
                 </PopoverTrigger>
                 <PopoverContent
@@ -439,22 +467,37 @@ const PostsListPage: React.FC = () => {
                 >
                   <button
                     type="button"
-                    onClick={() => setScopeOpen(false)}
-                    className="flex w-full flex-col rounded-xl bg-accent px-3 py-2 text-left"
+                    onClick={() => {
+                      setScope('mine');
+                      setScopeOpen(false);
+                    }}
+                    className={cn(
+                      'flex w-full flex-col rounded-xl px-3 py-2 text-left transition-colors',
+                      scope === 'mine' ? 'bg-accent' : 'hover:bg-slate-4',
+                    )}
                   >
                     <span className="flex items-center justify-between">
                       <span className="text-sm font-medium">My posts</span>
-                      <Check className="h-4 w-4 text-primary" />
+                      {scope === 'mine' && <Check className="h-4 w-4 text-primary" />}
                     </span>
                     <span className="text-xs text-muted-foreground">Posts you created</span>
                   </button>
                   <button
                     type="button"
-                    disabled
-                    className="flex w-full cursor-not-allowed flex-col rounded-xl px-3 py-2 text-left opacity-50"
+                    onClick={() => {
+                      setScope('school');
+                      setScopeOpen(false);
+                    }}
+                    className={cn(
+                      'flex w-full flex-col rounded-xl px-3 py-2 text-left transition-colors',
+                      scope === 'school' ? 'bg-accent' : 'hover:bg-slate-4',
+                    )}
                   >
-                    <span className="text-sm font-medium">School posts</span>
-                    <span className="text-xs text-muted-foreground">Coming soon</span>
+                    <span className="flex items-center justify-between">
+                      <span className="text-sm font-medium">School posts</span>
+                      {scope === 'school' && <Check className="h-4 w-4 text-primary" />}
+                    </span>
+                    <span className="text-xs text-muted-foreground">Posts across your school</span>
                   </button>
                 </PopoverContent>
               </Popover>
@@ -496,6 +539,8 @@ const PostsListPage: React.FC = () => {
           <PostFilterPopover
             value={filters}
             onChange={setFilters}
+            showStatus={scope === 'mine'}
+            showOwnership={scope === 'mine'}
             responseOptions={
               tab === 'view-only'
                 ? null
@@ -570,28 +615,47 @@ const PostsListPage: React.FC = () => {
                     <SortableHeader label="Title" column="title" sort={sort} onSort={handleSort} />
                   </TableHead>
                   <TableHead className="w-[140px]">
-                    <SortableHeader label="Date" column="date" sort={sort} onSort={handleSort} />
-                  </TableHead>
-                  <TableHead className="w-[110px]">
                     <SortableHeader
-                      label="Status"
-                      column="status"
+                      label={scope === 'school' ? 'Posted on' : 'Date'}
+                      column="date"
                       sort={sort}
                       onSort={handleSort}
                     />
                   </TableHead>
-                  <TableHead className="w-[150px]">
-                    {tab === 'with-responses' ? 'Response' : 'Read'}
-                  </TableHead>
+                  {scope === 'mine' && (
+                    <TableHead className="w-[110px]">
+                      <SortableHeader
+                        label="Status"
+                        column="status"
+                        sort={sort}
+                        onSort={handleSort}
+                      />
+                    </TableHead>
+                  )}
+                  {scope === 'school' && (
+                    <TableHead className="w-[150px]">
+                      <SortableHeader
+                        label="Created by"
+                        column="created-by"
+                        sort={sort}
+                        onSort={handleSort}
+                      />
+                    </TableHead>
+                  )}
                   <TableHead className="w-[180px]">To parents of</TableHead>
-                  <TableHead className="w-[130px]">
-                    <SortableHeader
-                      label="Created by"
-                      column="created-by"
-                      sort={sort}
-                      onSort={handleSort}
-                    />
+                  <TableHead className="w-[150px]">
+                    {scope === 'school' ? 'Read' : tab === 'with-responses' ? 'Response' : 'Read'}
                   </TableHead>
+                  {scope === 'mine' && (
+                    <TableHead className="w-[130px]">
+                      <SortableHeader
+                        label="Created by"
+                        column="created-by"
+                        sort={sort}
+                        onSort={handleSort}
+                      />
+                    </TableHead>
+                  )}
                   <TableHead className="w-[80px]">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -600,6 +664,7 @@ const PostsListPage: React.FC = () => {
                   <PostTableRow
                     key={row.id}
                     row={row}
+                    scope={scope}
                     selected={selectedIds.has(row.id)}
                     duplicateEnabled={duplicateEnabled}
                     onToggleSelect={toggleSelect}
@@ -636,8 +701,12 @@ const PostsListPage: React.FC = () => {
                     ) : (
                       <Button
                         key={page}
-                        variant={pagination.currentPage === page ? 'secondary' : 'ghost'}
+                        variant="ghost"
                         size="icon-sm"
+                        className={cn(
+                          'rounded-full',
+                          pagination.currentPage === page && 'border border-input',
+                        )}
                         onClick={() => pagination.goToPage(page)}
                       >
                         {page}
@@ -711,6 +780,7 @@ const PostsListPage: React.FC = () => {
 
 interface PostTableRowProps {
   row: PostRowData;
+  scope: PostScope;
   selected: boolean;
   duplicateEnabled: boolean;
   onToggleSelect: (id: string) => void;
@@ -720,6 +790,7 @@ interface PostTableRowProps {
 
 const PostTableRow: React.FC<PostTableRowProps> = ({
   row,
+  scope,
   selected,
   duplicateEnabled,
   onToggleSelect,
@@ -727,7 +798,9 @@ const PostTableRow: React.FC<PostTableRowProps> = ({
   onDelete,
 }) => {
   const navigate = useNavigate();
-  const isShared = row.ownership === 'shared';
+  // Admin oversight in the School Posts scope can manage any row; otherwise
+  // only posts shared with the viewer (not their own) are read-only.
+  const isShared = scope === 'mine' && row.ownership === 'shared';
 
   const statusBadge = getPostStatusBadge(row);
 
@@ -791,16 +864,18 @@ const PostTableRow: React.FC<PostTableRowProps> = ({
           <span className="text-sm text-muted-foreground">{'—'}</span>
         )}
       </TableCell>
-      <TableCell>
-        <Badge variant={statusBadge.variant}>{statusBadge.label}</Badge>
-      </TableCell>
-      <TableCell className="pr-6">
-        {counts ? (
-          <ReadRateBar readCount={counts.count} totalCount={counts.total} />
-        ) : (
-          <span className="text-sm text-muted-foreground">{'—'}</span>
-        )}
-      </TableCell>
+      {scope === 'mine' && (
+        <TableCell>
+          <Badge variant={statusBadge.variant}>{statusBadge.label}</Badge>
+        </TableCell>
+      )}
+      {scope === 'school' && (
+        <TableCell>
+          <span className="truncate text-sm text-muted-foreground">
+            {createdByLabel(row, scope)}
+          </span>
+        </TableCell>
+      )}
       <TableCell>
         {classLabels ? (
           <span className="line-clamp-2 text-sm whitespace-normal text-muted-foreground">
@@ -810,9 +885,20 @@ const PostTableRow: React.FC<PostTableRowProps> = ({
           <span className="text-sm text-muted-foreground">{'—'}</span>
         )}
       </TableCell>
-      <TableCell>
-        <span className="truncate text-sm text-muted-foreground">{createdByLabel(row)}</span>
+      <TableCell className="pr-6">
+        {counts ? (
+          <ReadRateBar readCount={counts.count} totalCount={counts.total} />
+        ) : (
+          <span className="text-sm text-muted-foreground">{'—'}</span>
+        )}
       </TableCell>
+      {scope === 'mine' && (
+        <TableCell>
+          <span className="truncate text-sm text-muted-foreground">
+            {createdByLabel(row, scope)}
+          </span>
+        </TableCell>
+      )}
       <TableCell onClick={(e) => e.stopPropagation()}>
         <div className="flex justify-start">
           <DropdownMenu>
@@ -829,7 +915,7 @@ const PostTableRow: React.FC<PostTableRowProps> = ({
               <MoreHorizontal className="h-4 w-4" />
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              {duplicateEnabled && (
+              {duplicateEnabled && scope === 'mine' && (
                 <DropdownMenuItem
                   onClick={(e) => {
                     e.stopPropagation();
@@ -842,7 +928,7 @@ const PostTableRow: React.FC<PostTableRowProps> = ({
               )}
               {!isShared && (
                 <>
-                  {duplicateEnabled && <DropdownMenuSeparator />}
+                  {duplicateEnabled && scope === 'mine' && <DropdownMenuSeparator />}
                   <DropdownMenuItem
                     className="text-destructive focus:text-destructive"
                     onClick={(e) => {

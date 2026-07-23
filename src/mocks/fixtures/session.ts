@@ -3,7 +3,7 @@ import type { ApiConfig, ApiSession } from '~/features/posts/api/types';
 export const session: ApiSession = {
   staffId: 1001,
   staffName: 'Ms Tan Wei Ling',
-  isA: false,
+  isA: true,
   staffSchoolId: 1,
   staffEmailAdd: 'tan_wei_ling@greendale.edu.sg',
   is2FAAuthorized: true,

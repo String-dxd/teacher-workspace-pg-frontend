@@ -1,7 +1,11 @@
 import { http, HttpResponse } from 'msw';
 
 import { announcementDetail, announcementsList } from './fixtures/announcements';
-import { consentFormDetail, consentFormsList } from './fixtures/consent-forms';
+import {
+  consentFormDetail,
+  consentFormsList,
+  otherTeachersConsentFormsList,
+} from './fixtures/consent-forms';
 import { announcementDraft, consentFormDraft } from './fixtures/drafts';
 import {
   customGroups,
@@ -50,6 +54,12 @@ export const handlers = [
     return HttpResponse.json(envelope([]));
   }),
 
+  // Admin-only "School Posts" oversight view — every announcement in the
+  // school, regardless of creator.
+  http.get(`${BASE}/announcements/schoolAdmins`, () => {
+    return HttpResponse.json(envelope(announcementsList));
+  }),
+
   http.get(`${BASE}/announcements/drafts/:draftId`, () => {
     return HttpResponse.json(envelope([announcementDraft]));
   }),
@@ -65,6 +75,12 @@ export const handlers = [
 
   http.get(`${BASE}/consentForms/shared`, () => {
     return HttpResponse.json(envelope([]));
+  }),
+
+  // Admin-only "School Posts" oversight view — every consent form in the
+  // school, regardless of creator.
+  http.get(`${BASE}/consentForms/schoolAdmins`, () => {
+    return HttpResponse.json(envelope([...consentFormsList, ...otherTeachersConsentFormsList]));
   }),
 
   http.get(`${BASE}/consentForms/drafts/:draftId`, () => {
