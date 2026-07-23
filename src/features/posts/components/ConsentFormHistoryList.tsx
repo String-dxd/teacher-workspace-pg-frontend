@@ -2,6 +2,7 @@ import { History } from 'lucide-react';
 
 import type { ConsentFormHistoryEntry } from '~/data/posts-registry';
 import { formatDateTime } from '~/helpers/dateTime';
+import { stripSalutation } from '~/lib/utils';
 
 interface ConsentFormHistoryListProps {
   entries: ConsentFormHistoryEntry[];
@@ -26,7 +27,7 @@ export function ConsentFormHistoryList({ entries }: ConsentFormHistoryListProps)
             </span>
             <p className="text-sm">
               <span className="font-medium">{entry.action}</span>
-              <span className="text-muted-foreground"> by {entry.actionBy}</span>
+              <span className="text-muted-foreground"> by {stripSalutation(entry.actionBy)}</span>
             </p>
             <p className="text-xs text-muted-foreground">
               {formatDateTime(entry.actionAt) ?? entry.actionAt}

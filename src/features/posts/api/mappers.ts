@@ -216,7 +216,7 @@ export function mapAnnouncementDetail(detail: ApiAnnouncementDetail): Announceme
     postedAt: detail.postedDate ?? undefined,
     scheduledAt: detail.scheduledSendAt ?? undefined,
     scheduledSendFailureCode: detail.scheduledSendFailureCode ?? null,
-    staffInCharge: staffOwners[0]?.staffName,
+    staffInCharge: staffOwners.map((s) => s.staffName).join(', ') || undefined,
     staffOwnerIds: staffOwners.map((s) => s.staffID),
     targets: targetsRaw
       .map<AnnouncementTarget | null>((t) => {
@@ -371,7 +371,7 @@ export function mapConsentFormDraftDetail(draft: ApiConsentFormDraft): ConsentFo
     websiteLinks,
     shortcuts: ((draft.shortcuts as string[]) ?? []).map((s) => ({ id: s, label: s, url: '' })),
     staffOwnerIds: staffOwners.map((s) => s.staffID),
-    staffInCharge: staffOwners[0]?.staffName,
+    staffInCharge: staffOwners.map((s) => s.staffName).join(', ') || undefined,
     targets,
     attachments: rehydrateAttachments(draft.attachments as ApiAttachment[]) as UploadedFile[],
     photos: rehydratePhotos(
@@ -588,7 +588,7 @@ export function mapConsentFormDetail(detail: ApiConsentFormDetail): ConsentFormP
     createdAt: detail.createdAt ?? undefined,
     createdBy: detail.staffName,
     postedAt: detail.postedDate ?? undefined,
-    staffInCharge: detail.staffOwners[0]?.staffName,
+    staffInCharge: detail.staffOwners.map((s) => s.staffName).join(', ') || undefined,
     staffOwnerIds: detail.staffOwners.map((s) => s.staffID),
     targets: (detail.targets ?? [])
       .map<AnnouncementTarget | null>((t) => {

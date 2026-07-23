@@ -5,9 +5,7 @@ import {
   Eye,
   EyeOff,
   Info,
-  Lock,
   Plus,
-  Save,
   Send,
   X,
 } from 'lucide-react';
@@ -34,8 +32,6 @@ import {
   loadPostDetail,
   scheduleExistingAnnouncementDraft,
   scheduleNewAnnouncementDraft,
-  updateAnnouncementEnquiryEmail,
-  updateAnnouncementStaffInCharge,
   updateDraft,
 } from '~/features/posts/api/announcements';
 import {
@@ -46,9 +42,6 @@ import {
   scheduleExistingConsentFormDraft,
   scheduleNewConsentFormDraft,
   updateConsentFormDraft,
-  updateConsentFormDueDate,
-  updateConsentFormEnquiryEmail,
-  updateConsentFormStaffInCharge,
 } from '~/features/posts/api/consent-forms';
 import { AppError, ValidationError } from '~/features/posts/api/errors';
 import {
@@ -72,6 +65,7 @@ import type {
   ApiStaffGroups,
 } from '~/features/posts/api/types';
 import { AttachmentSection } from '~/features/posts/components/AttachmentSection';
+import { DiscardChangesDialog } from '~/features/posts/components/DiscardChangesDialog';
 import { DueDateSection } from '~/features/posts/components/DueDateSection';
 import { EnquiryEmailSelector } from '~/features/posts/components/EnquiryEmailSelector';
 import type {
@@ -223,11 +217,7 @@ function postToFormState(
   };
 
   if (post.kind === 'form') {
-    const dueDateRaw = post.consentByDate
-      ? new Date(post.consentByDate) < new Date()
-        ? ''
-        : sgtIsoToLocalDate(post.consentByDate)
-      : '';
+    const dueDateRaw = post.consentByDate ? sgtIsoToLocalDate(post.consentByDate) : '';
     return {
       ...INITIAL_STATE,
       ...common,
@@ -392,6 +382,7 @@ function CreatePostForm({ editId, loaderData }: CreatePostFormProps) {
 
   const [showSendDialog, setShowSendDialog] = useState(false);
   const [showScheduleDialog, setShowScheduleDialog] = useState(false);
+  const [showDiscardDialog, setShowDiscardDialog] = useState(false);
   // Set between schedule step 1 (picker) and step 2 (review). Null for post-now.
   const [pendingScheduledAt, setPendingScheduledAt] = useState<string | null>(null);
   const [fileBannerDismissed, setFileBannerDismissed] = useState(false);
@@ -444,6 +435,7 @@ function CreatePostForm({ editId, loaderData }: CreatePostFormProps) {
 
   const initialDescriptionDocRef = useRef(state.descriptionDoc);
   const initialDescriptionDoc = initialDescriptionDocRef.current;
+  const initialStateRef = useRef(state);
 
   const deferredState = useDeferredValue(state);
 
@@ -491,15 +483,6 @@ function CreatePostForm({ editId, loaderData }: CreatePostFormProps) {
       .join(' and ');
   }, [state.attachments, state.photos]);
   const isEditing = Boolean(editId);
-  const isPostedEdit =
-    isEditing &&
-    Boolean(
-      detail &&
-      (detail.status === 'posted' ||
-        detail.status === 'open' ||
-        detail.status === 'closed' ||
-        detail.status === 'posting'),
-    );
 
   const isFailedScheduledEdit =
     isEditing &&
@@ -524,12 +507,17 @@ function CreatePostForm({ editId, loaderData }: CreatePostFormProps) {
     shouldSave: (s) => s.title.trim().length > 0 || editorHasContent(s.descriptionDoc),
   });
 
-  const isDirty =
-    autoSave.lastSavedSerialized !== null
-      ? JSON.stringify(state) !== autoSave.lastSavedSerialized
-      : state.title.trim().length > 0 || editorHasContent(state.descriptionDoc);
+  const isDirty = JSON.stringify(state) !== JSON.stringify(initialStateRef.current);
 
   useUnsavedChangesGuard(isDirty);
+
+  function handleBackClick() {
+    if (isDirty) {
+      setShowDiscardDialog(true);
+    } else {
+      navigate('..');
+    }
+  }
 
   if (editId && !editData) {
     return <Navigate to=".." replace />;
@@ -602,34 +590,6 @@ function CreatePostForm({ editId, loaderData }: CreatePostFormProps) {
         notify.error('Failed to save draft.');
       }
       throw err;
-    }
-  }
-
-  async function handleSavePostedEdit() {
-    if (!detail || saveState !== 'idle') return;
-    setSaveState('submitting');
-    try {
-      const staffIds = state.selectedStaff.map((s) => Number(s.id));
-      const email = state.enquiryEmail ?? '';
-      if (detail.kind === 'announcement') {
-        await Promise.all([
-          updateAnnouncementEnquiryEmail(detail.numericId, { enquiryEmailAddress: email }),
-          updateAnnouncementStaffInCharge(detail.numericId, staffIds),
-        ]);
-      } else {
-        const consentByDate = state.dueDate.trim() ? `${state.dueDate}T23:59:59+08:00` : '';
-        await Promise.all([
-          updateConsentFormEnquiryEmail(detail.numericId, { enquiryEmailAddress: email }),
-          updateConsentFormStaffInCharge(detail.numericId, staffIds),
-          ...(consentByDate ? [updateConsentFormDueDate(detail.numericId, { consentByDate })] : []),
-        ]);
-      }
-      notify.success('Changes saved.');
-      navigate(-1);
-    } catch {
-      notify.error('Failed to save. Please try again.');
-    } finally {
-      setSaveState('idle');
     }
   }
 
@@ -719,104 +679,72 @@ function CreatePostForm({ editId, loaderData }: CreatePostFormProps) {
       <div className="sticky top-0 z-10 border-b bg-white/95 px-6 py-3 backdrop-blur-sm">
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <Link to=".." className="text-muted-foreground hover:text-foreground">
+            <button
+              type="button"
+              onClick={handleBackClick}
+              className="text-muted-foreground hover:text-foreground"
+            >
               <ArrowLeft className="h-5 w-5" />
-            </Link>
+            </button>
             <h1 className="text-xl font-semibold tracking-tight">
               {isEditing ? 'Edit Post' : 'New Post'}
             </h1>
           </div>
 
           <div className="flex items-center gap-3">
-            {isPostedEdit ? (
-              <Button
-                variant="default"
-                size="sm"
-                disabled={isSaving}
-                onClick={() => void handleSavePostedEdit()}
-              >
-                <Save className="mr-1.5 h-4 w-4" />
-                {isSaving ? 'Saving…' : 'Save changes'}
-              </Button>
-            ) : (
-              <>
-                <SaveStatusTicker status={autoSave.status} lastSavedAt={autoSave.lastSavedAt} />
-                <Button variant="ghost" size="sm" onClick={() => setShowPreview((s) => !s)}>
-                  {showPreview ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </Button>
-                <Popover open={showValidationPopover} onOpenChange={setShowValidationPopover}>
-                  <PopoverTrigger
-                    render={
-                      <Button
-                        variant="default"
-                        size="sm"
-                        disabled={isSaving}
-                        onClick={handlePostClick}
-                        className={cn(
-                          !isFormValid && '!bg-muted !text-muted-foreground/40 hover:!bg-muted',
-                        )}
-                      >
-                        <Send className="mr-1.5 h-4 w-4" />
-                        Post now
-                      </Button>
-                    }
-                  />
-                  <PopoverContent side="top" align="end" className="w-64 space-y-2 p-4">
-                    <p className="text-sm font-semibold">Complete these fields before posting</p>
-                    <ul className="space-y-1">
-                      {missingFieldLabels.map((label) => (
-                        <li
-                          key={label}
-                          className="flex items-center gap-2 text-sm text-destructive"
-                        >
-                          <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-destructive" />
-                          {label}
-                        </li>
-                      ))}
-                    </ul>
-                  </PopoverContent>
-                </Popover>
-                {scheduleEnabled && (
+            <SaveStatusTicker status={autoSave.status} lastSavedAt={autoSave.lastSavedAt} />
+            <Button variant="ghost" size="sm" onClick={() => setShowPreview((s) => !s)}>
+              {showPreview ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            </Button>
+            <Popover open={showValidationPopover} onOpenChange={setShowValidationPopover}>
+              <PopoverTrigger
+                render={
                   <Button
-                    variant="secondary"
+                    variant="default"
                     size="sm"
                     disabled={isSaving}
-                    onClick={handleScheduleClick}
+                    onClick={handlePostClick}
                     className={cn(
                       !isFormValid && '!bg-muted !text-muted-foreground/40 hover:!bg-muted',
                     )}
                   >
-                    <CalendarClock className="mr-1.5 h-4 w-4" />
-                    Schedule
+                    <Send className="mr-1.5 h-4 w-4" />
+                    Post now
                   </Button>
+                }
+              />
+              <PopoverContent side="top" align="end" className="w-64 space-y-2 p-4">
+                <p className="text-sm font-semibold">Complete these fields before posting</p>
+                <ul className="space-y-1">
+                  {missingFieldLabels.map((label) => (
+                    <li key={label} className="flex items-center gap-2 text-sm text-destructive">
+                      <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-destructive" />
+                      {label}
+                    </li>
+                  ))}
+                </ul>
+              </PopoverContent>
+            </Popover>
+            {scheduleEnabled && (
+              <Button
+                variant="secondary"
+                size="sm"
+                disabled={isSaving}
+                onClick={handleScheduleClick}
+                className={cn(
+                  !isFormValid && '!bg-muted !text-muted-foreground/40 hover:!bg-muted',
                 )}
-                {uploadsPending && (
-                  <span className="text-xs text-muted-foreground">Attachments uploading…</span>
-                )}
-              </>
+              >
+                <CalendarClock className="mr-1.5 h-4 w-4" />
+                Schedule
+              </Button>
+            )}
+            {uploadsPending && (
+              <span className="text-xs text-muted-foreground">Attachments uploading…</span>
             )}
           </div>
         </div>
       </div>
-
-      {/* Posted-edit notice banner */}
-      {isPostedEdit && (
-        <div className="border-b bg-muted px-6 py-3">
-          <p className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Lock className="h-3.5 w-3.5 shrink-0" />
-            <span>
-              This post has been sent. Only{' '}
-              <span className="font-medium text-foreground">Staff-in-charge</span>
-              {', '}
-              <span className="font-medium text-foreground">Enquiry email</span>
-              {', '}
-              <span className="font-medium text-foreground">Due date</span>
-              {' and '}
-              <span className="font-medium text-foreground">Reminder</span> can be changed.
-            </span>
-          </p>
-        </div>
-      )}
 
       {/* Failed-scheduled error banner */}
       {isFailedScheduledEdit && (
@@ -836,7 +764,7 @@ function CreatePostForm({ editId, loaderData }: CreatePostFormProps) {
         <div className="flex w-full max-w-2xl flex-1 flex-col gap-6">
           {/* 30-day media retention banner — dismissable per entry. The API
               doesn't expose upload timestamps, so no per-file countdown. */}
-          {!fileBannerDismissed && isEditing && !isPostedEdit && draftMediaLabel && (
+          {!fileBannerDismissed && isEditing && draftMediaLabel && (
             <div className="flex items-start gap-3 rounded-xl border border-amber-6 bg-amber-3 px-4 py-3 text-xs">
               <Info className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-11" />
               <div className="flex-1">
@@ -868,29 +796,27 @@ function CreatePostForm({ editId, loaderData }: CreatePostFormProps) {
               </p>
 
               {/* Students field */}
-              <div className={isPostedEdit ? 'pointer-events-none opacity-50 select-none' : ''}>
-                <div className="space-y-1.5">
-                  <Label>
-                    Students <span className="text-destructive">*</span>
-                  </Label>
-                  <p className="text-sm text-muted-foreground">
-                    Parents of the selected students will receive this post via Parents Gateway.
+              <div className="space-y-1.5">
+                <Label>
+                  Students <span className="text-destructive">*</span>
+                </Label>
+                <p className="text-sm text-muted-foreground">
+                  Parents of the selected students will receive this post via Parents Gateway.
+                </p>
+                <StudentRecipientSelector
+                  classes={classes}
+                  students={students}
+                  value={toSelectorEntities(state.selectedRecipients)}
+                  onChange={(next) => {
+                    clearFieldError('recipients');
+                    dispatch({ type: 'SET_RECIPIENTS', payload: next });
+                  }}
+                />
+                {fieldErrors.recipients && (
+                  <p role="alert" className="text-sm text-destructive">
+                    {fieldErrors.recipients}
                   </p>
-                  <StudentRecipientSelector
-                    classes={classes}
-                    students={students}
-                    value={toSelectorEntities(state.selectedRecipients)}
-                    onChange={(next) => {
-                      clearFieldError('recipients');
-                      dispatch({ type: 'SET_RECIPIENTS', payload: next });
-                    }}
-                  />
-                  {fieldErrors.recipients && (
-                    <p role="alert" className="text-sm text-destructive">
-                      {fieldErrors.recipients}
-                    </p>
-                  )}
-                </div>
+                )}
               </div>
 
               <Separator />
@@ -939,204 +865,200 @@ function CreatePostForm({ editId, loaderData }: CreatePostFormProps) {
             </CardContent>
           </Card>
 
-          <div className={isPostedEdit ? 'pointer-events-none opacity-50 select-none' : 'contents'}>
-            {/* CONTENT Card */}
+          {/* CONTENT Card */}
+          <Card>
+            <CardContent className="space-y-5 p-6">
+              <p className="text-xs font-medium tracking-widest text-muted-foreground uppercase">
+                Content
+              </p>
+
+              {/* Title */}
+              <div className="space-y-1.5" onFocus={() => setFocusSection('header')}>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="post-title">
+                    Title <span className="text-destructive">*</span>
+                  </Label>
+                  <span
+                    className={cn(
+                      'text-xs tabular-nums',
+                      state.title.length > TITLE_MAX_LENGTH
+                        ? 'text-destructive'
+                        : 'text-muted-foreground',
+                    )}
+                  >
+                    {state.title.length}/{TITLE_MAX_LENGTH}
+                  </span>
+                </div>
+                <Input
+                  id="post-title"
+                  value={state.title}
+                  aria-invalid={
+                    fieldErrors.title || state.title.length > TITLE_MAX_LENGTH ? true : undefined
+                  }
+                  onChange={(e) => {
+                    clearFieldError('title');
+                    dispatch({ type: 'SET_TITLE', payload: e.target.value });
+                  }}
+                />
+                {state.title.length > TITLE_MAX_LENGTH && (
+                  <p role="alert" className="text-sm text-destructive">
+                    Exceeded by {state.title.length - TITLE_MAX_LENGTH} characters.
+                  </p>
+                )}
+                {fieldErrors.title && state.title.length <= TITLE_MAX_LENGTH && (
+                  <p role="alert" className="text-sm text-destructive">
+                    {fieldErrors.title}
+                  </p>
+                )}
+              </div>
+
+              <Separator />
+
+              {/* Description */}
+              <div className="space-y-1.5" onFocus={() => setFocusSection('content')}>
+                <div className="flex items-center justify-between">
+                  <Label id="post-description-label">
+                    Description <span className="text-destructive">*</span>
+                  </Label>
+                  <span
+                    className={cn(
+                      'text-xs tabular-nums',
+                      state.description.length > DESCRIPTION_MAX_LENGTH
+                        ? 'text-destructive'
+                        : 'text-muted-foreground',
+                    )}
+                  >
+                    {state.description.length}/{DESCRIPTION_MAX_LENGTH}
+                  </span>
+                </div>
+                <RichTextEditor
+                  initialContent={initialDescriptionDoc}
+                  maxLength={DESCRIPTION_MAX_LENGTH}
+                  placeholder="Write your announcement here. Use the toolbar to format text and insert inline links."
+                  ariaLabelledBy="post-description-label"
+                  onChange={(doc, text) => {
+                    clearFieldError('description');
+                    dispatch({ type: 'SET_DESCRIPTION_DOC', payload: { doc, text } });
+                  }}
+                />
+                {state.description.length > DESCRIPTION_MAX_LENGTH && (
+                  <p role="alert" className="text-sm text-destructive">
+                    Exceeded by {state.description.length - DESCRIPTION_MAX_LENGTH} characters.
+                  </p>
+                )}
+                {fieldErrors.description && state.description.length <= DESCRIPTION_MAX_LENGTH && (
+                  <p role="alert" className="text-sm text-destructive">
+                    {fieldErrors.description}
+                  </p>
+                )}
+              </div>
+
+              {selectedType === 'post-with-response' && (
+                <>
+                  <Separator />
+                  <div className="space-y-5" onFocus={() => setFocusSection('header')}>
+                    <EventScheduleSection
+                      value={state.event}
+                      onChange={(value) => dispatch({ type: 'SET_EVENT', payload: value })}
+                    />
+                    <VenueSection
+                      value={state.venue}
+                      onChange={(value) => dispatch({ type: 'SET_VENUE', payload: value })}
+                    />
+                  </div>
+                </>
+              )}
+
+              <Separator />
+
+              <ShortcutsSection
+                value={state.shortcuts}
+                onChange={(next) => dispatch({ type: 'SET_SHORTCUTS', payload: next })}
+                declareTravelsEnabled={declareTravelsEnabled}
+                editContactEnabled={editContactEnabled}
+              />
+
+              <Separator />
+
+              <div onFocus={() => setFocusSection('links')}>
+                <WebsiteLinksSection value={state.websiteLinks} dispatch={dispatch} />
+              </div>
+
+              <Separator />
+
+              <div onFocus={() => setFocusSection('attachments')}>
+                <AttachmentSection
+                  files={state.attachments}
+                  photos={state.photos}
+                  dispatch={dispatch}
+                  kind={state.kind === 'announcement' ? 'ANNOUNCEMENT' : 'CONSENT_FORM'}
+                />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* RESPONSE TYPE Card */}
+          {selectedType === 'post-with-response' && (
             <Card>
               <CardContent className="space-y-5 p-6">
-                <p className="text-xs font-medium tracking-widest text-muted-foreground uppercase">
-                  Content
-                </p>
-
-                {/* Title */}
-                <div className="space-y-1.5" onFocus={() => setFocusSection('header')}>
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="post-title">
-                      Title <span className="text-destructive">*</span>
-                    </Label>
-                    <span
-                      className={cn(
-                        'text-xs tabular-nums',
-                        state.title.length > TITLE_MAX_LENGTH
-                          ? 'text-destructive'
-                          : 'text-muted-foreground',
-                      )}
-                    >
-                      {state.title.length}/{TITLE_MAX_LENGTH}
-                    </span>
-                  </div>
-                  <Input
-                    id="post-title"
-                    value={state.title}
-                    aria-invalid={
-                      fieldErrors.title || state.title.length > TITLE_MAX_LENGTH ? true : undefined
-                    }
-                    onChange={(e) => {
-                      clearFieldError('title');
-                      dispatch({ type: 'SET_TITLE', payload: e.target.value });
-                    }}
-                  />
-                  {state.title.length > TITLE_MAX_LENGTH && (
-                    <p role="alert" className="text-sm text-destructive">
-                      Exceeded by {state.title.length - TITLE_MAX_LENGTH} characters.
-                    </p>
-                  )}
-                  {fieldErrors.title && state.title.length <= TITLE_MAX_LENGTH && (
-                    <p role="alert" className="text-sm text-destructive">
-                      {fieldErrors.title}
-                    </p>
-                  )}
+                <div className="space-y-1">
+                  <p className="text-xs font-medium tracking-widest text-muted-foreground uppercase">
+                    Response Type
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    Choose how parents respond to this post.
+                  </p>
                 </div>
 
-                <Separator />
-
-                {/* Description */}
-                <div className="space-y-1.5" onFocus={() => setFocusSection('content')}>
-                  <div className="flex items-center justify-between">
-                    <Label id="post-description-label">
-                      Description <span className="text-destructive">*</span>
-                    </Label>
-                    <span
-                      className={cn(
-                        'text-xs tabular-nums',
-                        state.description.length > DESCRIPTION_MAX_LENGTH
-                          ? 'text-destructive'
-                          : 'text-muted-foreground',
-                      )}
-                    >
-                      {state.description.length}/{DESCRIPTION_MAX_LENGTH}
-                    </span>
-                  </div>
-                  <RichTextEditor
-                    initialContent={initialDescriptionDoc}
-                    maxLength={DESCRIPTION_MAX_LENGTH}
-                    placeholder="Write your announcement here. Use the toolbar to format text and insert inline links."
-                    ariaLabelledBy="post-description-label"
-                    onChange={(doc, text) => {
-                      clearFieldError('description');
-                      dispatch({ type: 'SET_DESCRIPTION_DOC', payload: { doc, text } });
-                    }}
+                <div onFocus={() => setFocusSection('response')}>
+                  <ResponseTypeSelector
+                    value={state.responseType}
+                    onChange={(value) => dispatch({ type: 'SET_RESPONSE_TYPE', payload: value })}
+                    hideViewOnly
                   />
-                  {state.description.length > DESCRIPTION_MAX_LENGTH && (
-                    <p role="alert" className="text-sm text-destructive">
-                      Exceeded by {state.description.length - DESCRIPTION_MAX_LENGTH} characters.
-                    </p>
-                  )}
-                  {fieldErrors.description &&
-                    state.description.length <= DESCRIPTION_MAX_LENGTH && (
-                      <p role="alert" className="text-sm text-destructive">
-                        {fieldErrors.description}
-                      </p>
-                    )}
                 </div>
 
-                {selectedType === 'post-with-response' && (
+                {state.responseType === 'yes-no' && (
                   <>
                     <Separator />
-                    <div className="space-y-5" onFocus={() => setFocusSection('header')}>
-                      <EventScheduleSection
-                        value={state.event}
-                        onChange={(value) => dispatch({ type: 'SET_EVENT', payload: value })}
-                      />
-                      <VenueSection
-                        value={state.venue}
-                        onChange={(value) => dispatch({ type: 'SET_VENUE', payload: value })}
+                    <div className="space-y-4">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="space-y-1">
+                          <p className="text-xs font-medium tracking-widest text-muted-foreground uppercase">
+                            Questions
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            Custom questions (optional). You may add up to {MAX_QUESTIONS}{' '}
+                            questions.
+                          </p>
+                        </div>
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          disabled={state.questions.length >= MAX_QUESTIONS}
+                          onClick={() => {
+                            dispatch({ type: 'ADD_QUESTION' });
+                            setFocusSection('questions');
+                          }}
+                        >
+                          <Plus className="h-4 w-4" />
+                          Add a Question
+                        </Button>
+                      </div>
+                      <QuestionBuilder
+                        questions={state.questions}
+                        dispatch={dispatch}
+                        onQuestionFocus={(index) => {
+                          setFocusedQuestionIndex(index);
+                          setFocusSection('questions');
+                        }}
                       />
                     </div>
                   </>
                 )}
-
-                <Separator />
-
-                <ShortcutsSection
-                  value={state.shortcuts}
-                  onChange={(next) => dispatch({ type: 'SET_SHORTCUTS', payload: next })}
-                  declareTravelsEnabled={declareTravelsEnabled}
-                  editContactEnabled={editContactEnabled}
-                />
-
-                <Separator />
-
-                <div onFocus={() => setFocusSection('links')}>
-                  <WebsiteLinksSection value={state.websiteLinks} dispatch={dispatch} />
-                </div>
-
-                <Separator />
-
-                <div onFocus={() => setFocusSection('attachments')}>
-                  <AttachmentSection
-                    files={state.attachments}
-                    photos={state.photos}
-                    dispatch={dispatch}
-                    kind={state.kind === 'announcement' ? 'ANNOUNCEMENT' : 'CONSENT_FORM'}
-                  />
-                </div>
               </CardContent>
             </Card>
-
-            {/* RESPONSE TYPE Card */}
-            {selectedType === 'post-with-response' && (
-              <Card>
-                <CardContent className="space-y-5 p-6">
-                  <div className="space-y-1">
-                    <p className="text-xs font-medium tracking-widest text-muted-foreground uppercase">
-                      Response Type
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      Choose how parents respond to this post.
-                    </p>
-                  </div>
-
-                  <div onFocus={() => setFocusSection('response')}>
-                    <ResponseTypeSelector
-                      value={state.responseType}
-                      onChange={(value) => dispatch({ type: 'SET_RESPONSE_TYPE', payload: value })}
-                      hideViewOnly
-                    />
-                  </div>
-
-                  {state.responseType === 'yes-no' && (
-                    <>
-                      <Separator />
-                      <div className="space-y-4">
-                        <div className="flex items-start justify-between gap-4">
-                          <div className="space-y-1">
-                            <p className="text-xs font-medium tracking-widest text-muted-foreground uppercase">
-                              Questions
-                            </p>
-                            <p className="text-sm text-muted-foreground">
-                              Custom questions (optional). You may add up to {MAX_QUESTIONS}{' '}
-                              questions.
-                            </p>
-                          </div>
-                          <Button
-                            variant="secondary"
-                            size="sm"
-                            disabled={state.questions.length >= MAX_QUESTIONS}
-                            onClick={() => {
-                              dispatch({ type: 'ADD_QUESTION' });
-                              setFocusSection('questions');
-                            }}
-                          >
-                            <Plus className="h-4 w-4" />
-                            Add a Question
-                          </Button>
-                        </div>
-                        <QuestionBuilder
-                          questions={state.questions}
-                          dispatch={dispatch}
-                          onQuestionFocus={(index) => {
-                            setFocusedQuestionIndex(index);
-                            setFocusSection('questions');
-                          }}
-                        />
-                      </div>
-                    </>
-                  )}
-                </CardContent>
-              </Card>
-            )}
-          </div>
-          {/* end locked-for-posted-edit */}
+          )}
 
           {/* SETTINGS Card (due date + reminders) */}
           {selectedType === 'post-with-response' &&
@@ -1260,6 +1182,15 @@ function CreatePostForm({ editId, loaderData }: CreatePostFormProps) {
           } else {
             void handleSendConfirm();
           }
+        }}
+      />
+
+      <DiscardChangesDialog
+        open={showDiscardDialog}
+        onOpenChange={setShowDiscardDialog}
+        onConfirm={() => {
+          setShowDiscardDialog(false);
+          navigate('..');
         }}
       />
     </div>

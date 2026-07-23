@@ -125,8 +125,18 @@ export const consentFormDetail: ApiConsentFormDetail = {
   createdAt: '2026-06-08T16:00:00+08:00',
   images: [],
   attachments: [
-    { attachmentId: 601, name: 'Trip_Itinerary.pdf', size: 180000, url: '#' },
-    { attachmentId: 602, name: 'Emergency_Contact_Form.pdf', size: 95000, url: '#' },
+    {
+      attachmentId: 601,
+      name: 'Trip_Itinerary.pdf',
+      size: 180000,
+      url: '/api/files/2/handleDownloadAttachment?attachmentId=601',
+    },
+    {
+      attachmentId: 602,
+      name: 'Emergency_Contact_Form.pdf',
+      size: 95000,
+      url: '/api/files/2/handleDownloadAttachment?attachmentId=602',
+    },
   ],
   webLinkList: [{ title: 'Science Centre Website', url: 'https://www.science.edu.sg' }],
   shortcutLinkList: [],

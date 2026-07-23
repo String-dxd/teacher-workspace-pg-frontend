@@ -17,6 +17,27 @@ function envelope<T>(body: T) {
   return { body, resultCode: 1, message: 'OK' };
 }
 
+/**
+ * Mutates a detail fixture's `staffOwners` in place so the next GET reflects
+ * newly-added staff-in-charge — this app's fixtures are mutable module-level
+ * objects, so writing through them here is enough to fake persistence.
+ */
+async function applyAddedStaffInCharge(
+  detail: { staffOwners?: { staffID: number; staffName: string }[] },
+  request: Request,
+) {
+  const body = (await request.json()) as { staffGroups?: { value: number }[] };
+  if (!detail.staffOwners) detail.staffOwners = [];
+  const existingIds = new Set(detail.staffOwners.map((s) => s.staffID));
+  for (const group of body.staffGroups ?? []) {
+    if (existingIds.has(group.value)) continue;
+    const staff = schoolStaff.find((s) => s.staffId === group.value);
+    if (!staff) continue;
+    detail.staffOwners.push({ staffID: staff.staffId, staffName: staff.name });
+    existingIds.add(staff.staffId);
+  }
+}
+
 const BASE = '/api/web/2/staff';
 
 export const handlers = [
@@ -255,6 +276,17 @@ export const handlers = [
     return new HttpResponse(null, { status: 204 });
   }),
 
+  // Posted-edit: staff-in-charge + enquiry email (the only fields editable
+  // on a sent announcement).
+  http.put(`${BASE}/announcements/:postId/enquiryEmailAddress`, () => {
+    return new HttpResponse(null, { status: 204 });
+  }),
+
+  http.post(`${BASE}/announcements/:postId/addStaffInCharge`, async ({ request }) => {
+    await applyAddedStaffInCharge(announcementDetail, request);
+    return new HttpResponse(null, { status: 204 });
+  }),
+
   http.post(`${BASE}/consentForms`, () => {
     return HttpResponse.json(envelope({ consentFormId: 999 }));
   }),
@@ -293,6 +325,25 @@ export const handlers = [
     return new HttpResponse(null, { status: 204 });
   }),
 
+  // Posted-edit: staff-in-charge, enquiry email, and due date (the fields
+  // editable on a sent post-with-response).
+  http.put(`${BASE}/consentForms/:formId/updateEnquiryEmail`, () => {
+    return new HttpResponse(null, { status: 204 });
+  }),
+
+  http.post(`${BASE}/consentForms/:formId/addStaffInCharge`, async ({ request }) => {
+    await applyAddedStaffInCharge(consentFormDetail, request);
+    return new HttpResponse(null, { status: 204 });
+  }),
+
+  http.put(`${BASE}/consentForms/:formId/updateDueDate`, () => {
+    return new HttpResponse(null, { status: 204 });
+  }),
+
+  http.put(`${BASE}/consentForms/:formId/updateReminder`, () => {
+    return new HttpResponse(null, { status: 204 });
+  }),
+
   // ─── File Upload (stubs) ───────────────────────────────────────────────────
   http.post('/api/files/2/preUploadValidation', () => {
     return HttpResponse.json(
@@ -310,5 +361,13 @@ export const handlers = [
 
   http.post('https://mock-bucket.s3.ap-southeast-1.amazonaws.com/uploads/mock', () => {
     return new HttpResponse(null, { status: 204 });
+  }),
+
+  http.get('/api/files/2/handleDownloadAttachment', ({ request }) => {
+    const attachmentId = new URL(request.url).searchParams.get('attachmentId');
+    return new HttpResponse(`Mock file contents for attachment ${attachmentId}`, {
+      status: 200,
+      headers: { 'Content-Type': 'text/plain' },
+    });
   }),
 ];

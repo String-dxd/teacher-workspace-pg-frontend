@@ -334,10 +334,10 @@ function UnifiedTable({
   const tsLabel = timestampLabel(responseType);
 
   return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>Student</TableHead>
+    <Table tableClassName="w-full">
+      <TableHeader className="border-b bg-background">
+        <TableRow className="border-0 hover:bg-transparent">
+          <TableHead className="sticky left-0 z-10 w-[180px] bg-background">Student</TableHead>
           {columns.indexNumber && <TableHead>Index No.</TableHead>}
           <TableHead>Class</TableHead>
           <TableHead>Status</TableHead>
@@ -368,7 +368,9 @@ function UnifiedTable({
 
           return (
             <TableRow key={recipient.studentId}>
-              <TableCell className="font-medium">{recipient.studentName}</TableCell>
+              <TableCell className="sticky left-0 z-10 w-[180px] bg-background font-medium">
+                {recipient.studentName}
+              </TableCell>
               {columns.indexNumber && (
                 <TableCell className="text-muted-foreground tabular-nums">
                   {indexNo ?? '—'}

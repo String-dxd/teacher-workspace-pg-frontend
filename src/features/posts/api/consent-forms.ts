@@ -15,6 +15,7 @@ import type {
   ApiCreateConsentFormPayload,
   ApiDuplicateConsentFormResponse,
   ApiGroupTarget,
+  ApiReminderType,
 } from './types';
 
 export function fetchConsentForms(): Promise<ApiConsentFormList> {
@@ -63,6 +64,14 @@ export function updateConsentFormDueDate(
   options?: { signal?: AbortSignal },
 ): Promise<void> {
   return mutateApi('PUT', `/consentForms/${formId}/updateDueDate`, payload, options);
+}
+
+export function updateConsentFormReminder(
+  formId: number,
+  payload: { addReminderType: ApiReminderType; reminderDate: string },
+  options?: { signal?: AbortSignal },
+): Promise<void> {
+  return mutateApi('PUT', `/consentForms/${formId}/updateReminder`, payload, options);
 }
 
 export function scheduleNewConsentFormDraft(

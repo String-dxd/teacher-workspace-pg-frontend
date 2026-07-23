@@ -120,7 +120,14 @@ export const announcementDetail: ApiAnnouncementDetail = {
   createdAt: '2026-06-09T10:00:00+08:00',
   postedDate: '2026-06-10T08:00:00+08:00',
   enquiryEmailAddress: 'general_office@greendale.edu.sg',
-  attachments: [{ attachmentId: 501, name: 'Concert_Programme.pdf', size: 245000, url: '#' }],
+  attachments: [
+    {
+      attachmentId: 501,
+      name: 'Concert_Programme.pdf',
+      size: 245000,
+      url: '/api/files/2/handleDownloadAttachment?attachmentId=501',
+    },
+  ],
   images: [],
   shortcutLink: [],
   webLinkList: [],
