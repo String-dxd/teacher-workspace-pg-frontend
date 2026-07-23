@@ -4,7 +4,12 @@ import { Card, CardContent, Progress } from '~/components/ui';
 import type { AnnouncementStats, ConsentFormStats, ResponseType } from '~/data/posts-registry';
 import { cn } from '~/lib/utils';
 
+import type { StatusFilter } from './RecipientFilterPopover';
+
 export type ReadCardFilter = 'read' | 'unread' | null;
+
+/** Which stat tile a Yes/No consent form's status filter currently matches. */
+export type ConsentFormStatFilter = Extract<StatusFilter, 'all' | 'yes' | 'no' | 'no-response'>;
 
 type ReadTrackingCardsProps =
   | {
@@ -14,7 +19,13 @@ type ReadTrackingCardsProps =
       readFilter?: ReadCardFilter;
       onReadFilterChange?: (next: ReadCardFilter) => void;
     }
-  | { kind: 'form'; responseType: 'acknowledge' | 'yes-no'; stats: ConsentFormStats };
+  | {
+      kind: 'form';
+      responseType: 'acknowledge' | 'yes-no';
+      stats: ConsentFormStats;
+      statFilter?: ConsentFormStatFilter;
+      onStatFilterChange?: (next: ConsentFormStatFilter) => void;
+    };
 
 interface MiniStat {
   count: number;
@@ -205,8 +216,110 @@ function ConsentFormCard({
   );
 }
 
+// ─── Consent-form stat tiles (Yes/No forms only) ────────────────────────────
+
+interface StatTileProps {
+  label: string;
+  count: number;
+  active: boolean;
+  tone?: 'success' | 'destructive' | 'warning';
+  onClick: () => void;
+}
+
+const STAT_TILE_TONE: Record<NonNullable<StatTileProps['tone']>, string> = {
+  success: 'text-success-foreground',
+  destructive: 'text-destructive',
+  warning: 'text-warning-foreground',
+};
+
+function StatTile({ label, count, active, tone, onClick }: StatTileProps) {
+  return (
+    <Card className={cn('p-0', active && 'ring-2 ring-primary')}>
+      <button
+        type="button"
+        onClick={onClick}
+        aria-pressed={active}
+        className={cn(
+          'flex w-full cursor-pointer flex-col items-center gap-1 rounded-3xl px-6 py-6 text-left transition-colors',
+          'focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none',
+          !active && 'hover:bg-muted/40',
+        )}
+      >
+        <span
+          className={cn(
+            'text-3xl leading-none font-semibold tabular-nums',
+            tone ? STAT_TILE_TONE[tone] : 'text-foreground',
+          )}
+        >
+          {count}
+        </span>
+        <span className="text-xs font-semibold tracking-[0.14em] text-muted-foreground uppercase">
+          {label}
+        </span>
+      </button>
+    </Card>
+  );
+}
+
+function ConsentFormStatTiles({
+  stats,
+  statFilter = 'all',
+  onStatFilterChange,
+}: {
+  stats: ConsentFormStats;
+  statFilter?: ConsentFormStatFilter;
+  onStatFilterChange?: (next: ConsentFormStatFilter) => void;
+}) {
+  const { totalCount, yesCount, noCount, pendingCount } = stats;
+
+  function toggle(next: ConsentFormStatFilter) {
+    onStatFilterChange?.(next);
+  }
+
+  return (
+    <div className="grid grid-cols-4 gap-3">
+      <StatTile
+        label="Total"
+        count={totalCount}
+        active={statFilter === 'all'}
+        onClick={() => toggle('all')}
+      />
+      <StatTile
+        label="Yes"
+        count={yesCount}
+        tone="success"
+        active={statFilter === 'yes'}
+        onClick={() => toggle('yes')}
+      />
+      <StatTile
+        label="No"
+        count={noCount}
+        tone="destructive"
+        active={statFilter === 'no'}
+        onClick={() => toggle('no')}
+      />
+      <StatTile
+        label="Pending"
+        count={pendingCount}
+        tone="warning"
+        active={statFilter === 'no-response'}
+        onClick={() => toggle('no-response')}
+      />
+    </div>
+  );
+}
+
 export function ReadTrackingCards(props: ReadTrackingCardsProps) {
   if (props.kind === 'form') {
+    if (props.responseType === 'yes-no') {
+      return (
+        <ConsentFormStatTiles
+          stats={props.stats}
+          statFilter={props.statFilter}
+          onStatFilterChange={props.onStatFilterChange}
+        />
+      );
+    }
     return <ConsentFormCard responseType={props.responseType} stats={props.stats} />;
   }
   return (

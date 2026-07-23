@@ -22,9 +22,15 @@ export type StatusFilter =
   | 'no'
   | 'no-response';
 
-export type PgStatusFilter = 'all' | 'onboarded' | 'not-onboarded';
+export type PgStatusFilter = 'all' | 'onboarded' | 'not-onboarded' | 'cannot-respond';
 
-export type ColumnKey = 'indexNumber' | 'timestamp' | 'parentGuardian' | 'pgStatus';
+export type ColumnKey =
+  | 'indexNumber'
+  | 'gender'
+  | 'timestamp'
+  | 'parentGuardian'
+  | 'comments'
+  | 'pgStatus';
 export interface ColumnVisibility extends Record<ColumnKey, boolean> {
   /** Visibility per custom question id. A question id missing from this map is visible. */
   questions: Record<string, boolean>;
@@ -44,10 +50,13 @@ export interface RecipientFilterValue {
   columns: ColumnVisibility;
 }
 
+// AC: "default: all selected" for the response table's column picker.
 export const DEFAULT_COLUMN_VISIBILITY: ColumnVisibility = {
-  indexNumber: false,
+  indexNumber: true,
+  gender: true,
   timestamp: true,
   parentGuardian: true,
+  comments: true,
   pgStatus: true,
   questions: {},
 };
@@ -165,6 +174,7 @@ function RecipientFilterPopover({
               <RadioOption value="all" label="All" />
               <RadioOption value="onboarded" label="Onboarded" />
               <RadioOption value="not-onboarded" label="Not Onboarded" />
+              <RadioOption value="cannot-respond" label="Cannot Respond" />
             </RadioGroup>
           </FilterSection>
         )}
@@ -189,6 +199,8 @@ interface RecipientColumnPopoverProps {
   onChange: (next: ColumnVisibility) => void;
   timestampLabel: string;
   showParentGuardian?: boolean;
+  showGender?: boolean;
+  showComments?: boolean;
   questions?: QuestionColumn[];
 }
 
@@ -197,16 +209,24 @@ function RecipientColumnPopover({
   onChange,
   timestampLabel,
   showParentGuardian = true,
+  showGender = false,
+  showComments = false,
   questions = [],
 }: RecipientColumnPopoverProps) {
-  const columnDefs: { key: ColumnKey; label: string; show: boolean }[] = [
+  // Mirrors the table's column order: Index No./Gender come before the
+  // response, Comments and the rest follow the question columns.
+  const beforeQuestions: { key: ColumnKey; label: string; show: boolean }[] = [
     { key: 'indexNumber', label: 'Index No.', show: true },
+    { key: 'gender', label: 'Gender', show: showGender },
+  ];
+  const afterQuestions: { key: ColumnKey; label: string; show: boolean }[] = [
+    { key: 'comments', label: 'Comments', show: showComments },
     { key: 'timestamp', label: timestampLabel, show: true },
     { key: 'parentGuardian', label: 'Parent/Guardian', show: showParentGuardian },
     { key: 'pgStatus', label: 'Status', show: true },
   ];
 
-  const visibleDefs = columnDefs.filter((d) => d.show);
+  const visibleDefs = [...beforeQuestions, ...afterQuestions].filter((d) => d.show);
 
   const allOn =
     visibleDefs.every((d) => value[d.key]) &&
@@ -242,16 +262,16 @@ function RecipientColumnPopover({
         </p>
 
         <div className="flex flex-col gap-2">
-          {/* Mirror the table's column order: Index No., then the question
-              columns (which follow the response Status column), then the rest. */}
-          {visibleDefs.slice(0, 1).map((def) => (
-            <CheckboxOption
-              key={def.key}
-              label={def.label}
-              checked={value[def.key]}
-              onCheckedChange={(checked) => onChange({ ...value, [def.key]: checked })}
-            />
-          ))}
+          {beforeQuestions
+            .filter((d) => d.show)
+            .map((def) => (
+              <CheckboxOption
+                key={def.key}
+                label={def.label}
+                checked={value[def.key]}
+                onCheckedChange={(checked) => onChange({ ...value, [def.key]: checked })}
+              />
+            ))}
           {questions.map((q) => (
             <CheckboxOption
               key={q.id}
@@ -260,14 +280,16 @@ function RecipientColumnPopover({
               onCheckedChange={(checked) => setQuestion(q.id, checked)}
             />
           ))}
-          {visibleDefs.slice(1).map((def) => (
-            <CheckboxOption
-              key={def.key}
-              label={def.label}
-              checked={value[def.key]}
-              onCheckedChange={(checked) => onChange({ ...value, [def.key]: checked })}
-            />
-          ))}
+          {afterQuestions
+            .filter((d) => d.show)
+            .map((def) => (
+              <CheckboxOption
+                key={def.key}
+                label={def.label}
+                checked={value[def.key]}
+                onCheckedChange={(checked) => onChange({ ...value, [def.key]: checked })}
+              />
+            ))}
         </div>
 
         <div className="flex items-center gap-2 border-t pt-2">

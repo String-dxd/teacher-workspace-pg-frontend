@@ -103,14 +103,19 @@ export type ConsentFormHistoryEntry = ApiConsentFormHistoryEntry;
 export interface ConsentFormRecipient {
   studentId: string;
   studentName: string;
+  /** The student's class, not the responding parent/guardian's. */
   classLabel: string;
   indexNumber?: string;
+  /** The student's gender, not the responding parent/guardian's. */
+  gender?: 'M' | 'F';
   response: 'YES' | 'NO' | null;
   respondedAt: string | null;
   replyByParent?: string | null;
   parentType?: string | null;
   contactNumber?: string | null;
-  pgStatus: 'onboarded' | 'not-onboarded';
+  /** Staff remarks left when recording a response on a parent's behalf. */
+  comments?: string | null;
+  pgStatus: 'onboarded' | 'not-onboarded' | 'cannot-respond';
   /** Answers keyed by question id (`String(questionId)`). Missing key = no answer. */
   questionAnswers?: Record<string, string | null>;
 }

@@ -11,6 +11,7 @@ import type {
   ApiConsentFormDetail,
   ApiConsentFormDraft,
   ApiConsentFormList,
+  ApiConsentFormReplyPayload,
   ApiCreateConsentFormDraftPayload,
   ApiCreateConsentFormPayload,
   ApiDuplicateConsentFormResponse,
@@ -126,6 +127,15 @@ export function updateConsentFormEnquiryEmail(
   options?: { signal?: AbortSignal },
 ): Promise<void> {
   return mutateApi('PUT', `/consentForms/${formId}/updateEnquiryEmail`, payload, options);
+}
+
+export function replyOnBehalf(
+  formId: number,
+  studentId: number,
+  payload: ApiConsentFormReplyPayload,
+  options?: { signal?: AbortSignal },
+): Promise<void> {
+  return mutateApi('POST', `/consentForms/${formId}/student/${studentId}/reply`, payload, options);
 }
 
 export function updateConsentFormStaffInCharge(formId: number, staffIds: number[]): Promise<void> {

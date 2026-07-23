@@ -523,12 +523,22 @@ export function mapConsentFormDetail(detail: ApiConsentFormDetail): ConsentFormP
     // string, so fall back to `className`.
     classLabel: r.student.indexNumber?.replace(/\d+$/, '') || r.student.className,
     indexNumber: r.student.indexNumber,
+    gender:
+      r.student.studentSex === 'M' || r.student.studentSex === 'F'
+        ? r.student.studentSex
+        : undefined,
     response: r.reply,
     respondedAt: r.replyDate,
     replyByParent: r.replyByParent,
     parentType: r.parentType ?? null,
     contactNumber: r.contactNumber ?? null,
-    pgStatus: r.onBoardedCategory && r.onBoardedCategory.length > 0 ? 'onboarded' : 'not-onboarded',
+    comments: r.remarks,
+    pgStatus:
+      r.onBoardedCategory === 'CANNOT_RESPOND'
+        ? 'cannot-respond'
+        : r.onBoardedCategory && r.onBoardedCategory.length > 0
+          ? 'onboarded'
+          : 'not-onboarded',
     questionAnswers: Object.fromEntries(
       (r.customQuestionReply ?? []).map((reply) => [
         reply.customQuestionId,
