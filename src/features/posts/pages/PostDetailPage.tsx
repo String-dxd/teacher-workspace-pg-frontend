@@ -1,4 +1,4 @@
-import { ArrowLeft, Loader2 } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import React, { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
 
@@ -15,17 +15,12 @@ import {
   deleteAnnouncement,
   loadPostDetail,
   rescheduleAnnouncementDraft,
-  updateAnnouncementEnquiryEmail,
-  updateAnnouncementStaffInCharge,
 } from '~/features/posts/api/announcements';
 import {
   cancelConsentFormSchedule,
   deleteConsentForm,
   loadConsentPostDetail,
   rescheduleConsentFormDraft,
-  updateConsentFormDueDate,
-  updateConsentFormEnquiryEmail,
-  updateConsentFormStaffInCharge,
 } from '~/features/posts/api/consent-forms';
 import { AppError, NotFoundError } from '~/features/posts/api/errors';
 import { fetchSchoolStaff } from '~/features/posts/api/school';
@@ -33,11 +28,7 @@ import { fetchSession, getConfigs } from '~/features/posts/api/session';
 import type { ApiSchoolStaff, ApiSession } from '~/features/posts/api/types';
 import { ConsentFormHistoryList } from '~/features/posts/components/ConsentFormHistoryList';
 import { DeletePostDialog } from '~/features/posts/components/DeletePostDialog';
-import {
-  PostCard,
-  isoToSgtDate,
-  type PostCardEditState,
-} from '~/features/posts/components/PostCard';
+import { PostCard } from '~/features/posts/components/PostCard';
 import {
   ReadTrackingCards,
   type ReadCardFilter,
@@ -73,23 +64,11 @@ function deleteMode(post: Post): 'posted' | 'draft' {
 
 interface DetailHeaderProps {
   post: Post;
-  isEditing: boolean;
-  saving: boolean;
-  onSave: () => void;
-  onCancel: () => void;
   onDelete: () => void;
   onRefetch: () => void;
 }
 
-function DetailHeader({
-  post,
-  isEditing,
-  saving,
-  onSave,
-  onCancel,
-  onDelete,
-  onRefetch,
-}: DetailHeaderProps) {
+function DetailHeader({ post, onDelete, onRefetch }: DetailHeaderProps) {
   const badge = getPostStatusBadge(post);
   const iso = post.postedAt ?? post.createdAt;
   const postedDate = formatDateTime(iso) ?? formatDate(iso);
@@ -178,7 +157,7 @@ function DetailHeader({
       </div>
 
       <div className="flex shrink-0 items-center gap-2">
-        {canReschedule && !isEditing && (
+        {canReschedule && (
           <>
             <Button
               variant="ghost"
@@ -199,36 +178,20 @@ function DetailHeader({
           </>
         )}
 
-        {isEditing ? (
-          <>
-            <Button variant="ghost" size="sm" onClick={onCancel} disabled={saving}>
-              Cancel
-            </Button>
-            <Button variant="secondary" size="sm" onClick={onSave} disabled={saving}>
-              {saving ? (
-                <>
-                  <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
-                  Saving…
-                </>
-              ) : (
-                'Save changes'
-              )}
-            </Button>
-          </>
-        ) : (
-          <>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="text-destructive hover:text-destructive"
-              onClick={onDelete}
-            >
-              Delete
-            </Button>
-            <Button variant="secondary" size="sm" render={<Link to="edit" />} nativeButton={false}>
-              Edit
-            </Button>
-          </>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="text-destructive hover:text-destructive"
+          onClick={onDelete}
+        >
+          Delete
+        </Button>
+        {/* Sent posts (posted/open/closed/posting) edit their fields inline via
+            PostCard's quick-edit dialogs instead of this full-page flow. */}
+        {deleteMode(post) === 'draft' && (
+          <Button variant="secondary" size="sm" render={<Link to="edit" />} nativeButton={false}>
+            Edit
+          </Button>
         )}
       </div>
 
@@ -304,55 +267,6 @@ const PostDetailContent: React.FC<PostDetailContentProps> = ({ post, staff, sess
   const navigate = useNavigate();
   const failureReason = describeScheduledSendFailure(post.scheduledSendFailureCode);
 
-  // ── Inline edit state ──────────────────────────────────────────────────────
-  const [isEditing, setIsEditing] = useState(false);
-  const [editState, setEditState] = useState<PostCardEditState>(() => ({
-    enquiryEmail: post.enquiryEmail ?? '',
-    staffOwnerIds: post.staffOwnerIds ?? [],
-  }));
-  const [saving, setSaving] = useState(false);
-
-  function handleCancel() {
-    setIsEditing(false);
-  }
-
-  async function handleSave() {
-    setSaving(true);
-    try {
-      if (post.kind === 'announcement') {
-        await Promise.all([
-          updateAnnouncementEnquiryEmail(post.numericId, {
-            enquiryEmailAddress: editState.enquiryEmail,
-          }),
-          updateAnnouncementStaffInCharge(post.numericId, editState.staffOwnerIds),
-        ]);
-      } else {
-        const initialDate = isoToSgtDate(post.consentByDate);
-        const calls: Promise<unknown>[] = [
-          updateConsentFormEnquiryEmail(post.numericId, {
-            enquiryEmailAddress: editState.enquiryEmail,
-          }),
-          updateConsentFormStaffInCharge(post.numericId, editState.staffOwnerIds),
-        ];
-        if (editState.consentByDate && editState.consentByDate !== initialDate) {
-          calls.push(
-            updateConsentFormDueDate(post.numericId, {
-              consentByDate: `${editState.consentByDate}T23:59:59+08:00`,
-            }),
-          );
-        }
-        await Promise.all(calls);
-      }
-      notify.success('Changes saved.');
-      setIsEditing(false);
-      refetch();
-    } catch {
-      notify.error('Failed to save. Please try again.');
-    } finally {
-      setSaving(false);
-    }
-  }
-
   // ── Delete state ───────────────────────────────────────────────────────────
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -380,34 +294,21 @@ const PostDetailContent: React.FC<PostDetailContentProps> = ({ post, staff, sess
     (e): e is string => Boolean(e),
   );
 
-  function handleEditStateChange(patch: Partial<PostCardEditState>) {
-    setEditState((prev) => ({ ...prev, ...patch }));
-  }
-
   const attachments = (post.attachments ?? []).map((a) => ({
     name: a.name,
     sizeKb: a.size / 1024,
+    url: a.url,
   }));
 
   const cardProps = {
-    isEditing,
-    editState,
-    onEditStateChange: handleEditStateChange,
-    staffList: staff,
+    staff,
     emailOptions,
+    onSaved: refetch,
   };
 
   return (
     <div className="space-y-6 px-6 py-6">
-      <DetailHeader
-        post={post}
-        isEditing={isEditing}
-        saving={saving}
-        onSave={handleSave}
-        onCancel={handleCancel}
-        onDelete={() => setDeleteOpen(true)}
-        onRefetch={refetch}
-      />
+      <DetailHeader post={post} onDelete={() => setDeleteOpen(true)} onRefetch={refetch} />
 
       {failureReason && (
         <div
@@ -440,22 +341,18 @@ const PostDetailContent: React.FC<PostDetailContentProps> = ({ post, staff, sess
 // ─── Subviews ──────────────────────────────────────────────────────────────
 
 interface DetailCardProps {
-  isEditing: boolean;
-  editState: PostCardEditState;
-  onEditStateChange: (patch: Partial<PostCardEditState>) => void;
-  staffList: ApiSchoolStaff[];
+  staff: ApiSchoolStaff[];
   emailOptions: string[];
-  attachments: { name: string; sizeKb: number }[];
+  onSaved: () => void;
+  attachments: { name: string; sizeKb: number; url: string }[];
 }
 
 function AnnouncementDetail({
   post,
   attachments,
-  isEditing,
-  editState,
-  onEditStateChange,
-  staffList,
+  staff,
   emailOptions,
+  onSaved,
 }: { post: AnnouncementPost } & DetailCardProps) {
   const [filter, setFilter] = useState<RecipientFilterValue>(DEFAULT_RECIPIENT_FILTER);
   const readCardFilter: ReadCardFilter =
@@ -493,11 +390,9 @@ function AnnouncementDetail({
         <PostCard
           post={post}
           attachments={attachments}
-          isEditing={isEditing}
-          editState={editState}
-          onEditStateChange={onEditStateChange}
-          staffList={staffList}
+          staff={staff}
           emailOptions={emailOptions}
+          onSaved={onSaved}
         />
       </div>
     </div>
@@ -507,11 +402,9 @@ function AnnouncementDetail({
 function ConsentFormDetail({
   post,
   attachments,
-  isEditing,
-  editState,
-  onEditStateChange,
-  staffList,
+  staff,
   emailOptions,
+  onSaved,
 }: { post: ConsentFormPost } & DetailCardProps) {
   const showTable =
     (post.status === 'open' || post.status === 'closed') && post.stats.totalCount > 0;
@@ -541,11 +434,9 @@ function ConsentFormDetail({
         <PostCard
           post={post}
           attachments={attachments}
-          isEditing={isEditing}
-          editState={editState}
-          onEditStateChange={onEditStateChange}
-          staffList={staffList}
+          staff={staff}
           emailOptions={emailOptions}
+          onSaved={onSaved}
         />
       </div>
     </div>
