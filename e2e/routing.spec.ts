@@ -5,12 +5,14 @@ test.describe.configure({ mode: 'serial' });
 test.describe('deep linking', () => {
   test('renders posts list at /posts', async ({ page }) => {
     await page.goto('/posts', { waitUntil: 'networkidle' });
-    await expect(page.getByRole('heading', { name: 'Posts', exact: true })).toBeVisible();
+    // "My Posts" renders as a scope-dropdown trigger (admin view) rather than a
+    // heading, so match by exact text instead of role.
+    await expect(page.getByText('My Posts', { exact: true })).toBeVisible();
   });
 
   test('renders create post form at /posts/new', async ({ page }) => {
     await page.goto('/posts/new', { waitUntil: 'networkidle' });
-    await expect(page.getByRole('heading', { name: 'New Post' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'New Post', exact: true })).toBeVisible();
   });
 
   test('renders post detail at /posts/announcements/1', async ({ page }) => {
@@ -37,10 +39,10 @@ test.describe('deep linking', () => {
 test.describe('client-side navigation', () => {
   test('navigates from posts list to create', async ({ page }) => {
     await page.goto('/posts', { waitUntil: 'networkidle' });
-    await expect(page.getByRole('heading', { name: 'Posts', exact: true })).toBeVisible();
+    await expect(page.getByText('My Posts', { exact: true })).toBeVisible();
 
     await page.locator('a[href$="/new"]').first().click();
-    await expect(page.getByRole('heading', { name: 'New Post' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'New Post', exact: true })).toBeVisible();
     await expect(page).toHaveURL(/\/posts\/new/);
   });
 
@@ -57,12 +59,12 @@ test.describe('client-side navigation', () => {
 test.describe('cross-feature navigation', () => {
   test('navigating between /posts and /groups renders each correctly', async ({ page }) => {
     await page.goto('/posts', { waitUntil: 'networkidle' });
-    await expect(page.getByRole('heading', { name: 'Posts', exact: true })).toBeVisible();
+    await expect(page.getByText('My Posts', { exact: true })).toBeVisible();
 
     await page.goto('/groups', { waitUntil: 'networkidle' });
     await expect(page.getByRole('heading', { name: 'Groups', exact: true })).toBeVisible();
 
     await page.goto('/posts/new', { waitUntil: 'networkidle' });
-    await expect(page.getByRole('heading', { name: 'New Post' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'New Post', exact: true })).toBeVisible();
   });
 });
