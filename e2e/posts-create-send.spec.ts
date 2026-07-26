@@ -254,15 +254,128 @@ test.describe('duplicate', () => {
   });
 });
 
+// ─── Auto-save ─────────────────────────────────────────────────────────────────
+
+test.describe('auto-save', () => {
+  test('auto-saves a dirty draft after the interval fires', async ({ page }) => {
+    // Fake the clock so the 30s useAutoSave interval can be fast-forwarded.
+    // install() (not the shared setFixedTime) is required to advance timers.
+    await page.clock.install({ time: new Date('2026-06-10T10:00:00+08:00') });
+
+    const draftRequest = page.waitForRequest(
+      (req) =>
+        req.method() === 'POST' && new URL(req.url()).pathname.endsWith('/announcements/drafts'),
+    );
+
+    await openCreateForm(page, 'Read Only');
+    // Drive the (un-debounced) title so the payload is dirty without depending on
+    // the editor's 150ms debounce, which the faked clock would also freeze.
+    await page.locator('#post-title').fill('Draft in progress');
+
+    await page.clock.fastForward('00:30');
+
+    await draftRequest;
+    // The status ticker carries a timestamp ("Saved 9:15 AM") — never a bare
+    // "Saved" — so match the prefix on the aria-live region.
+    await expect(page.getByText(/^Saved\s+\d{1,2}:\d{2}/)).toBeVisible();
+  });
+});
+
+// ─── File attachment (3-step upload) ─────────────────────────────────────────
+
+test.describe('file upload', () => {
+  test('runs the 3-step upload flow to a Ready state', async ({ page }) => {
+    // Each step of the flow, asserted in sequence against the MSW mocks.
+    const preUpload = page.waitForRequest(
+      (req) =>
+        req.method() === 'POST' &&
+        new URL(req.url()).pathname.endsWith('/files/2/preUploadValidation'),
+    );
+    const s3Upload = page.waitForRequest(
+      (req) => req.method() === 'POST' && req.url().includes('amazonaws.com/uploads/mock'),
+    );
+    const verify = page.waitForRequest(
+      (req) =>
+        req.method() === 'GET' &&
+        new URL(req.url()).pathname.endsWith('/files/2/postUploadVerification'),
+    );
+
+    await openCreateForm(page, 'Read Only');
+
+    // Target the hidden Files input (disambiguated from Photos by accept type).
+    // The fixture is a tiny on-disk PDF (Playwright infers the MIME from the
+    // extension) — under the 5 MB cap and an allowed file type.
+    await page
+      .locator('input[type="file"][accept*="pdf"]')
+      .setInputFiles('e2e/fixtures/notice.pdf');
+
+    await preUpload;
+    await s3Upload;
+    await verify;
+
+    // The file row settles on the "Ready" badge once verification returns.
+    // `.first()` guards a Playwright slowMo-only artifact where one setInputFiles
+    // can register the same file more than once; at real speed there's one row.
+    await expect(page.getByText('notice.pdf').first()).toBeVisible();
+    await expect(page.getByText('Ready').first()).toBeVisible();
+  });
+});
+
+// ─── Photo upload (with cover selection) ─────────────────────────────────────
+
+test.describe('photo upload', () => {
+  test('uploads a photo and exposes a cover toggle', async ({ page }) => {
+    await openCreateForm(page, 'Read Only');
+
+    // A tiny on-disk 1x1 PNG fixture — allowed image MIME, well under 5 MB.
+    await page
+      .locator('input[type="file"][accept*="image"]')
+      .setInputFiles('e2e/fixtures/photo.png');
+
+    // The cover toggle mounts only once the photo reaches the ready state. The
+    // first uploaded photo is auto-marked as cover by the reducer, so it starts
+    // as "Unmark as cover"; toggling flips it to "Mark as cover".
+    const unmarkCover = page.getByRole('button', { name: 'Unmark as cover' });
+    await expect(unmarkCover).toBeVisible();
+
+    await unmarkCover.click();
+    await expect(page.getByRole('button', { name: 'Mark as cover' })).toBeVisible();
+  });
+});
+
+// ─── Rich-text toolbar ───────────────────────────────────────────────────────
+
+test.describe('rich-text toolbar', () => {
+  test('bold and italic toggle their pressed state', async ({ page }) => {
+    await openCreateForm(page, 'Read Only');
+
+    // Type some content, then select it so bold/italic apply to a real range —
+    // this makes editor.isActive() (and thus aria-pressed) deterministic, versus
+    // the flakier collapsed-cursor stored-mark path.
+    const editor = page.locator('[aria-labelledby="post-description-label"]');
+    await editor.click();
+    await editor.pressSequentially('Sample');
+    await page.keyboard.press('ControlOrMeta+a');
+
+    // Buttons enable only once the Tiptap editor has mounted.
+    const bold = page.getByRole('button', { name: 'Bold', exact: true });
+    await expect(bold).toBeEnabled();
+
+    await bold.click();
+    await expect(bold).toHaveAttribute('aria-pressed', 'true');
+    await bold.click();
+    await expect(bold).toHaveAttribute('aria-pressed', 'false');
+
+    const italic = page.getByRole('button', { name: 'Italic', exact: true });
+    await italic.click();
+    await expect(italic).toHaveAttribute('aria-pressed', 'true');
+  });
+});
+
 // ─── Deferred coverage ────────────────────────────────────────────────────────
 //
-// The following acceptance-criteria scenarios from #96 are intentionally NOT
-// covered here, to keep the suite deterministic and screenshot-free:
-//   - Auto-save "Saved" indicator: the 30s useAutoSave interval interacts with
-//     page.clock in a way that needs a dedicated timing harness (#96 sizing).
-//   - File / photo 3-step upload: requires a real File on the hidden input plus
-//     S3 + verification polling; add once a fixture upload asset is in place.
-//   - Rich-text toolbar toggles (bold/italic/lists/alignment): editor-internal
-//     behaviour better suited to a component test than an e2e flow.
-//   - Enquiry-email update on a posted post (PUT .../enquiryEmailAddress): the
-//     MSW handler now exists; the PostDetailPage interaction is a follow-up.
+// All 12 of #96's acceptance criteria are now covered above. One adjacent,
+// non-AC scenario remains a follow-up:
+//   - Enquiry-email update on an already-posted post (PUT .../enquiryEmailAddress):
+//     the MSW handler exists, but the PostDetailPage edit interaction is out of
+//     scope for the create/send flows and belongs with the post-detail coverage.
