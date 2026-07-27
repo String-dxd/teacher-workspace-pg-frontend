@@ -169,3 +169,16 @@ export const announcementDetail: ApiAnnouncementDetail = {
   scheduledSendAt: null,
   scheduledSendFailureCode: null,
 };
+
+// A SCHEDULED announcement detail (matches list entry postId 201). Drives the
+// reschedule/cancel-schedule flows on PostDetailPage, which only surface when
+// `status === 'scheduled'`. Served by GET /announcements/:postId for id 201.
+export const scheduledAnnouncementDetail: ApiAnnouncementDetail = {
+  ...announcementDetail,
+  announcementId: 201,
+  title: 'Sports Day Information',
+  postedDate: null,
+  status: 'SCHEDULED',
+  scheduledSendAt: '2026-06-15T09:00:00+08:00',
+  students: [],
+};

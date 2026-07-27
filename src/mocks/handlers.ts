@@ -1,6 +1,10 @@
 import { http, HttpResponse } from 'msw';
 
-import { announcementDetail, announcementsList } from './fixtures/announcements';
+import {
+  announcementDetail,
+  announcementsList,
+  scheduledAnnouncementDetail,
+} from './fixtures/announcements';
 import { consentFormDetail, consentFormsList } from './fixtures/consent-forms';
 import { announcementDraft, consentFormDraft } from './fixtures/drafts';
 import {
@@ -33,8 +37,11 @@ export const handlers = [
     return HttpResponse.json(envelope([announcementDraft]));
   }),
 
-  http.get(`${BASE}/announcements/:postId`, () => {
-    return HttpResponse.json(envelope([announcementDetail]));
+  http.get(`${BASE}/announcements/:postId`, ({ params }) => {
+    // postId 201 is the SCHEDULED fixture (drives reschedule/cancel flows);
+    // everything else returns the default POSTED detail.
+    const detail = params.postId === '201' ? scheduledAnnouncementDetail : announcementDetail;
+    return HttpResponse.json(envelope([detail]));
   }),
 
   // ─── Consent Forms ──────────────────────────────────────────────────────────
@@ -235,6 +242,16 @@ export const handlers = [
     );
   }),
 
+  // Reschedule an already-scheduled announcement draft (U3).
+  http.put(`${BASE}/announcements/drafts/:draftId/rescheduleSchedule`, () => {
+    return new HttpResponse(null, { status: 204 });
+  }),
+
+  // Cancel a scheduled announcement draft — returns the post to DRAFT (U9).
+  http.post(`${BASE}/announcements/drafts/:draftId/cancelSchedule`, () => {
+    return new HttpResponse(null, { status: 204 });
+  }),
+
   http.post(`${BASE}/announcements/duplicate`, () => {
     return HttpResponse.json(
       envelope({ announcementDraftId: 777, updatedAt: new Date().toISOString() }),
@@ -271,6 +288,16 @@ export const handlers = [
     return HttpResponse.json(
       envelope({ consentFormDraftId: 888, updatedAt: new Date().toISOString() }),
     );
+  }),
+
+  // Reschedule an already-scheduled consent-form draft (U3).
+  http.put(`${BASE}/consentForms/drafts/:draftId/rescheduleSchedule`, () => {
+    return new HttpResponse(null, { status: 204 });
+  }),
+
+  // Cancel a scheduled consent-form draft — returns the post to DRAFT (U9).
+  http.post(`${BASE}/consentForms/drafts/:draftId/cancelSchedule`, () => {
+    return new HttpResponse(null, { status: 204 });
   }),
 
   http.post(`${BASE}/consentForms/duplicate`, () => {
