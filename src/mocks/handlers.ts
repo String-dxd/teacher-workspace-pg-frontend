@@ -252,11 +252,6 @@ export const handlers = [
     return new HttpResponse(null, { status: 204 });
   }),
 
-  // Update the enquiry email of a posted announcement.
-  http.put(`${BASE}/announcements/:postId/enquiryEmailAddress`, () => {
-    return new HttpResponse(null, { status: 204 });
-  }),
-
   http.post(`${BASE}/announcements/duplicate`, () => {
     return HttpResponse.json(
       envelope({ announcementDraftId: 777, updatedAt: new Date().toISOString() }),
@@ -302,11 +297,6 @@ export const handlers = [
 
   // Cancel a scheduled consent-form draft — returns the post to DRAFT (U9).
   http.post(`${BASE}/consentForms/drafts/:draftId/cancelSchedule`, () => {
-    return new HttpResponse(null, { status: 204 });
-  }),
-
-  // Update the enquiry email of a posted consent form.
-  http.put(`${BASE}/consentForms/:formId/updateEnquiryEmail`, () => {
     return new HttpResponse(null, { status: 204 });
   }),
 
