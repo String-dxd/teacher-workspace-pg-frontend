@@ -105,12 +105,15 @@ export interface ConsentFormRecipient {
   studentName: string;
   classLabel: string;
   indexNumber?: string;
+  gender?: string;
   response: 'YES' | 'NO' | null;
   respondedAt: string | null;
   replyByParent?: string | null;
   parentType?: string | null;
   contactNumber?: string | null;
-  pgStatus: 'onboarded' | 'not-onboarded';
+  /** Comments visible to parents, set by whoever last replied (parent or staff on their behalf). */
+  comments?: string | null;
+  pgStatus: 'onboarded' | 'not-onboarded' | 'cannot-respond';
   /** Answers keyed by question id (`String(questionId)`). Missing key = no answer. */
   questionAnswers?: Record<string, string | null>;
 }

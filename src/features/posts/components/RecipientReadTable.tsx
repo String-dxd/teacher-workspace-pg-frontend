@@ -53,6 +53,10 @@ type RecipientReadTableProps = FilterControlProps &
         questions?: QuestionColumn[];
         /** Response due date (ISO). Unresponded recipients show "Pending" until this date, then "No Response". */
         dueDate?: string;
+        /** Yes/No forms only: whether the consent-by date has passed (lifts the edit restriction). */
+        dueDatePassed?: boolean;
+        /** Yes/No forms only: opens the edit-on-behalf dialog for a row. */
+        onEditRecipient?: (recipient: ConsentFormRecipient) => void;
       }
   );
 
@@ -76,7 +80,11 @@ function Toolbar({
   responseType,
   showPgStatus,
   timestampLabel,
+  parentGuardianLabel,
+  pgStatusLabel,
   showParentGuardian,
+  showGender,
+  showComments,
   questions,
   onExport,
   exportDisabled,
@@ -87,7 +95,11 @@ function Toolbar({
   responseType: ResponseType | 'acknowledge' | 'yes-no';
   showPgStatus: boolean;
   timestampLabel: string;
+  parentGuardianLabel: string;
+  pgStatusLabel: string;
   showParentGuardian: boolean;
+  showGender: boolean;
+  showComments: boolean;
   questions: QuestionColumn[];
   onExport: () => void;
   exportDisabled?: boolean;
@@ -107,15 +119,17 @@ function Toolbar({
       no: 'No',
       'no-response': 'No Response',
     };
-    chips.push({ key: 'status', label: `Status: ${statusLabels[filter.status]}` });
+    const statusChipPrefix = responseType === 'yes-no' ? 'Response' : 'Status';
+    chips.push({ key: 'status', label: `${statusChipPrefix}: ${statusLabels[filter.status]}` });
   }
   if (filter.pg !== 'all') {
     const pgLabels: Record<PgStatusFilter, string> = {
       all: 'All',
       onboarded: 'Onboarded',
       'not-onboarded': 'Not Onboarded',
+      'cannot-respond': 'Cannot Respond',
     };
-    chips.push({ key: 'pg', label: `PG: ${pgLabels[filter.pg]}` });
+    chips.push({ key: 'pg', label: `Onboarding: ${pgLabels[filter.pg]}` });
   }
 
   function clearChip(key: 'classId' | 'status' | 'pg') {
@@ -135,6 +149,7 @@ function Toolbar({
           <Input
             className="h-9 pl-9 text-sm"
             placeholder="Search students…"
+            aria-label="Search students"
             value={filter.search}
             onChange={(e) => onFilterChange({ ...filter, search: e.target.value })}
           />
@@ -152,7 +167,11 @@ function Toolbar({
           value={filter.columns}
           onChange={(columns) => onFilterChange({ ...filter, columns })}
           timestampLabel={timestampLabel}
+          parentGuardianLabel={parentGuardianLabel}
+          pgStatusLabel={pgStatusLabel}
           showParentGuardian={showParentGuardian}
+          showGender={showGender}
+          showComments={showComments}
           questions={questions}
         />
 
@@ -336,22 +355,75 @@ function timestampLabel(responseType: ResponseType | 'acknowledge' | 'yes-no'): 
 
 // ─── Unified table ────────────────────────────────────────────────────────────
 
+function PgStatusBadge({ pgStatus }: { pgStatus: ConsentFormRecipient['pgStatus'] }) {
+  if (pgStatus === 'onboarded') {
+    return (
+      <span className="inline-flex items-center rounded-full bg-twblue-3 px-2 py-0.5 text-xs font-medium text-twblue-11 ring-1 ring-twblue-6 ring-inset">
+        Onboarded
+      </span>
+    );
+  }
+  if (pgStatus === 'cannot-respond') {
+    return <Badge variant="secondary">Cannot Respond</Badge>;
+  }
+  return <Badge variant="secondary">Not Onboarded</Badge>;
+}
+
+function EditResponseCell({
+  recipient,
+  dueDatePassed,
+  onEditRecipient,
+}: {
+  recipient: ConsentFormRecipient;
+  dueDatePassed: boolean;
+  onEditRecipient?: (recipient: ConsentFormRecipient) => void;
+}) {
+  const restricted = recipient.pgStatus === 'onboarded' && !dueDatePassed;
+  if (restricted) {
+    return (
+      <span className="text-xs text-muted-foreground">
+        Editing restricted until after due date for onboarded custodians
+      </span>
+    );
+  }
+  return (
+    <button
+      type="button"
+      className="cursor-pointer text-sm text-primary underline-offset-2 hover:underline"
+      onClick={() => onEditRecipient?.(recipient)}
+    >
+      Edit Response
+    </button>
+  );
+}
+
 function UnifiedTable({
   recipients,
   responseType,
   columns,
   isForm,
+  isYesNoForm,
   questions,
   pastDue,
+  parentGuardianLabel,
+  pgStatusLabel,
+  dueDatePassed,
+  onEditRecipient,
 }: {
   recipients: (Recipient | ConsentFormRecipient)[];
   responseType: ResponseType | 'acknowledge' | 'yes-no';
   columns: ColumnVisibility;
   isForm: boolean;
+  isYesNoForm: boolean;
   questions: QuestionColumn[];
   pastDue: boolean;
+  parentGuardianLabel: string;
+  pgStatusLabel: string;
+  dueDatePassed: boolean;
+  onEditRecipient?: (recipient: ConsentFormRecipient) => void;
 }) {
-  const tsLabel = timestampLabel(responseType);
+  const tsLabel = isYesNoForm ? 'Last responded on' : timestampLabel(responseType);
+  const responseColumnLabel = isYesNoForm ? 'Response' : 'Status';
 
   return (
     <Table tableClassName="w-full">
@@ -360,13 +432,20 @@ function UnifiedTable({
           <TableHead className="sticky left-0 z-10 w-[360px] bg-background">Student</TableHead>
           {columns.indexNumber && <TableHead>Index No.</TableHead>}
           <TableHead>Class</TableHead>
-          <TableHead>Status</TableHead>
+          {columns.gender && isYesNoForm && <TableHead>Gender</TableHead>}
+          <TableHead>{responseColumnLabel}</TableHead>
           {questions.map((q) => (
             <TableHead key={q.id}>{q.text}</TableHead>
           ))}
+          {columns.comments && isYesNoForm && <TableHead>Comments</TableHead>}
           {columns.timestamp && <TableHead>{tsLabel}</TableHead>}
-          {columns.parentGuardian && <TableHead>Parent / Guardian</TableHead>}
-          {columns.pgStatus && isForm && <TableHead>Status</TableHead>}
+          {columns.parentGuardian && <TableHead>{parentGuardianLabel}</TableHead>}
+          {columns.pgStatus && isForm && <TableHead>{pgStatusLabel}</TableHead>}
+          {isYesNoForm && (
+            <TableHead>
+              <span className="sr-only">Actions</span>
+            </TableHead>
+          )}
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -376,6 +455,10 @@ function UnifiedTable({
             'indexNumber' in recipient
               ? (recipient as ConsentFormRecipient).indexNumber
               : undefined;
+          const gender =
+            'gender' in recipient ? (recipient as ConsentFormRecipient).gender : undefined;
+          const comments =
+            'comments' in recipient ? (recipient as ConsentFormRecipient).comments : undefined;
           const replyByParent = (recipient as Recipient | ConsentFormRecipient).replyByParent;
           const parentType =
             'parentType' in recipient ? (recipient as ConsentFormRecipient).parentType : undefined;
@@ -399,6 +482,9 @@ function UnifiedTable({
               <TableCell>
                 <Badge variant="secondary">{recipient.classLabel}</Badge>
               </TableCell>
+              {columns.gender && isYesNoForm && (
+                <TableCell className="text-muted-foreground">{gender ?? '—'}</TableCell>
+              )}
               <TableCell>
                 <StatusCell responseType={responseType} recipient={recipient} pastDue={pastDue} />
               </TableCell>
@@ -412,6 +498,14 @@ function UnifiedTable({
                   </TableCell>
                 );
               })}
+              {columns.comments && isYesNoForm && (
+                <TableCell
+                  className="max-w-56 truncate text-muted-foreground"
+                  title={comments ?? undefined}
+                >
+                  {comments || '—'}
+                </TableCell>
+              )}
               {columns.timestamp && (
                 <TableCell className="text-muted-foreground tabular-nums">
                   {ts ? (formatDate(ts) ?? '—') : '—'}
@@ -433,17 +527,18 @@ function UnifiedTable({
                   )}
                 </TableCell>
               )}
-              {columns.pgStatus && isForm && (
+              {columns.pgStatus && isForm && pgStatus && (
                 <TableCell>
-                  {pgStatus === 'onboarded' ? (
-                    <span className="inline-flex items-center rounded-full bg-twblue-3 px-2 py-0.5 text-xs font-medium text-twblue-11 ring-1 ring-twblue-6 ring-inset">
-                      Onboarded
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center rounded-full bg-slate-3 px-2 py-0.5 text-xs font-medium text-slate-11 ring-1 ring-slate-6 ring-inset">
-                      Not Onboarded
-                    </span>
-                  )}
+                  <PgStatusBadge pgStatus={pgStatus} />
+                </TableCell>
+              )}
+              {isYesNoForm && (
+                <TableCell>
+                  <EditResponseCell
+                    recipient={recipient as ConsentFormRecipient}
+                    dueDatePassed={dueDatePassed}
+                    onEditRecipient={onEditRecipient}
+                  />
                 </TableCell>
               )}
             </TableRow>
@@ -455,6 +550,12 @@ function UnifiedTable({
 }
 
 // ─── Export helpers ──────────────────────────────────────────────────────────
+
+const PG_STATUS_EXPORT_LABEL: Record<ConsentFormRecipient['pgStatus'], string> = {
+  onboarded: 'Onboarded',
+  'not-onboarded': 'Not Onboarded',
+  'cannot-respond': 'Cannot Respond',
+};
 
 function rowToExport(
   recipient: Recipient | ConsentFormRecipient,
@@ -477,21 +578,24 @@ function rowToExport(
   const ts = resolveTimestamp(responseType, recipient);
   const indexNo =
     'indexNumber' in recipient ? ((recipient as ConsentFormRecipient).indexNumber ?? '') : '';
+  const gender = 'gender' in recipient ? ((recipient as ConsentFormRecipient).gender ?? '') : '';
+  const comments =
+    'comments' in recipient ? ((recipient as ConsentFormRecipient).comments ?? '') : '';
   const replyByParent = (recipient as Recipient | ConsentFormRecipient).replyByParent ?? '';
   const parentType =
     'parentType' in recipient ? ((recipient as ConsentFormRecipient).parentType ?? '') : '';
   const contactNumber =
     'contactNumber' in recipient ? ((recipient as ConsentFormRecipient).contactNumber ?? '') : '';
   const pgStatus = isForm
-    ? (recipient as ConsentFormRecipient).pgStatus === 'onboarded'
-      ? 'Onboarded'
-      : 'Not Onboarded'
+    ? PG_STATUS_EXPORT_LABEL[(recipient as ConsentFormRecipient).pgStatus]
     : '';
   const row: Record<string, string> = {
     studentName: recipient.studentName,
     indexNumber: indexNo,
     classLabel: recipient.classLabel,
+    gender,
     status: statusLabels[status],
+    comments,
     timestamp: ts ? (formatDate(ts) ?? '') : '',
     parentGuardian: replyByParent,
     parentType,
@@ -509,23 +613,28 @@ function rowToExport(
 function buildExportColumns(
   columns: ColumnVisibility,
   isForm: boolean,
+  isYesNoForm: boolean,
   tsLabel: string,
+  parentGuardianLabel: string,
+  pgStatusLabel: string,
   questions: QuestionColumn[],
 ): XlsxColumn<Record<string, string>>[] {
   const out: XlsxColumn<Record<string, string>>[] = [{ key: 'studentName', header: 'Student' }];
   if (columns.indexNumber) out.push({ key: 'indexNumber', header: 'Index No.' });
   out.push({ key: 'classLabel', header: 'Class' });
-  out.push({ key: 'status', header: 'Status' });
+  if (columns.gender && isYesNoForm) out.push({ key: 'gender', header: 'Gender' });
+  out.push({ key: 'status', header: isYesNoForm ? 'Response' : 'Status' });
   for (const q of questions) out.push({ key: `question_${q.id}`, header: q.text });
+  if (columns.comments && isYesNoForm) out.push({ key: 'comments', header: 'Comments' });
   if (columns.timestamp) out.push({ key: 'timestamp', header: tsLabel });
   if (columns.parentGuardian) {
-    out.push({ key: 'parentGuardian', header: 'Parent / Guardian' });
+    out.push({ key: 'parentGuardian', header: parentGuardianLabel });
     if (isForm) {
       out.push({ key: 'parentType', header: 'Relationship' });
       out.push({ key: 'contactNumber', header: 'Contact No.' });
     }
   }
-  if (columns.pgStatus && isForm) out.push({ key: 'pgStatus', header: 'Status' });
+  if (columns.pgStatus && isForm) out.push({ key: 'pgStatus', header: pgStatusLabel });
   return out;
 }
 
@@ -533,6 +642,9 @@ function buildExportColumns(
 
 export function RecipientReadTable(props: RecipientReadTableProps) {
   const isForm = props.kind === 'form';
+  const isYesNoForm = props.kind === 'form' && props.responseType === 'yes-no';
+  const dueDatePassed = props.kind === 'form' ? (props.dueDatePassed ?? false) : false;
+  const onEditRecipient = props.kind === 'form' ? props.onEditRecipient : undefined;
   const isMobile = useIsMobile();
   const controlled = props.filter !== undefined;
 
@@ -571,11 +683,21 @@ export function RecipientReadTable(props: RecipientReadTableProps) {
     return sortRecipients(filtered, responseType);
   }, [props.recipients, filter, responseType]);
 
-  const tsLabel = timestampLabel(responseType);
+  const tsLabel = isYesNoForm ? 'Last responded on' : timestampLabel(responseType);
   const pastDue = isPastDue(props.dueDate);
+  const parentGuardianLabel = isYesNoForm ? 'Last responded by' : 'Parent / Guardian';
+  const pgStatusLabel = isYesNoForm ? 'Onboarding' : 'Status';
 
   const handleExport = async () => {
-    const exportCols = buildExportColumns(filter.columns, isForm, tsLabel, visibleQuestions);
+    const exportCols = buildExportColumns(
+      filter.columns,
+      isForm,
+      isYesNoForm,
+      tsLabel,
+      parentGuardianLabel,
+      pgStatusLabel,
+      visibleQuestions,
+    );
     const rows = filteredRecipients.map((r) =>
       rowToExport(r, responseType, isForm, visibleQuestions, pastDue),
     );
@@ -593,7 +715,11 @@ export function RecipientReadTable(props: RecipientReadTableProps) {
         responseType={responseType}
         showPgStatus={isForm}
         timestampLabel={tsLabel}
+        parentGuardianLabel={parentGuardianLabel}
+        pgStatusLabel={pgStatusLabel}
         showParentGuardian={true}
+        showGender={isYesNoForm}
+        showComments={isYesNoForm}
         questions={questions}
         onExport={handleExport}
         exportDisabled={isMobile}
@@ -610,8 +736,13 @@ export function RecipientReadTable(props: RecipientReadTableProps) {
             responseType={responseType}
             columns={filter.columns}
             isForm={isForm}
+            isYesNoForm={isYesNoForm}
             questions={visibleQuestions}
             pastDue={pastDue}
+            parentGuardianLabel={parentGuardianLabel}
+            pgStatusLabel={pgStatusLabel}
+            dueDatePassed={dueDatePassed}
+            onEditRecipient={onEditRecipient}
           />
         )}
       </div>

@@ -14,7 +14,9 @@ import {
   describeScheduledSendFailure,
   getPostStatusBadge,
   type AnnouncementPost,
+  type ConsentFormHistoryEntry,
   type ConsentFormPost,
+  type ConsentFormRecipient,
   type Post,
 } from '~/data/posts-registry';
 import {
@@ -34,9 +36,15 @@ import { fetchSchoolStaff } from '~/features/posts/api/school';
 import { fetchSession, getConfigs } from '~/features/posts/api/session';
 import type { ApiSchoolStaff, ApiSession } from '~/features/posts/api/types';
 import { DeletePostDialog } from '~/features/posts/components/DeletePostDialog';
-import { PostCard } from '~/features/posts/components/PostCard';
+import { EditResponseDialog } from '~/features/posts/components/EditResponseDialog';
+import {
+  PostCard,
+  isoToSgtDate,
+  type PostCardEditState,
+} from '~/features/posts/components/PostCard';
 import {
   ReadTrackingCards,
+  type ConsentFormTileFilter,
   type ReadCardFilter,
 } from '~/features/posts/components/ReadTrackingCards';
 import {
@@ -362,7 +370,7 @@ const PostDetailContent: React.FC<PostDetailContentProps> = ({ post, staff, sess
       {post.kind === 'announcement' ? (
         <AnnouncementDetail post={post} attachments={attachments} {...cardProps} />
       ) : (
-        <ConsentFormDetail post={post} attachments={attachments} {...cardProps} />
+        <ConsentFormDetail post={post} attachments={attachments} session={session} {...cardProps} />
       )}
 
       <DeletePostDialog
@@ -449,28 +457,97 @@ function ConsentFormDetail({
   emailOptions,
   currentStaffId,
   onSaved,
-}: { post: ConsentFormPost } & DetailCardProps) {
+  session,
+}: { post: ConsentFormPost; session: ApiSession } & DetailCardProps) {
   const showTable =
     (post.status === 'open' || post.status === 'closed') && post.stats.totalCount > 0;
+  const isYesNoForm = post.responseType === 'yes-no';
+  const dueDatePassed = post.status === 'closed';
+
+  const [filter, setFilter] = useState<RecipientFilterValue>(DEFAULT_RECIPIENT_FILTER);
+
+  // Locally-applied edits — the mock reply endpoint doesn't mutate
+  // server-side data, so successful edits patch this state directly.
+  // Reset only when navigating to a different post; a refetch of the same
+  // post (e.g. after an unrelated field save) keeps the local edits.
+  const [recipients, setRecipients] = useState(post.recipients);
+  const [history, setHistory] = useState(post.history);
+  const [loadedPostId, setLoadedPostId] = useState(post.numericId);
+  if (loadedPostId !== post.numericId) {
+    setLoadedPostId(post.numericId);
+    setRecipients(post.recipients);
+    setHistory(post.history);
+  }
+
+  const [editingRecipient, setEditingRecipient] = useState<ConsentFormRecipient | null>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
+
+  const tileFilter: ConsentFormTileFilter =
+    filter.status === 'yes' || filter.status === 'no' || filter.status === 'no-response'
+      ? filter.status
+      : 'all';
+
+  function handleTileFilterChange(next: ConsentFormTileFilter) {
+    setFilter((f) => ({ ...f, status: next }));
+  }
+
+  function handleEditRecipient(recipient: ConsentFormRecipient) {
+    setEditingRecipient(recipient);
+    setDialogOpen(true);
+  }
+
+  function handleEditSuccess(
+    updatedRecipient: ConsentFormRecipient,
+    historyEntry: ConsentFormHistoryEntry,
+  ) {
+    setRecipients((prev) =>
+      prev.map((r) => (r.studentId === updatedRecipient.studentId ? updatedRecipient : r)),
+    );
+    setHistory((prev) => [...prev, historyEntry]);
+  }
+
+  const nextHistoryId = Math.max(0, ...history.map((h) => h.historyId)) + 1;
 
   return (
     <div className="grid gap-6 lg:grid-cols-3">
-      <div className="space-y-6 lg:col-span-2">
-        <ReadTrackingCards kind="form" responseType={post.responseType} stats={post.stats} />
+      <div className="min-w-0 space-y-6 lg:col-span-2">
+        {post.status === 'open' && (
+          <div
+            role="status"
+            className="rounded-lg border border-twblue-6 bg-twblue-2 px-4 py-3 text-sm text-twblue-11"
+          >
+            Custodians may edit their responses till the due date. Please collate the responses only
+            after the due date.
+          </div>
+        )}
+
+        <ReadTrackingCards
+          kind="form"
+          responseType={post.responseType}
+          stats={post.stats}
+          activeFilter={tileFilter}
+          onFilterChange={handleTileFilterChange}
+        />
 
         {showTable && (
           <div className="space-y-4 rounded-lg border bg-background p-6">
             <p className="text-sm font-semibold">Status</p>
             <RecipientReadTable
               kind="form"
-              recipients={post.recipients}
+              recipients={recipients}
               responseType={post.responseType}
+              filter={filter}
+              onFilterChange={setFilter}
               exportId={String(post.id)}
               questions={post.questions}
               dueDate={post.consentByDate}
+              dueDatePassed={dueDatePassed}
+              onEditRecipient={handleEditRecipient}
             />
           </div>
         )}
+
+        <ConsentFormHistoryList entries={history} />
       </div>
 
       <div className="lg:sticky lg:top-6 lg:self-start">
@@ -483,6 +560,19 @@ function ConsentFormDetail({
           onSaved={onSaved}
         />
       </div>
+
+      {isYesNoForm && (
+        <EditResponseDialog
+          open={dialogOpen}
+          onOpenChange={setDialogOpen}
+          formId={post.numericId}
+          recipient={editingRecipient}
+          questions={post.questions}
+          actionBy={session.staffName}
+          nextHistoryId={nextHistoryId}
+          onSuccess={handleEditSuccess}
+        />
+      )}
     </div>
   );
 }

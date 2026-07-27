@@ -493,6 +493,17 @@ function flattenCustomQuestionAnswer(
 }
 
 /**
+ * `onBoardedCategory` → PG status. `'CANNOT_RESPOND'` is an assumed raw value —
+ * issue #35's backend contract for this third category is still pending
+ * grooming; confirm the real enum with backend before removing this comment.
+ */
+function mapPgStatus(onBoardedCategory: string | undefined): ConsentFormRecipient['pgStatus'] {
+  if (onBoardedCategory === 'ONBOARDED') return 'onboarded';
+  if (onBoardedCategory === 'CANNOT_RESPOND') return 'cannot-respond';
+  return 'not-onboarded';
+}
+
+/**
  * Map a consent-form detail response into the unified `ConsentFormPost`
  * shape the TW UI consumes.
  */
@@ -523,12 +534,14 @@ export function mapConsentFormDetail(detail: ApiConsentFormDetail): ConsentFormP
     // string, so fall back to `className`.
     classLabel: r.student.indexNumber?.replace(/\d+$/, '') || r.student.className,
     indexNumber: r.student.indexNumber,
+    gender: r.student.studentSex,
     response: r.reply,
     respondedAt: r.replyDate,
     replyByParent: r.replyByParent,
     parentType: r.parentType ?? null,
     contactNumber: r.contactNumber ?? null,
-    pgStatus: r.onBoardedCategory && r.onBoardedCategory.length > 0 ? 'onboarded' : 'not-onboarded',
+    comments: r.remarks,
+    pgStatus: mapPgStatus(r.onBoardedCategory),
     questionAnswers: Object.fromEntries(
       (r.customQuestionReply ?? []).map((reply) => [
         reply.customQuestionId,
