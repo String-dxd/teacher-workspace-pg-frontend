@@ -346,18 +346,23 @@ test.describe('photo upload', () => {
 // ─── Rich-text toolbar ───────────────────────────────────────────────────────
 
 test.describe('rich-text toolbar', () => {
-  test('bold and italic toggle their pressed state', async ({ page }) => {
+  // Open the create form and put a real, selected range into the editor. Bold /
+  // italic / underline / list / alignment commands all key off the current
+  // selection, so selecting a concrete range makes editor.isActive() (and thus
+  // each button's aria-pressed) deterministic — versus the flakier
+  // collapsed-cursor stored-mark path. Buttons also enable only once the Tiptap
+  // editor has mounted, so callers await enablement before asserting.
+  async function openEditorWithSelection(page: Page) {
     await openCreateForm(page, 'Read Only');
-
-    // Type some content, then select it so bold/italic apply to a real range —
-    // this makes editor.isActive() (and thus aria-pressed) deterministic, versus
-    // the flakier collapsed-cursor stored-mark path.
     const editor = page.locator('[aria-labelledby="post-description-label"]');
     await editor.click();
     await editor.pressSequentially('Sample');
     await page.keyboard.press('ControlOrMeta+a');
+  }
 
-    // Buttons enable only once the Tiptap editor has mounted.
+  test('bold, italic, and underline toggle their pressed state', async ({ page }) => {
+    await openEditorWithSelection(page);
+
     const bold = page.getByRole('button', { name: 'Bold', exact: true });
     await expect(bold).toBeEnabled();
 
@@ -369,6 +374,61 @@ test.describe('rich-text toolbar', () => {
     const italic = page.getByRole('button', { name: 'Italic', exact: true });
     await italic.click();
     await expect(italic).toHaveAttribute('aria-pressed', 'true');
+    await italic.click();
+    await expect(italic).toHaveAttribute('aria-pressed', 'false');
+
+    const underline = page.getByRole('button', { name: 'Underline', exact: true });
+    await underline.click();
+    await expect(underline).toHaveAttribute('aria-pressed', 'true');
+    await underline.click();
+    await expect(underline).toHaveAttribute('aria-pressed', 'false');
+  });
+
+  test('bullet and numbered lists toggle their pressed state', async ({ page }) => {
+    // Lists key off the block the cursor sits in, so — unlike the marks/alignment
+    // tests — do NOT select-all: Ctrl+A extends the range into the trailing empty
+    // paragraph after the list, and isActive('bulletList') then reads false even
+    // though the list applied. A collapsed cursor inside the typed text keeps
+    // isActive() (and aria-pressed) reporting the block the caret is actually in.
+    await openCreateForm(page, 'Read Only');
+    const editor = page.locator('[aria-labelledby="post-description-label"]');
+    await editor.click();
+    await editor.pressSequentially('Sample');
+
+    const bulletList = page.getByRole('button', { name: 'Bullet list', exact: true });
+    await expect(bulletList).toBeEnabled();
+
+    await bulletList.click();
+    await expect(bulletList).toHaveAttribute('aria-pressed', 'true');
+    await bulletList.click();
+    await expect(bulletList).toHaveAttribute('aria-pressed', 'false');
+
+    // Switching to an ordered list activates it; toggling off clears it.
+    const numberedList = page.getByRole('button', { name: 'Numbered list', exact: true });
+    await numberedList.click();
+    await expect(numberedList).toHaveAttribute('aria-pressed', 'true');
+    await numberedList.click();
+    await expect(numberedList).toHaveAttribute('aria-pressed', 'false');
+  });
+
+  test('alignment buttons switch the active option', async ({ page }) => {
+    await openEditorWithSelection(page);
+
+    // Alignment is radio-like (setTextAlign), not an on/off toggle: selecting one
+    // option deactivates the previously-active one. Assert that mutual exclusivity
+    // rather than a click-twice-to-clear pattern, so the check never depends on
+    // the editor's default alignment.
+    const alignCenter = page.getByRole('button', { name: 'Align center', exact: true });
+    await expect(alignCenter).toBeEnabled();
+
+    await alignCenter.click();
+    await expect(alignCenter).toHaveAttribute('aria-pressed', 'true');
+
+    const alignRight = page.getByRole('button', { name: 'Align right', exact: true });
+    await alignRight.click();
+    await expect(alignRight).toHaveAttribute('aria-pressed', 'true');
+    // Selecting right must have cleared center.
+    await expect(alignCenter).toHaveAttribute('aria-pressed', 'false');
   });
 });
 
@@ -377,5 +437,6 @@ test.describe('rich-text toolbar', () => {
 // All 12 of #96's acceptance criteria are now covered above. One adjacent,
 // non-AC scenario remains a follow-up:
 //   - Enquiry-email update on an already-posted post (PUT .../enquiryEmailAddress):
-//     the MSW handler exists, but the PostDetailPage edit interaction is out of
-//     scope for the create/send flows and belongs with the post-detail coverage.
+//     the PostDetailPage edit interaction is out of scope for the create/send
+//     flows, so both its test and its MSW handler are deferred to the post-detail
+//     coverage PR.
