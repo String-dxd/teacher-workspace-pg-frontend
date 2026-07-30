@@ -139,7 +139,7 @@ function DetailHeader({ post, onDelete, onRefetch }: DetailHeaderProps) {
           size="icon-sm"
           aria-label="Back to Posts"
           className="mt-1"
-          onClick={() => navigate(-1)}
+          onClick={() => navigate('..')}
         >
           <ArrowLeft className="h-4 w-4" />
         </Button>
@@ -240,7 +240,7 @@ const PostDetailPage: React.FC<PostDetailPageProps> = ({ postKind }) => {
             ? 'This post may have been deleted.'
             : 'The server may be unavailable. Please try again.'}
         </p>
-        <Button variant="secondary" size="sm" onClick={() => navigate(-1)}>
+        <Button variant="secondary" size="sm" onClick={() => navigate('..')}>
           Back to Posts
         </Button>
       </div>
