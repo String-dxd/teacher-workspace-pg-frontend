@@ -84,6 +84,10 @@ interface EntitySelectorProps {
   hideChips?: boolean;
   /** Entity ids whose chips render without a remove control (e.g. staff already on a sent post). */
   nonRemovableIds?: Set<string>;
+  /** Entity ids whose chips render with a tinted highlight (e.g. the signed-in teacher). */
+  highlightedIds?: Set<string>;
+  /** Hides the "Clear all" control (e.g. when only the teacher's own chip is removable). */
+  hideClearAll?: boolean;
   /** When false, focusing the input won't open the dropdown. Defaults to true. */
   openOnFocus?: boolean;
   /** When true, the dropdown opens immediately on mount. */
@@ -325,6 +329,7 @@ function EntityChip({
   large = false,
   onChipClick,
   removable = true,
+  highlighted = false,
 }: {
   entity: SelectedEntity;
   onRemove: () => void;
@@ -332,6 +337,7 @@ function EntityChip({
   large?: boolean;
   onChipClick?: () => void;
   removable?: boolean;
+  highlighted?: boolean;
 }) {
   const names = entity.memberNames ?? [];
   const tooltipTitle =
@@ -361,9 +367,13 @@ function EntityChip({
       className={cn(
         'inline-flex shrink-0 items-center rounded-md font-medium',
         large
-          ? 'gap-2 border border-input bg-background px-3 py-1.5 text-sm text-slate-12'
+          ? cn(
+              'gap-2 border px-3 py-1.5 text-sm text-slate-12',
+              highlighted ? 'border-twblue-6 bg-twblue-2' : 'border-input bg-background',
+            )
           : cn(
               'gap-1 bg-twblue-2 px-2 py-0.5 text-xs text-twblue-9',
+              highlighted && 'ring-1 ring-inset ring-twblue-6',
               extra ? 'max-w-[260px]' : 'max-w-[180px]',
             ),
         onChipClick && 'cursor-pointer hover:bg-slate-3',
@@ -425,6 +435,8 @@ export function EntitySelector({
   openOnFocus = true,
   autoOpen = false,
   nonRemovableIds,
+  highlightedIds,
+  hideClearAll = false,
 }: EntitySelectorProps) {
   const [isOpen, setIsOpen] = useState(autoOpen);
   const [query, setQuery] = useState('');
@@ -691,6 +703,7 @@ export function EntitySelector({
                 onRemove={() => handleRemove(entity)}
                 extra={renderChipExtra?.(entity)}
                 removable={!nonRemovableIds?.has(entity.id)}
+                highlighted={highlightedIds?.has(entity.id)}
               />
             ))}
 
@@ -745,7 +758,7 @@ export function EntitySelector({
           />
 
           {/* Clear all — visible when ≥1 removable chip is selected (inline mode only) */}
-          {!chipsBelow && value.length > 0 && hasRemovableValue && (
+          {!chipsBelow && value.length > 0 && hasRemovableValue && !hideClearAll && (
             <button
               type="button"
               onMouseDown={(e) => e.preventDefault()}
@@ -785,9 +798,10 @@ export function EntitySelector({
               large
               onChipClick={entity.type === 'group' ? () => openGroup(entity) : undefined}
               removable={!nonRemovableIds?.has(entity.id)}
+              highlighted={highlightedIds?.has(entity.id)}
             />
           ))}
-          {hasRemovableValue && (
+          {hasRemovableValue && !hideClearAll && (
             <button
               type="button"
               onMouseDown={(e) => e.preventDefault()}

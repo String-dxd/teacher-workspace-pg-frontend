@@ -57,6 +57,8 @@ interface PostCardProps {
   staff?: ApiSchoolStaff[];
   /** Preset email options for the enquiry email quick-edit dialog. */
   emailOptions?: string[];
+  /** Signed-in teacher's staffId, for the staff-in-charge self-removal flow. */
+  currentStaffId?: number;
   /** Called after any quick-edit dialog saves successfully, to refetch the post. */
   onSaved?: () => void;
 }
@@ -99,6 +101,7 @@ export function PostCard({
   className,
   staff = [],
   emailOptions = [],
+  currentStaffId,
   onSaved,
 }: PostCardProps) {
   const [recipientsDialogOpen, setRecipientsDialogOpen] = useState(false);
@@ -406,6 +409,7 @@ export function PostCard({
         onOpenChange={(open) => setEditDialog(open ? 'staff' : null)}
         post={post}
         staff={staff}
+        currentStaffId={currentStaffId}
         onSaved={() => onSaved?.()}
       />
 
