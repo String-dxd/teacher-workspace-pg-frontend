@@ -82,6 +82,8 @@ interface EntitySelectorProps {
   chipsBelow?: boolean;
   /** When true, suppresses chip rendering entirely. */
   hideChips?: boolean;
+  /** Entity ids whose chips render without a remove control (e.g. staff already on a sent post). */
+  nonRemovableIds?: Set<string>;
   /** When false, focusing the input won't open the dropdown. Defaults to true. */
   openOnFocus?: boolean;
   /** When true, the dropdown opens immediately on mount. */
@@ -322,12 +324,14 @@ function EntityChip({
   extra,
   large = false,
   onChipClick,
+  removable = true,
 }: {
   entity: SelectedEntity;
   onRemove: () => void;
   extra?: React.ReactNode;
   large?: boolean;
   onChipClick?: () => void;
+  removable?: boolean;
 }) {
   const names = entity.memberNames ?? [];
   const tooltipTitle =
@@ -379,23 +383,25 @@ function EntityChip({
       {extra != null && (
         <span className={cn('flex shrink-0 items-center', large ? 'ml-2' : 'ml-1')}>{extra}</span>
       )}
-      <button
-        type="button"
-        aria-label={`Remove ${entity.label}`}
-        onMouseDown={(e) => e.preventDefault()}
-        onClick={(e) => {
-          e.stopPropagation();
-          onRemove();
-        }}
-        className={cn(
-          'shrink-0 rounded-full',
-          large
-            ? 'ml-1 p-0.5 text-slate-9 hover:bg-slate-4 hover:text-slate-12'
-            : 'ml-0.5 p-0.5 hover:bg-twblue-4 hover:text-twblue-9',
-        )}
-      >
-        <X className={cn(large ? 'h-3 w-3' : 'h-2.5 w-2.5')} />
-      </button>
+      {removable && (
+        <button
+          type="button"
+          aria-label={`Remove ${entity.label}`}
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={(e) => {
+            e.stopPropagation();
+            onRemove();
+          }}
+          className={cn(
+            'shrink-0 rounded-full',
+            large
+              ? 'ml-1 p-0.5 text-slate-9 hover:bg-slate-4 hover:text-slate-12'
+              : 'ml-0.5 p-0.5 hover:bg-twblue-4 hover:text-twblue-9',
+          )}
+        >
+          <X className={cn(large ? 'h-3 w-3' : 'h-2.5 w-2.5')} />
+        </button>
+      )}
     </span>
   );
 }
@@ -418,6 +424,7 @@ export function EntitySelector({
   hideChips = false,
   openOnFocus = true,
   autoOpen = false,
+  nonRemovableIds,
 }: EntitySelectorProps) {
   const [isOpen, setIsOpen] = useState(autoOpen);
   const [query, setQuery] = useState('');
@@ -463,6 +470,7 @@ export function EntitySelector({
   function handleToggle(item: EntityItem) {
     const isSelected = value.some((e) => e.id === item.id);
     if (isSelected) {
+      if (nonRemovableIds?.has(item.id)) return;
       onChange(value.filter((e) => e.id !== item.id));
       if (groupExclusions.has(item.id)) {
         const next = new Map(groupExclusions);
@@ -536,6 +544,11 @@ export function EntitySelector({
       setGroupExclusions(next);
     }
   }
+
+  function handleClearAll() {
+    onChange(value.filter((e) => nonRemovableIds?.has(e.id)));
+  }
+  const hasRemovableValue = value.some((e) => !nonRemovableIds?.has(e.id));
 
   function closePanel() {
     setIsOpen(false);
@@ -677,6 +690,7 @@ export function EntitySelector({
                 entity={entity}
                 onRemove={() => handleRemove(entity)}
                 extra={renderChipExtra?.(entity)}
+                removable={!nonRemovableIds?.has(entity.id)}
               />
             ))}
 
@@ -717,19 +731,25 @@ export function EntitySelector({
                 else closePanel();
               }
               // Backspace on empty input removes the last chip (inline mode only)
-              if (!chipsBelow && e.key === 'Backspace' && !query && value.length > 0) {
+              if (
+                !chipsBelow &&
+                e.key === 'Backspace' &&
+                !query &&
+                value.length > 0 &&
+                !nonRemovableIds?.has(value[value.length - 1].id)
+              ) {
                 handleRemove(value[value.length - 1]);
               }
             }}
             className="min-w-[100px] flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
           />
 
-          {/* Clear all — visible when ≥1 chip is selected (inline mode only) */}
-          {!chipsBelow && value.length > 0 && (
+          {/* Clear all — visible when ≥1 removable chip is selected (inline mode only) */}
+          {!chipsBelow && value.length > 0 && hasRemovableValue && (
             <button
               type="button"
               onMouseDown={(e) => e.preventDefault()}
-              onClick={() => onChange([])}
+              onClick={handleClearAll}
               className="ml-auto shrink-0 text-xs text-muted-foreground transition-colors hover:text-destructive"
             >
               Clear all
@@ -764,16 +784,19 @@ export function EntitySelector({
               extra={renderChipExtra?.(entity)}
               large
               onChipClick={entity.type === 'group' ? () => openGroup(entity) : undefined}
+              removable={!nonRemovableIds?.has(entity.id)}
             />
           ))}
-          <button
-            type="button"
-            onMouseDown={(e) => e.preventDefault()}
-            onClick={() => onChange([])}
-            className="ml-auto shrink-0 text-xs text-muted-foreground transition-colors hover:text-destructive"
-          >
-            Clear all
-          </button>
+          {hasRemovableValue && (
+            <button
+              type="button"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={handleClearAll}
+              className="ml-auto shrink-0 text-xs text-muted-foreground transition-colors hover:text-destructive"
+            >
+              Clear all
+            </button>
+          )}
         </div>
       )}
     </>

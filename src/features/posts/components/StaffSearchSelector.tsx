@@ -16,9 +16,16 @@ interface StaffSearchSelectorProps {
   staff: ApiSchoolStaff[];
   value: SelectedEntity[];
   onChange: (staff: SelectedEntity[]) => void;
+  /** Staff already on the post can't be removed by the creator — only added to. */
+  lockedStaffIds?: Set<string>;
 }
 
-export function StaffSearchSelector({ staff, value, onChange }: StaffSearchSelectorProps) {
+export function StaffSearchSelector({
+  staff,
+  value,
+  onChange,
+  lockedStaffIds,
+}: StaffSearchSelectorProps) {
   const items: EntityItem[] = useMemo(
     () =>
       staff.map((s) => ({
@@ -50,6 +57,7 @@ export function StaffSearchSelector({ staff, value, onChange }: StaffSearchSelec
       placeholder="Search staff by name or email…"
       noResultsText="No staff found"
       chipsBelow
+      nonRemovableIds={lockedStaffIds}
     />
   );
 }
