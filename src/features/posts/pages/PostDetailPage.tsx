@@ -303,6 +303,7 @@ const PostDetailContent: React.FC<PostDetailContentProps> = ({ post, staff, sess
   const cardProps = {
     staff,
     emailOptions,
+    currentStaffId: session.staffId,
     onSaved: refetch,
   };
 
@@ -343,6 +344,7 @@ const PostDetailContent: React.FC<PostDetailContentProps> = ({ post, staff, sess
 interface DetailCardProps {
   staff: ApiSchoolStaff[];
   emailOptions: string[];
+  currentStaffId?: number;
   onSaved: () => void;
   attachments: { name: string; sizeKb: number; url: string }[];
 }
@@ -352,6 +354,7 @@ function AnnouncementDetail({
   attachments,
   staff,
   emailOptions,
+  currentStaffId,
   onSaved,
 }: { post: AnnouncementPost } & DetailCardProps) {
   const [filter, setFilter] = useState<RecipientFilterValue>(DEFAULT_RECIPIENT_FILTER);
@@ -392,6 +395,7 @@ function AnnouncementDetail({
           attachments={attachments}
           staff={staff}
           emailOptions={emailOptions}
+          currentStaffId={currentStaffId}
           onSaved={onSaved}
         />
       </div>
@@ -404,6 +408,7 @@ function ConsentFormDetail({
   attachments,
   staff,
   emailOptions,
+  currentStaffId,
   onSaved,
 }: { post: ConsentFormPost } & DetailCardProps) {
   const showTable =
@@ -436,6 +441,7 @@ function ConsentFormDetail({
           attachments={attachments}
           staff={staff}
           emailOptions={emailOptions}
+          currentStaffId={currentStaffId}
           onSaved={onSaved}
         />
       </div>

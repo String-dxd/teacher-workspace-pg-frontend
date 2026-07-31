@@ -18,6 +18,10 @@ interface StaffSearchSelectorProps {
   onChange: (staff: SelectedEntity[]) => void;
   /** Staff already on the post can't be removed by the creator — only added to. */
   lockedStaffIds?: Set<string>;
+  /** Staff ids rendered with a tinted highlight (e.g. the signed-in teacher). */
+  highlightedStaffIds?: Set<string>;
+  /** Hides the "Clear all" control (e.g. when only the teacher's own chip is removable). */
+  hideClearAll?: boolean;
 }
 
 export function StaffSearchSelector({
@@ -25,6 +29,8 @@ export function StaffSearchSelector({
   value,
   onChange,
   lockedStaffIds,
+  highlightedStaffIds,
+  hideClearAll,
 }: StaffSearchSelectorProps) {
   const items: EntityItem[] = useMemo(
     () =>
@@ -58,6 +64,9 @@ export function StaffSearchSelector({
       noResultsText="No staff found"
       chipsBelow
       nonRemovableIds={lockedStaffIds}
+      highlightedIds={highlightedStaffIds}
+      hideClearAll={hideClearAll}
+      openOnFocus={false}
     />
   );
 }

@@ -26,20 +26,19 @@ function envelope<T>(body: T) {
  * newly-added staff-in-charge — this app's fixtures are mutable module-level
  * objects, so writing through them here is enough to fake persistence.
  */
+// The client always sends the full staff-in-charge list, so the mock treats
+// the payload as the new truth — replace, not append. This is what lets the
+// self-removal flow work; the real add-only endpoint would need a remove
+// counterpart.
 async function applyAddedStaffInCharge(
   detail: { staffOwners?: { staffID: number; staffName: string }[] },
   request: Request,
 ) {
   const body = (await request.json()) as { staffGroups?: { value: number }[] };
-  if (!detail.staffOwners) detail.staffOwners = [];
-  const existingIds = new Set(detail.staffOwners.map((s) => s.staffID));
-  for (const group of body.staffGroups ?? []) {
-    if (existingIds.has(group.value)) continue;
+  detail.staffOwners = (body.staffGroups ?? []).flatMap((group) => {
     const staff = schoolStaff.find((s) => s.staffId === group.value);
-    if (!staff) continue;
-    detail.staffOwners.push({ staffID: staff.staffId, staffName: staff.name });
-    existingIds.add(staff.staffId);
-  }
+    return staff ? [{ staffID: staff.staffId, staffName: staff.name }] : [];
+  });
 }
 
 const BASE = '/api/web/2/staff';
