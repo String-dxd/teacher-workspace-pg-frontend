@@ -303,6 +303,10 @@ export const handlers = [
     return new HttpResponse(null, { status: 204 });
   }),
 
+  http.put(`${BASE}/announcements/:postId/removeAccess`, () => {
+    return new HttpResponse(null, { status: 204 });
+  }),
+
   http.post(`${BASE}/consentForms`, () => {
     return HttpResponse.json(envelope({ consentFormId: 999 }));
   }),
@@ -359,6 +363,10 @@ export const handlers = [
 
   http.post(`${BASE}/consentForms/:formId/addStaffInCharge`, async ({ request }) => {
     await applyAddedStaffInCharge(consentFormDetail, request);
+    return new HttpResponse(null, { status: 204 });
+  }),
+
+  http.put(`${BASE}/consentForms/:formId/removeAccess`, () => {
     return new HttpResponse(null, { status: 204 });
   }),
 

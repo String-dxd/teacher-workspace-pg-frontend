@@ -18,6 +18,7 @@ import {
   fetchAnnouncementDraftDetail,
   fetchAnnouncements,
   fetchSharedAnnouncements,
+  removeAccessFromAnnouncement,
   rescheduleAnnouncementDraft,
   scheduleExistingAnnouncementDraft,
   scheduleNewAnnouncementDraft,
@@ -169,6 +170,12 @@ describe('api/announcements', () => {
       expect(mutateApi).toHaveBeenCalledWith('PUT', '/announcements/11/enquiryEmailAddress', {
         enquiryEmailAddress: 'test@school.edu.sg',
       });
+    });
+
+    it('removeAccessFromAnnouncement PUTs empty body to /announcements/:id/removeAccess', async () => {
+      vi.mocked(mutateApi).mockResolvedValue(undefined);
+      await removeAccessFromAnnouncement(5);
+      expect(mutateApi).toHaveBeenCalledWith('PUT', '/announcements/5/removeAccess', {});
     });
 
     it('deleteAnnouncement calls DELETE /announcements/:id', async () => {
