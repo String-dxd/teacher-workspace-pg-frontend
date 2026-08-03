@@ -121,6 +121,10 @@ export function duplicateConsentFormDraft(
   return mutateApi('POST', '/consentForms/drafts/duplicate', { consentFormDraftId });
 }
 
+export function removeAccessFromConsentForm(formId: number): Promise<void> {
+  return mutateApi('PUT', `/consentForms/${formId}/removeAccess`, {});
+}
+
 export function deleteConsentForm(formId: number): Promise<void> {
   return deleteApi(`/consentForms/${formId}`);
 }

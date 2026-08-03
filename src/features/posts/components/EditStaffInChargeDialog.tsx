@@ -12,8 +12,14 @@ import {
   Label,
 } from '~/components/ui';
 import type { Post } from '~/data/posts-registry';
-import { updateAnnouncementStaffInCharge } from '~/features/posts/api/announcements';
-import { updateConsentFormStaffInCharge } from '~/features/posts/api/consent-forms';
+import {
+  removeAccessFromAnnouncement,
+  updateAnnouncementStaffInCharge,
+} from '~/features/posts/api/announcements';
+import {
+  removeAccessFromConsentForm,
+  updateConsentFormStaffInCharge,
+} from '~/features/posts/api/consent-forms';
 import type { ApiSchoolStaff } from '~/features/posts/api/types';
 import type { SelectedEntity } from '~/features/posts/components/EntitySelector';
 import { StaffSearchSelector } from '~/features/posts/components/StaffSearchSelector';
@@ -140,11 +146,10 @@ function EditStaffInChargeDialog({
     setRemoving(true);
     setRemoveFailed(false);
     try {
-      const staffIds = value.filter((e) => e.id !== selfId).map((s) => Number(s.id));
       if (post.kind === 'announcement') {
-        await updateAnnouncementStaffInCharge(post.numericId, staffIds);
+        await removeAccessFromAnnouncement(post.numericId);
       } else {
-        await updateConsentFormStaffInCharge(post.numericId, staffIds);
+        await removeAccessFromConsentForm(post.numericId);
       }
       notify.success(`You're no longer staff-in-charge of "${post.title}".`);
       navigate('/posts');

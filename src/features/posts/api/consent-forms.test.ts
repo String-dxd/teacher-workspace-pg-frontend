@@ -23,6 +23,7 @@ import {
   duplicateConsentFormDraft,
   deleteConsentForm,
   deleteConsentFormDraft,
+  removeAccessFromConsentForm,
   updateConsentFormEnquiryEmail,
   updateConsentFormStaffInCharge,
 } from './consent-forms';
@@ -168,6 +169,12 @@ describe('api/consent-forms', () => {
         consentFormDraftId: 13,
       });
       expect(result).toEqual({ consentFormDraftId: 21 });
+    });
+
+    it('removeAccessFromConsentForm PUTs empty body to /consentForms/:id/removeAccess', async () => {
+      vi.mocked(mutateApi).mockResolvedValue(undefined);
+      await removeAccessFromConsentForm(5);
+      expect(mutateApi).toHaveBeenCalledWith('PUT', '/consentForms/5/removeAccess', {});
     });
 
     it('deleteConsentForm calls DELETE /consentForms/:id', async () => {
