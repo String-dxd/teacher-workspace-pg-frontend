@@ -32,16 +32,22 @@ export function StaffSearchSelector({
   highlightedStaffIds,
   hideClearAll,
 }: StaffSearchSelectorProps) {
+  // The list is for adding new staff only — anyone already added (including
+  // yourself) is removed here, not toggled, so they don't appear as a
+  // selectable row once they're on the post.
+  const selectedIds = useMemo(() => new Set(value.map((e) => e.id)), [value]);
   const items: EntityItem[] = useMemo(
     () =>
-      staff.map((s) => ({
-        id: String(s.staffId),
-        label: stripSalutation(s.name),
-        sublabel: [s.className, s.email].filter(Boolean).join(' · '),
-        type: 'individual' as const,
-        count: 1,
-      })),
-    [staff],
+      staff
+        .filter((s) => !selectedIds.has(String(s.staffId)))
+        .map((s) => ({
+          id: String(s.staffId),
+          label: stripSalutation(s.name),
+          sublabel: [s.className, s.email].filter(Boolean).join(' · '),
+          type: 'individual' as const,
+          count: 1,
+        })),
+    [staff, selectedIds],
   );
 
   function searchFn(query: string): SearchResults {
