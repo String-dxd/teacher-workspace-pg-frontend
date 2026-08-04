@@ -41,6 +41,8 @@ type RecipientReadTableProps = FilterControlProps &
         recipients: Recipient[];
         responseType: ResponseType;
         exportId?: string;
+        /** Response due date (ISO). Unresponded recipients show "Pending" until this date, then "No Response". */
+        dueDate?: string;
       }
     | {
         kind: 'form';
@@ -49,8 +51,21 @@ type RecipientReadTableProps = FilterControlProps &
         exportId?: string;
         /** The form's custom questions, each rendered as a toggleable answer column. */
         questions?: QuestionColumn[];
+        /** Response due date (ISO). Unresponded recipients show "Pending" until this date, then "No Response". */
+        dueDate?: string;
       }
   );
+
+// ─── Due date helper ──────────────────────────────────────────────────────────
+
+function isPastDue(dueDate: string | undefined): boolean {
+  if (!dueDate) return false;
+  const due = new Date(dueDate);
+  due.setHours(0, 0, 0, 0);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return today > due;
+}
 
 // ─── Toolbar ──────────────────────────────────────────────────────────────────
 
@@ -182,9 +197,11 @@ function Toolbar({
 function StatusCell({
   responseType,
   recipient,
+  pastDue,
 }: {
   responseType: ResponseType | 'acknowledge' | 'yes-no';
   recipient: Recipient | ConsentFormRecipient;
+  pastDue: boolean;
 }) {
   if (responseType === 'view-only') {
     const r = recipient as Recipient;
@@ -215,6 +232,7 @@ function StatusCell({
   }
 
   // yes-no
+  const unrespondedLabel = pastDue ? 'No Response' : 'Pending';
   const isForm = 'response' in recipient;
   if (isForm) {
     const r = recipient as ConsentFormRecipient;
@@ -223,7 +241,7 @@ function StatusCell({
     ) : r.response === 'NO' ? (
       <Badge variant="destructive">No</Badge>
     ) : (
-      <span className="text-sm text-muted-foreground">No Response</span>
+      <span className="text-sm text-muted-foreground">{unrespondedLabel}</span>
     );
   } else {
     const r = recipient as Recipient;
@@ -232,7 +250,7 @@ function StatusCell({
     ) : r.formResponse === 'no' ? (
       <Badge variant="destructive">No</Badge>
     ) : (
-      <span className="text-sm text-muted-foreground">No Response</span>
+      <span className="text-sm text-muted-foreground">{unrespondedLabel}</span>
     );
   }
 }
@@ -324,12 +342,14 @@ function UnifiedTable({
   columns,
   isForm,
   questions,
+  pastDue,
 }: {
   recipients: (Recipient | ConsentFormRecipient)[];
   responseType: ResponseType | 'acknowledge' | 'yes-no';
   columns: ColumnVisibility;
   isForm: boolean;
   questions: QuestionColumn[];
+  pastDue: boolean;
 }) {
   const tsLabel = timestampLabel(responseType);
 
@@ -337,7 +357,7 @@ function UnifiedTable({
     <Table tableClassName="w-full">
       <TableHeader className="border-b bg-background">
         <TableRow className="border-0 hover:bg-transparent">
-          <TableHead className="sticky left-0 z-10 w-[180px] bg-background">Student</TableHead>
+          <TableHead className="sticky left-0 z-10 w-[360px] bg-background">Student</TableHead>
           {columns.indexNumber && <TableHead>Index No.</TableHead>}
           <TableHead>Class</TableHead>
           <TableHead>Status</TableHead>
@@ -368,7 +388,7 @@ function UnifiedTable({
 
           return (
             <TableRow key={recipient.studentId}>
-              <TableCell className="sticky left-0 z-10 w-[180px] bg-background font-medium">
+              <TableCell className="sticky left-0 z-10 w-[360px] bg-background font-medium">
                 {recipient.studentName}
               </TableCell>
               {columns.indexNumber && (
@@ -380,7 +400,7 @@ function UnifiedTable({
                 <Badge variant="secondary">{recipient.classLabel}</Badge>
               </TableCell>
               <TableCell>
-                <StatusCell responseType={responseType} recipient={recipient} />
+                <StatusCell responseType={responseType} recipient={recipient} pastDue={pastDue} />
               </TableCell>
               {questions.map((q) => {
                 const answer = isForm
@@ -441,6 +461,7 @@ function rowToExport(
   responseType: ResponseType | 'acknowledge' | 'yes-no',
   isForm: boolean,
   questions: QuestionColumn[],
+  pastDue: boolean,
 ): Record<string, string> {
   const status = deriveStatus(responseType, recipient);
   const statusLabels: Record<StatusFilter, string> = {
@@ -451,7 +472,7 @@ function rowToExport(
     pending: 'Pending',
     yes: 'Yes',
     no: 'No',
-    'no-response': 'No Response',
+    'no-response': pastDue ? 'No Response' : 'Pending',
   };
   const ts = resolveTimestamp(responseType, recipient);
   const indexNo =
@@ -551,11 +572,12 @@ export function RecipientReadTable(props: RecipientReadTableProps) {
   }, [props.recipients, filter, responseType]);
 
   const tsLabel = timestampLabel(responseType);
+  const pastDue = isPastDue(props.dueDate);
 
   const handleExport = async () => {
     const exportCols = buildExportColumns(filter.columns, isForm, tsLabel, visibleQuestions);
     const rows = filteredRecipients.map((r) =>
-      rowToExport(r, responseType, isForm, visibleQuestions),
+      rowToExport(r, responseType, isForm, visibleQuestions, pastDue),
     );
     const today = new Date().toISOString().slice(0, 10);
     const stem = props.exportId ? `recipients-${props.exportId}-${today}` : `recipients-${today}`;
@@ -589,6 +611,7 @@ export function RecipientReadTable(props: RecipientReadTableProps) {
             columns={filter.columns}
             isForm={isForm}
             questions={visibleQuestions}
+            pastDue={pastDue}
           />
         )}
       </div>
