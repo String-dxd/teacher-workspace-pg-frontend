@@ -3,7 +3,7 @@ import { Button } from '~/components/ui';
 /** Placeholder pending UXD confirmation (issue #118) — kept in one constant
  *  so the confirmed copy is a one-line change. */
 const MAINTENANCE_COPY = {
-  heading: 'Posts is under maintenance',
+  heading: 'This section is under maintenance',
   body: 'We’re making some improvements. Come back later :)',
 };
 
