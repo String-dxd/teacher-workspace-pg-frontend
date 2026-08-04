@@ -43,7 +43,7 @@ import {
   scheduleNewConsentFormDraft,
   updateConsentFormDraft,
 } from '~/features/posts/api/consent-forms';
-import { AppError, ValidationError } from '~/features/posts/api/errors';
+import { AppError, ServiceUnavailableError, ValidationError } from '~/features/posts/api/errors';
 import {
   buildAnnouncementPayload,
   buildConsentFormPayload,
@@ -621,7 +621,11 @@ function CreatePostForm({ editId, loaderData }: CreatePostFormProps) {
       navigate('..');
     } catch (err) {
       setSaveState('idle');
-      if (err instanceof ValidationError) {
+      if (err instanceof ServiceUnavailableError) {
+        // PG is under maintenance — abandon the form for the static
+        // maintenance page (no toast; issue #118).
+        navigate('/posts/maintenance');
+      } else if (err instanceof ValidationError) {
         const stamped = stampValidationError(err);
         if (!stamped) notify.error(reportValidationError(err));
       } else if (!(err instanceof AppError)) {
@@ -646,7 +650,11 @@ function CreatePostForm({ editId, loaderData }: CreatePostFormProps) {
       navigate('..');
     } catch (err) {
       setSaveState('idle');
-      if (err instanceof ValidationError) {
+      if (err instanceof ServiceUnavailableError) {
+        // PG is under maintenance — abandon the form for the static
+        // maintenance page (no toast; issue #118).
+        navigate('/posts/maintenance');
+      } else if (err instanceof ValidationError) {
         const stamped = stampValidationError(err);
         if (!stamped) notify.error(reportValidationError(err));
       } else if (err instanceof Error && !(err instanceof AppError)) {

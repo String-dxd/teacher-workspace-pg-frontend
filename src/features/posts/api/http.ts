@@ -4,6 +4,7 @@ import {
   NotFoundError,
   RateLimitError,
   RedirectError,
+  ServiceUnavailableError,
   SessionExpiredError,
   TimeoutError,
   ValidationError,
@@ -76,6 +77,10 @@ async function handleErrorResponse(res: Response): Promise<never> {
       // found' page instead of a generic error.
       if (res.status === 404) {
         throw new NotFoundError(message, code, res.status);
+      }
+      // pgw-web returns a bare 503 (no envelope) while under maintenance.
+      if (res.status === 503) {
+        throw new ServiceUnavailableError();
       }
       throw new AppError(message, code, res.status);
   }

@@ -5,6 +5,7 @@ import '~/index.css';
 
 import { AppErrorBoundary } from '~/components/AppErrorBoundary';
 
+import { MaintenancePage } from './components/MaintenancePage';
 import { CreatePostPage } from './pages/CreatePostPage';
 import { PostDetailPage } from './pages/PostDetailPage';
 import { PostsListPage } from './pages/PostsListPage';
@@ -23,6 +24,7 @@ function PostRoutes() {
     <Routes>
       <Route element={<PostsLayout />}>
         <Route index element={<PostsListPage />} />
+        <Route path="maintenance" element={<MaintenancePage />} />
         <Route path="new" element={<CreatePostPage postKind="announcement" draft={false} />} />
         <Route path="announcements/:id" element={<PostDetailPage postKind="announcement" />} />
         <Route
