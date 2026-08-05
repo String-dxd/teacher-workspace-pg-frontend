@@ -4,7 +4,7 @@ import { Button } from '~/components/ui';
  *  so the confirmed copy is a one-line change. */
 const MAINTENANCE_COPY = {
   heading: 'This section is under maintenance',
-  body: 'We’re making some improvements. Come back later :)',
+  body: 'We’re making some improvements. Come back later.',
 };
 
 /**
