@@ -54,7 +54,11 @@ import {
   duplicateConsentFormDraft,
   loadConsentPostsList,
 } from '~/features/posts/api/consent-forms';
-import { NotFoundError, ServiceUnavailableError } from '~/features/posts/api/errors';
+import {
+  NotFoundError,
+  ServiceUnavailableError,
+  UnauthorisedError,
+} from '~/features/posts/api/errors';
 import { getConfigs } from '~/features/posts/api/session';
 import type { ApiConfig } from '~/features/posts/api/types';
 import { DeletePostDialog } from '~/features/posts/components/DeletePostDialog';
@@ -73,6 +77,7 @@ import {
   type SortDirection,
   type SortState,
 } from '~/features/posts/components/SortableHeader';
+import { UnauthorisedPage } from '~/features/posts/components/UnauthorisedPage';
 import { usePagination } from '~/features/posts/hooks/usePagination';
 import { formatDate } from '~/helpers/dateTime';
 import { useQuery } from '~/hooks/useQuery';
@@ -411,6 +416,7 @@ const PostsListPage: React.FC = () => {
   // PG signals maintenance with a bare 503 — swap the whole content area for
   // the static maintenance page (the shell's navigation stays mounted).
   if (error instanceof ServiceUnavailableError) return <MaintenancePage />;
+  if (error instanceof UnauthorisedError) return <UnauthorisedPage />;
   if (error) return <QueryError onRetry={refetch} />;
   if (isLoading) return null;
 

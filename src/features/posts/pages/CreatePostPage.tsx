@@ -43,7 +43,12 @@ import {
   scheduleNewConsentFormDraft,
   updateConsentFormDraft,
 } from '~/features/posts/api/consent-forms';
-import { AppError, ServiceUnavailableError, ValidationError } from '~/features/posts/api/errors';
+import {
+  AppError,
+  ServiceUnavailableError,
+  UnauthorisedError,
+  ValidationError,
+} from '~/features/posts/api/errors';
 import {
   buildAnnouncementPayload,
   buildConsentFormPayload,
@@ -625,6 +630,11 @@ function CreatePostForm({ editId, loaderData }: CreatePostFormProps) {
         // PG is under maintenance — abandon the form for the static
         // maintenance page (no toast; issue #118).
         navigate('/posts/maintenance');
+      } else if (err instanceof UnauthorisedError) {
+        // SC has flagged this staff member as unauthorised — abandon the
+        // form for the static unauthorised page (no toast, no retry;
+        // issue #129).
+        navigate('/posts/unauthorised');
       } else if (err instanceof ValidationError) {
         const stamped = stampValidationError(err);
         if (!stamped) notify.error(reportValidationError(err));
@@ -654,6 +664,11 @@ function CreatePostForm({ editId, loaderData }: CreatePostFormProps) {
         // PG is under maintenance — abandon the form for the static
         // maintenance page (no toast; issue #118).
         navigate('/posts/maintenance');
+      } else if (err instanceof UnauthorisedError) {
+        // SC has flagged this staff member as unauthorised — abandon the
+        // form for the static unauthorised page (no toast, no retry;
+        // issue #129).
+        navigate('/posts/unauthorised');
       } else if (err instanceof ValidationError) {
         const stamped = stampValidationError(err);
         if (!stamped) notify.error(reportValidationError(err));

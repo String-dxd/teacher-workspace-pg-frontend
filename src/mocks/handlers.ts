@@ -55,9 +55,22 @@ function maintenanceSimulated(): boolean {
   );
 }
 
+// Simulates PG returning a bare 401 (issue #129): when the flag is set,
+// every staff endpoint returns 401, like pgw-web when SC flags the signed-in
+// staff member as inactive/unauthorised. Toggle from the browser console:
+//   localStorage.setItem('pg-simulate-unauthorised', '1')  // on
+//   localStorage.removeItem('pg-simulate-unauthorised')    // off
+function unauthorisedSimulated(): boolean {
+  return (
+    typeof localStorage !== 'undefined' &&
+    localStorage.getItem('pg-simulate-unauthorised') === '1'
+  );
+}
+
 export const handlers = [
   http.all(`${BASE}/*`, () => {
     if (maintenanceSimulated()) return new HttpResponse(null, { status: 503 });
+    if (unauthorisedSimulated()) return new HttpResponse(null, { status: 401 });
     return undefined; // fall through to the real handlers below
   }),
   // ─── Announcements ──────────────────────────────────────────────────────────
