@@ -4,7 +4,7 @@ import { Button } from '~/components/ui';
  *  so the confirmed copy is a one-line change. */
 const UNAUTHORISED_COPY = {
   heading: 'This section is restricted',
-  body: 'You may be listed as inactive in School Cockpit. Check in with your school administrator.',
+  body: 'You may be listed as inactive in SC. Check in with your SC administrator.',
 };
 
 /**
