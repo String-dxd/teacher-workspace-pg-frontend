@@ -181,27 +181,25 @@ const TILE_TONE: Record<StatTileProps['tone'], string> = {
 
 const StatTile = memo(function StatTile({ label, count, tone, active, onClick }: StatTileProps) {
   return (
-    <Card>
-      <CardContent className="p-0">
-        <button
-          type="button"
-          onClick={onClick}
-          disabled={!onClick}
-          aria-pressed={active}
-          className={cn(
-            'flex w-full cursor-pointer flex-col items-start gap-1 rounded-xl px-5 py-4 text-left transition-colors disabled:cursor-default',
-            'focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none',
-            active ? 'ring-2 ring-primary' : 'hover:bg-muted/40',
-          )}
-        >
-          <span className="text-xs font-semibold tracking-[0.14em] text-muted-foreground uppercase">
-            {label}
-          </span>
-          <span className={cn('text-3xl leading-none font-semibold tabular-nums', TILE_TONE[tone])}>
-            {count}
-          </span>
-        </button>
-      </CardContent>
+    <Card className={cn('p-0', active && 'ring-2 ring-primary')}>
+      <button
+        type="button"
+        onClick={onClick}
+        disabled={!onClick}
+        aria-pressed={active}
+        className={cn(
+          'flex w-full cursor-pointer flex-col items-start gap-1 rounded-3xl px-5 py-4 text-left transition-colors disabled:cursor-default',
+          'focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none',
+          !active && 'hover:bg-muted/40',
+        )}
+      >
+        <span className="text-xs font-semibold tracking-[0.14em] text-muted-foreground uppercase">
+          {label}
+        </span>
+        <span className={cn('text-3xl leading-none font-semibold tabular-nums', TILE_TONE[tone])}>
+          {count}
+        </span>
+      </button>
     </Card>
   );
 });
