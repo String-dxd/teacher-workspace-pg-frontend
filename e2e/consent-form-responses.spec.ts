@@ -156,11 +156,17 @@ test.describe('consent form responses — before due date (open)', () => {
     await dialog.getByRole('radio', { name: 'No' }).click();
     await dialog.getByRole('button', { name: 'Update response' }).click();
     await expect(dialog).not.toBeVisible();
+    // Wait for the success toast so the history state update has landed before
+    // hovering — otherwise the re-render can race with the tooltip's hover state.
+    await expect(page.getByText('Response updated.')).toBeVisible();
 
-    // Exact match distinguishes the history entry ("Response updated") from
-    // the success toast ("Response updated.").
-    await expect(page.getByText('Response updated', { exact: true })).toBeVisible();
-    await expect(page.getByText('Ms Tan Wei Ling')).toBeVisible();
+    const historyTrigger = page.locator('[aria-label="Post history"]');
+    await expect(async () => {
+      await historyTrigger.hover();
+      await expect(page.getByText('Response updated by Tan Wei Ling')).toBeVisible({
+        timeout: 1000,
+      });
+    }).toPass();
   });
 });
 

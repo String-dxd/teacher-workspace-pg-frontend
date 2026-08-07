@@ -37,11 +37,7 @@ import { fetchSession, getConfigs } from '~/features/posts/api/session';
 import type { ApiSchoolStaff, ApiSession } from '~/features/posts/api/types';
 import { DeletePostDialog } from '~/features/posts/components/DeletePostDialog';
 import { EditResponseDialog } from '~/features/posts/components/EditResponseDialog';
-import {
-  PostCard,
-  isoToSgtDate,
-  type PostCardEditState,
-} from '~/features/posts/components/PostCard';
+import { PostCard } from '~/features/posts/components/PostCard';
 import {
   ReadTrackingCards,
   type ConsentFormTileFilter,
@@ -78,11 +74,12 @@ function deleteMode(post: Post): 'posted' | 'draft' {
 
 interface DetailHeaderProps {
   post: Post;
+  history: ConsentFormHistoryEntry[];
   onDelete: () => void;
   onRefetch: () => void;
 }
 
-function DetailHeader({ post, onDelete, onRefetch }: DetailHeaderProps) {
+function DetailHeader({ post, history, onDelete, onRefetch }: DetailHeaderProps) {
   const badge = getPostStatusBadge(post);
   const iso = post.postedAt ?? post.createdAt;
   const postedDate = formatDateTime(iso) ?? formatDate(iso);
@@ -168,7 +165,7 @@ function DetailHeader({ post, onDelete, onRefetch }: DetailHeaderProps) {
               Posted {postedDate}
               {post.createdBy ? ` · ${stripSalutation(post.createdBy)}` : ''}
             </p>
-            {post.kind === 'form' && post.history.length > 0 && (
+            {post.kind === 'form' && history.length > 0 && (
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger
@@ -179,7 +176,7 @@ function DetailHeader({ post, onDelete, onRefetch }: DetailHeaderProps) {
                   </TooltipTrigger>
                   <TooltipContent side="bottom" align="start" className="w-max max-w-xs px-3 py-2">
                     <ol className="space-y-2">
-                      {post.history.map((entry) => (
+                      {history.map((entry) => (
                         <li key={entry.historyId}>
                           <p className="text-xs font-medium">
                             {entry.action}
@@ -317,6 +314,37 @@ const PostDetailContent: React.FC<PostDetailContentProps> = ({ post, staff, sess
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
+  // ── Consent-form local edit state ───────────────────────────────────────────
+  // The mock reply endpoint doesn't mutate server-side data, so successful
+  // edit-on-behalf submissions patch this state directly. Reset only when
+  // navigating to a different post; a refetch of the same post (e.g. after an
+  // unrelated field save) keeps the local edits. Lifted above ConsentFormDetail
+  // so the header's history tooltip reflects edits immediately.
+  const [formRecipients, setFormRecipients] = useState<ConsentFormRecipient[]>(
+    post.kind === 'form' ? post.recipients : [],
+  );
+  const [formHistory, setFormHistory] = useState<ConsentFormHistoryEntry[]>(
+    post.kind === 'form' ? post.history : [],
+  );
+  const [loadedPostId, setLoadedPostId] = useState(post.numericId);
+  if (loadedPostId !== post.numericId) {
+    setLoadedPostId(post.numericId);
+    if (post.kind === 'form') {
+      setFormRecipients(post.recipients);
+      setFormHistory(post.history);
+    }
+  }
+
+  function handleEditSuccess(
+    updatedRecipient: ConsentFormRecipient,
+    historyEntry: ConsentFormHistoryEntry,
+  ) {
+    setFormRecipients((prev) =>
+      prev.map((r) => (r.studentId === updatedRecipient.studentId ? updatedRecipient : r)),
+    );
+    setFormHistory((prev) => [...prev, historyEntry]);
+  }
+
   async function handleDeleteConfirm() {
     setDeleting(true);
     try {
@@ -355,7 +383,12 @@ const PostDetailContent: React.FC<PostDetailContentProps> = ({ post, staff, sess
 
   return (
     <div className="space-y-6 px-6 py-6">
-      <DetailHeader post={post} onDelete={() => setDeleteOpen(true)} onRefetch={refetch} />
+      <DetailHeader
+        post={post}
+        history={post.kind === 'form' ? formHistory : []}
+        onDelete={() => setDeleteOpen(true)}
+        onRefetch={refetch}
+      />
 
       {failureReason && (
         <div
@@ -370,7 +403,15 @@ const PostDetailContent: React.FC<PostDetailContentProps> = ({ post, staff, sess
       {post.kind === 'announcement' ? (
         <AnnouncementDetail post={post} attachments={attachments} {...cardProps} />
       ) : (
-        <ConsentFormDetail post={post} attachments={attachments} session={session} {...cardProps} />
+        <ConsentFormDetail
+          post={post}
+          attachments={attachments}
+          session={session}
+          recipients={formRecipients}
+          history={formHistory}
+          onEditSuccess={handleEditSuccess}
+          {...cardProps}
+        />
       )}
 
       <DeletePostDialog
@@ -458,26 +499,25 @@ function ConsentFormDetail({
   currentStaffId,
   onSaved,
   session,
-}: { post: ConsentFormPost; session: ApiSession } & DetailCardProps) {
+  recipients,
+  history,
+  onEditSuccess,
+}: {
+  post: ConsentFormPost;
+  session: ApiSession;
+  recipients: ConsentFormRecipient[];
+  history: ConsentFormHistoryEntry[];
+  onEditSuccess: (
+    updatedRecipient: ConsentFormRecipient,
+    historyEntry: ConsentFormHistoryEntry,
+  ) => void;
+} & DetailCardProps) {
   const showTable =
     (post.status === 'open' || post.status === 'closed') && post.stats.totalCount > 0;
   const isYesNoForm = post.responseType === 'yes-no';
   const dueDatePassed = post.status === 'closed';
 
   const [filter, setFilter] = useState<RecipientFilterValue>(DEFAULT_RECIPIENT_FILTER);
-
-  // Locally-applied edits — the mock reply endpoint doesn't mutate
-  // server-side data, so successful edits patch this state directly.
-  // Reset only when navigating to a different post; a refetch of the same
-  // post (e.g. after an unrelated field save) keeps the local edits.
-  const [recipients, setRecipients] = useState(post.recipients);
-  const [history, setHistory] = useState(post.history);
-  const [loadedPostId, setLoadedPostId] = useState(post.numericId);
-  if (loadedPostId !== post.numericId) {
-    setLoadedPostId(post.numericId);
-    setRecipients(post.recipients);
-    setHistory(post.history);
-  }
 
   const [editingRecipient, setEditingRecipient] = useState<ConsentFormRecipient | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -494,16 +534,6 @@ function ConsentFormDetail({
   function handleEditRecipient(recipient: ConsentFormRecipient) {
     setEditingRecipient(recipient);
     setDialogOpen(true);
-  }
-
-  function handleEditSuccess(
-    updatedRecipient: ConsentFormRecipient,
-    historyEntry: ConsentFormHistoryEntry,
-  ) {
-    setRecipients((prev) =>
-      prev.map((r) => (r.studentId === updatedRecipient.studentId ? updatedRecipient : r)),
-    );
-    setHistory((prev) => [...prev, historyEntry]);
   }
 
   const nextHistoryId = Math.max(0, ...history.map((h) => h.historyId)) + 1;
@@ -546,8 +576,6 @@ function ConsentFormDetail({
             />
           </div>
         )}
-
-        <ConsentFormHistoryList entries={history} />
       </div>
 
       <div className="lg:sticky lg:top-6 lg:self-start">
@@ -570,7 +598,7 @@ function ConsentFormDetail({
           questions={post.questions}
           actionBy={session.staffName}
           nextHistoryId={nextHistoryId}
-          onSuccess={handleEditSuccess}
+          onSuccess={onEditSuccess}
         />
       )}
     </div>
