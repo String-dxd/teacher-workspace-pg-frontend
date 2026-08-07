@@ -404,4 +404,48 @@ export const handlers = [
       headers: { 'Content-Type': 'text/plain' },
     });
   }),
+
+  // ─── Reports ──────────────────────────────────────────────────────────────
+  // Demo scenario: classId 303 (3C) always fails, so the report page's
+  // error state has something real to render against.
+  http.get(`${BASE}/reports/onboarding`, ({ request }) => {
+    const params = new URL(request.url).searchParams;
+    const classId = params.get('classId');
+    const schoolId = params.get('schoolId');
+    if (classId === '303') {
+      return HttpResponse.json(
+        { resultCode: -500, message: 'Onboarding records for this class are unavailable.' },
+        { status: 500 },
+      );
+    }
+    return new HttpResponse('Student Name,Custodian,Onboarded\nAhmad bin Ibrahim,Mrs Ibrahim,Yes\n', {
+      status: 200,
+      headers: {
+        'Content-Type': 'text/csv',
+        'Content-Disposition': `attachment; filename="onboarding-report-${classId ?? `school-${schoolId}`}.csv"`,
+      },
+    });
+  }),
+
+  http.get(`${BASE}/reports/travel-declaration`, ({ request }) => {
+    const params = new URL(request.url).searchParams;
+    const classId = params.get('classId');
+    const schoolId = params.get('schoolId');
+    if (classId === '303') {
+      return HttpResponse.json(
+        { resultCode: -500, message: 'Travel declaration records for this class are unavailable.' },
+        { status: 500 },
+      );
+    }
+    return new HttpResponse(
+      'Student Name,Declaration Status,Destination\nAhmad bin Ibrahim,Declared,Malaysia\n',
+      {
+        status: 200,
+        headers: {
+          'Content-Type': 'text/csv',
+          'Content-Disposition': `attachment; filename="travel-declaration-report-${classId ?? `school-${schoolId}`}.csv"`,
+        },
+      },
+    );
+  }),
 ];
