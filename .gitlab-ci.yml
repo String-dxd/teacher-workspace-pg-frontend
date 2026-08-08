@@ -61,6 +61,7 @@ build_dev:
     expire_in: 1 day
   rules:
     - if: $CI_COMMIT_TAG
+    - if: $CI_COMMIT_BRANCH == "main"
 
 deploy_dev:
   stage: deploy
@@ -77,3 +78,8 @@ deploy_dev:
     - build_dev
   environment:
     name: dev
+  rules:
+    - if: $CI_COMMIT_TAG
+    - if: $CI_COMMIT_BRANCH == "main"
+      when: manual
+      allow_failure: true
