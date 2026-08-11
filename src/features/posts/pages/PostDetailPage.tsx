@@ -11,6 +11,7 @@ import {
   TooltipTrigger,
 } from '~/components/ui';
 import {
+  computeConsentFormStats,
   describeScheduledSendFailure,
   getPostStatusBadge,
   type AnnouncementPost,
@@ -316,22 +317,45 @@ const PostDetailContent: React.FC<PostDetailContentProps> = ({ post, staff, sess
 
   // ── Consent-form local edit state ───────────────────────────────────────────
   // The mock reply endpoint doesn't mutate server-side data, so successful
-  // edit-on-behalf submissions patch this state directly. Reset only when
-  // navigating to a different post; a refetch of the same post (e.g. after an
-  // unrelated field save) keeps the local edits. Lifted above ConsentFormDetail
-  // so the header's history tooltip reflects edits immediately.
+  // edit-on-behalf submissions patch this state directly. On a refetch of the
+  // same post (e.g. after an unrelated field save), rows we've locally edited
+  // keep their local value, but everything else adopts the freshly fetched
+  // server data — so a genuinely new server-side change (e.g. a parent
+  // submitting a response elsewhere) isn't silently discarded. Navigating to
+  // a different post resets everything. Lifted above ConsentFormDetail so the
+  // header's history tooltip reflects edits immediately.
   const [formRecipients, setFormRecipients] = useState<ConsentFormRecipient[]>(
     post.kind === 'form' ? post.recipients : [],
   );
   const [formHistory, setFormHistory] = useState<ConsentFormHistoryEntry[]>(
     post.kind === 'form' ? post.history : [],
   );
+  const [locallyEditedIds, setLocallyEditedIds] = useState<Set<string>>(new Set());
   const [loadedPostId, setLoadedPostId] = useState(post.numericId);
-  if (loadedPostId !== post.numericId) {
-    setLoadedPostId(post.numericId);
+  const [syncedPost, setSyncedPost] = useState(post);
+  if (syncedPost !== post) {
+    setSyncedPost(post);
     if (post.kind === 'form') {
-      setFormRecipients(post.recipients);
-      setFormHistory(post.history);
+      if (post.numericId !== loadedPostId) {
+        setLoadedPostId(post.numericId);
+        setFormRecipients(post.recipients);
+        setFormHistory(post.history);
+        setLocallyEditedIds(new Set());
+      } else {
+        setFormRecipients(
+          post.recipients.map((serverRecipient) =>
+            locallyEditedIds.has(serverRecipient.studentId)
+              ? (formRecipients.find((r) => r.studentId === serverRecipient.studentId) ??
+                serverRecipient)
+              : serverRecipient,
+          ),
+        );
+        const maxServerHistoryId = Math.max(0, ...post.history.map((h) => h.historyId));
+        setFormHistory([
+          ...post.history,
+          ...formHistory.filter((h) => h.historyId > maxServerHistoryId),
+        ]);
+      }
     }
   }
 
@@ -343,6 +367,7 @@ const PostDetailContent: React.FC<PostDetailContentProps> = ({ post, staff, sess
       prev.map((r) => (r.studentId === updatedRecipient.studentId ? updatedRecipient : r)),
     );
     setFormHistory((prev) => [...prev, historyEntry]);
+    setLocallyEditedIds((prev) => new Set(prev).add(updatedRecipient.studentId));
   }
 
   async function handleDeleteConfirm() {
@@ -554,7 +579,7 @@ function ConsentFormDetail({
         <ReadTrackingCards
           kind="form"
           responseType={post.responseType}
-          stats={post.stats}
+          stats={computeConsentFormStats(recipients)}
           activeFilter={tileFilter}
           onFilterChange={handleTileFilterChange}
         />

@@ -15,6 +15,7 @@ import type {
   TargetType,
   UploadedFile,
 } from '~/data/posts-registry';
+import { computeConsentFormStats } from '~/data/posts-registry';
 import type { UploadingFile } from '~/features/posts/state/initial-state';
 import { extractTextFromTiptap, textToTiptapDoc } from '~/helpers/tiptap';
 
@@ -521,9 +522,6 @@ export function mapConsentFormDetail(detail: ApiConsentFormDetail): ConsentFormP
     : 'draft';
 
   const recipientRows = detail.consentFormRecipients ?? [];
-  const totalCount = recipientRows.length;
-  const yesCount = recipientRows.filter((r) => r.reply === 'YES').length;
-  const noCount = recipientRows.filter((r) => r.reply === 'NO').length;
 
   const recipients: ConsentFormRecipient[] = recipientRows.map((r) => ({
     studentId: String(r.student.studentId),
@@ -592,12 +590,7 @@ export function mapConsentFormDetail(detail: ApiConsentFormDetail): ConsentFormP
     responseType: mapConsentFormResponseType(detail.responseType),
     ownership: 'mine',
     recipients,
-    stats: {
-      totalCount,
-      yesCount,
-      noCount,
-      pendingCount: Math.max(totalCount - yesCount - noCount, 0),
-    },
+    stats: computeConsentFormStats(recipients),
     createdAt: detail.createdAt ?? undefined,
     createdBy: detail.staffName,
     postedAt: detail.postedDate ?? undefined,

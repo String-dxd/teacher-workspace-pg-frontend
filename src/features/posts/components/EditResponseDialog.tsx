@@ -124,7 +124,7 @@ function EditResponseDialogContent({
         response: consentType,
         respondedAt: new Date().toISOString(),
         comments: comments || null,
-        questionAnswers: consentType === 'YES' ? answers : recipient.questionAnswers,
+        questionAnswers: consentType === 'YES' ? answers : undefined,
       };
       const historyEntry: ConsentFormHistoryEntry = {
         historyId: nextHistoryId,
@@ -184,7 +184,13 @@ function EditResponseDialogContent({
             <Button variant="ghost" onClick={() => setConfirmingDiscard(false)}>
               Keep editing
             </Button>
-            <Button variant="destructive" onClick={() => onOpenChange(false)}>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                setConfirmingDiscard(false);
+                onOpenChange(false);
+              }}
+            >
               Discard
             </Button>
           </DialogFooter>

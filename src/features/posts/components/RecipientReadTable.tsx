@@ -684,7 +684,10 @@ export function RecipientReadTable(props: RecipientReadTableProps) {
   }, [props.recipients, filter, responseType]);
 
   const tsLabel = isYesNoForm ? 'Last responded on' : timestampLabel(responseType);
-  const pastDue = isPastDue(props.dueDate);
+  // Forms have a server-derived `dueDatePassed` (same boundary that gates the
+  // edit-on-behalf restriction) — reuse it instead of a second, differently
+  // rounded date comparison that could disagree on the due date itself.
+  const pastDue = props.kind === 'form' ? dueDatePassed : isPastDue(props.dueDate);
   const parentGuardianLabel = isYesNoForm ? 'Last responded by' : 'Parent / Guardian';
   const pgStatusLabel = isYesNoForm ? 'Onboarding' : 'Status';
 

@@ -125,6 +125,18 @@ export interface ConsentFormStats {
   pendingCount: number;
 }
 
+export function computeConsentFormStats(recipients: ConsentFormRecipient[]): ConsentFormStats {
+  const totalCount = recipients.length;
+  const yesCount = recipients.filter((r) => r.response === 'YES').length;
+  const noCount = recipients.filter((r) => r.response === 'NO').length;
+  return {
+    totalCount,
+    yesCount,
+    noCount,
+    pendingCount: Math.max(totalCount - yesCount - noCount, 0),
+  };
+}
+
 export type ConsentFormStatus = 'open' | 'closed' | 'posting' | 'scheduled' | 'draft';
 
 export const CONSENT_FORM_STATUS_BADGE: Record<
