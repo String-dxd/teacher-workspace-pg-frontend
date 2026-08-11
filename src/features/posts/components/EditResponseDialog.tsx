@@ -196,7 +196,7 @@ function EditResponseDialogContent({
         <div className="space-y-5">
           <div className="space-y-2">
             <p id="edit-response-consent-type-label" className="text-sm font-medium">
-              Response
+              Response <span className="text-muted-foreground">(required)</span>
             </p>
             <RadioGroup
               aria-labelledby="edit-response-consent-type-label"
@@ -224,7 +224,7 @@ function EditResponseDialogContent({
             questions.map((q) => (
               <div key={q.id} className="space-y-2">
                 <p id={`edit-response-question-${q.id}-label`} className="text-sm font-medium">
-                  {q.text}
+                  {q.text} <span className="text-muted-foreground">(required)</span>
                 </p>
                 {q.type === 'mcq' ? (
                   <RadioGroup
@@ -259,17 +259,22 @@ function EditResponseDialogContent({
 
           <div className="space-y-2">
             <div className="flex items-baseline justify-between">
-              <Label htmlFor="edit-response-comments">Comments</Label>
+              <Label htmlFor="edit-response-comments">
+                Parent&rsquo;s comments <span className="text-muted-foreground">(optional)</span>
+              </Label>
               <span className="text-xs text-muted-foreground">
                 {comments.length} / {COMMENTS_MAX_LENGTH}
               </span>
             </div>
+            <p className="text-xs text-muted-foreground">
+              Any comments you add can be viewed by parents on their Parents Gateway app.
+            </p>
             <Textarea
               id="edit-response-comments"
               value={comments}
               onChange={(e) => setComments(e.target.value)}
               aria-invalid={Boolean(errors.comments)}
-              placeholder="Visible to parents."
+              placeholder="Type your answer here…"
             />
             {errors.comments && (
               <p role="alert" className="text-xs text-destructive">
