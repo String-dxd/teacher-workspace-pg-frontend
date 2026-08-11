@@ -80,6 +80,7 @@ function EditResponseDialogContent({
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
   const [confirmingDiscard, setConfirmingDiscard] = useState(false);
+  const [confirmingSubmit, setConfirmingSubmit] = useState(false);
 
   const dirty =
     consentType !== recipient.response ||
@@ -94,11 +95,14 @@ function EditResponseDialogContent({
     onOpenChange(false);
   }
 
-  async function handleSubmit() {
+  function requestSubmit() {
     const validationErrors = computeReplyErrors(consentType, answers, questions, comments);
     setErrors(validationErrors);
     if (Object.keys(validationErrors).length > 0) return;
+    setConfirmingSubmit(true);
+  }
 
+  async function confirmSubmit() {
     setSubmitting(true);
     try {
       await replyToConsentFormOnBehalf(formId, Number(recipient.studentId), {
@@ -156,6 +160,12 @@ function EditResponseDialogContent({
         setConfirmingDiscard(false);
         return;
       }
+      // Esc/backdrop on the submit-confirm sub-view backs out to editing —
+      // it must never read as confirming the update either.
+      if (confirmingSubmit) {
+        setConfirmingSubmit(false);
+        return;
+      }
       requestClose();
       return;
     }
@@ -176,6 +186,44 @@ function EditResponseDialogContent({
             </Button>
             <Button variant="destructive" onClick={() => onOpenChange(false)}>
               Discard
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
+  if (confirmingSubmit) {
+    return (
+      <Dialog open={open} onOpenChange={handleRootOpenChange}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Confirm response update?</DialogTitle>
+            <DialogDescription>
+              {recipient.studentName}&rsquo;s response will be recorded as{' '}
+              <strong className="font-medium text-foreground">
+                {describeCurrentResponse(consentType)}
+              </strong>
+              . This is visible to their parent/guardian on the Parents Gateway app.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="ghost"
+              onClick={() => setConfirmingSubmit(false)}
+              disabled={submitting}
+            >
+              Back
+            </Button>
+            <Button onClick={confirmSubmit} disabled={submitting}>
+              {submitting ? (
+                <>
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  Updating…
+                </>
+              ) : (
+                'Confirm'
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -297,15 +345,8 @@ function EditResponseDialogContent({
           <Button variant="ghost" onClick={requestClose} disabled={submitting}>
             Cancel
           </Button>
-          <Button onClick={handleSubmit} disabled={submitting}>
-            {submitting ? (
-              <>
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                Updating…
-              </>
-            ) : (
-              'Update response'
-            )}
+          <Button onClick={requestSubmit} disabled={submitting}>
+            Update response
           </Button>
         </DialogFooter>
       </DialogContent>
