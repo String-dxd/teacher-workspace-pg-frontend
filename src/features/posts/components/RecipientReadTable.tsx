@@ -430,6 +430,11 @@ function UnifiedTable({
       <TableHeader className="border-b bg-background">
         <TableRow className="border-0 hover:bg-transparent">
           <TableHead className="sticky left-0 z-10 w-[360px] bg-background">Student</TableHead>
+          {isYesNoForm && (
+            <TableHead>
+              <span className="sr-only">Actions</span>
+            </TableHead>
+          )}
           {columns.indexNumber && <TableHead>Index No.</TableHead>}
           <TableHead>Class</TableHead>
           {columns.gender && isYesNoForm && <TableHead>Gender</TableHead>}
@@ -441,11 +446,6 @@ function UnifiedTable({
           {columns.timestamp && <TableHead>{tsLabel}</TableHead>}
           {columns.parentGuardian && <TableHead>{parentGuardianLabel}</TableHead>}
           {columns.pgStatus && isForm && <TableHead>{pgStatusLabel}</TableHead>}
-          {isYesNoForm && (
-            <TableHead>
-              <span className="sr-only">Actions</span>
-            </TableHead>
-          )}
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -474,6 +474,15 @@ function UnifiedTable({
               <TableCell className="sticky left-0 z-10 w-[360px] bg-background font-medium">
                 {recipient.studentName}
               </TableCell>
+              {isYesNoForm && (
+                <TableCell>
+                  <EditResponseCell
+                    recipient={recipient as ConsentFormRecipient}
+                    dueDatePassed={dueDatePassed}
+                    onEditRecipient={onEditRecipient}
+                  />
+                </TableCell>
+              )}
               {columns.indexNumber && (
                 <TableCell className="text-muted-foreground tabular-nums">
                   {indexNo ?? '—'}
@@ -530,15 +539,6 @@ function UnifiedTable({
               {columns.pgStatus && isForm && pgStatus && (
                 <TableCell>
                   <PgStatusBadge pgStatus={pgStatus} />
-                </TableCell>
-              )}
-              {isYesNoForm && (
-                <TableCell>
-                  <EditResponseCell
-                    recipient={recipient as ConsentFormRecipient}
-                    dueDatePassed={dueDatePassed}
-                    onEditRecipient={onEditRecipient}
-                  />
                 </TableCell>
               )}
             </TableRow>
