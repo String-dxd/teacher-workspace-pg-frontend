@@ -247,6 +247,7 @@ function EditResponseDialogContent({
                     value={answers[q.id] ?? ''}
                     onChange={(e) => setAnswers((prev) => ({ ...prev, [q.id]: e.target.value }))}
                     aria-invalid={Boolean(errors[q.id])}
+                    autoComplete="off"
                   />
                 )}
                 {errors[q.id] && (
