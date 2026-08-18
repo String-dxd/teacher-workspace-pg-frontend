@@ -1,5 +1,3 @@
-import { useState } from 'react';
-
 import {
   Button,
   Dialog,
@@ -8,20 +6,15 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  Input,
-  Label,
 } from '~/components/ui';
-
-/** Confirmation string the user must type for posted/open posts. */
-const CONFIRM_WORD = 'DELETE';
 
 interface DeletePostDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   /**
-   * `'draft'` collapses the dialog to a single-click confirm.
-   * `'posted'` shows the full live-content warning and requires the user to
-   * type "DELETE" before the button enables. `null` renders nothing.
+   * `'draft'` states the draft is going. `'posted'` carries the heavier
+   * live-content warning — parents lose it immediately — and a blunter confirm
+   * label. Both confirm in one click. `null` renders nothing.
    */
   mode: 'draft' | 'posted' | null;
   /** Post title surfaced in the description so teachers see what they're about to delete. */
@@ -39,12 +32,9 @@ function DeletePostDialog({
   onConfirm,
   pending = false,
 }: DeletePostDialogProps) {
-  const [confirmInput, setConfirmInput] = useState('');
-
   if (!mode) return null;
 
   const isDraft = mode === 'draft';
-  const canDelete = isDraft || confirmInput === CONFIRM_WORD;
 
   const description = isDraft
     ? 'This draft will be permanently removed. This cannot be undone.'
@@ -52,18 +42,13 @@ function DeletePostDialog({
 
   const confirmLabel = isDraft ? 'Delete draft' : 'Delete for everyone';
 
-  function handleOpenChange(next: boolean) {
-    if (!next) setConfirmInput('');
-    onOpenChange(next);
-  }
-
   async function handleConfirm() {
-    if (!canDelete || pending) return;
+    if (pending) return;
     await onConfirm();
   }
 
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Delete post?</DialogTitle>
@@ -75,27 +60,11 @@ function DeletePostDialog({
           <p className="truncate text-sm font-medium">{title || 'Untitled'}</p>
         </div>
 
-        {!isDraft && (
-          <div className="space-y-1.5">
-            <Label htmlFor="delete-confirm">
-              Type <span className="font-mono font-semibold">{CONFIRM_WORD}</span> to confirm
-            </Label>
-            <Input
-              id="delete-confirm"
-              value={confirmInput}
-              onChange={(e) => setConfirmInput(e.target.value)}
-              placeholder={CONFIRM_WORD}
-              autoComplete="off"
-              spellCheck={false}
-            />
-          </div>
-        )}
-
         <DialogFooter>
-          <Button variant="secondary" onClick={() => handleOpenChange(false)} disabled={pending}>
+          <Button variant="secondary" onClick={() => onOpenChange(false)} disabled={pending}>
             Cancel
           </Button>
-          <Button variant="destructive" onClick={handleConfirm} disabled={!canDelete || pending}>
+          <Button variant="destructive" onClick={handleConfirm} disabled={pending}>
             {pending ? 'Deleting…' : confirmLabel}
           </Button>
         </DialogFooter>

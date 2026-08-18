@@ -11,7 +11,7 @@ import {
   Search,
   Trash2,
 } from 'lucide-react';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router';
 import { toast } from 'sonner';
 
@@ -19,7 +19,6 @@ import { QueryError } from '~/components/QueryError';
 import {
   Badge,
   Button,
-  Checkbox,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -76,7 +75,7 @@ import { usePagination } from '~/features/posts/hooks/usePagination';
 import { formatDate } from '~/helpers/dateTime';
 import { useQuery } from '~/hooks/useQuery';
 import { notify } from '~/lib/notify';
-import { cn, stripSalutation } from '~/lib/utils';
+import { stripSalutation } from '~/lib/utils';
 
 // ─── Local helpers ───────────────────────────────────────────────────────────
 
@@ -224,6 +223,20 @@ function deletePostRow(row: PostRowData): Promise<unknown> {
   return isDraft ? deleteDraft(row.numericId) : deleteAnnouncement(row.numericId);
 }
 
+/** Longest title the delete toast quotes before eliding; keeps it to one line. */
+const TOAST_TITLE_MAX = 60;
+
+/**
+ * Title as the delete toast should quote it: untitled drafts read as "Untitled"
+ * — matching DeletePostDialog — and a long title is elided rather than wrapping
+ * the toast onto several lines.
+ */
+function postToastTitle(title: string): string {
+  const trimmed = title.trim();
+  if (!trimmed) return 'Untitled';
+  return trimmed.length > TOAST_TITLE_MAX ? `${trimmed.slice(0, TOAST_TITLE_MAX - 1)}…` : trimmed;
+}
+
 const PAGE_SIZE = 20;
 
 // Prototype: hardcoded as admin. In production this comes from the session.
@@ -249,7 +262,6 @@ const PostsListPage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [sort, setSort] = useState<SortState | null>(null);
   const [scopeOpen, setScopeOpen] = useState(false);
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   const posts = data?.rows ?? [];
   const configs: ApiConfig | undefined = data?.configs;
@@ -268,39 +280,6 @@ const PostsListPage: React.FC = () => {
 
   const pagination = usePagination({ totalItems: sorted.length, pageSize: PAGE_SIZE });
   const paged = sorted.slice(pagination.startIndex, pagination.startIndex + PAGE_SIZE);
-
-  // Selection is per-tab; switching tabs discards it.
-  useEffect(() => {
-    setSelectedIds(new Set());
-  }, [tab]);
-
-  const pagedSelectedCount = paged.filter((r) => selectedIds.has(r.id)).length;
-  const allInViewSelected = paged.length > 0 && pagedSelectedCount === paged.length;
-  const someInViewSelected = pagedSelectedCount > 0 && !allInViewSelected;
-
-  const toggleSelect = useCallback((id: string) => {
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-      }
-      return next;
-    });
-  }, []);
-
-  const toggleSelectAllInView = useCallback(() => {
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      if (allInViewSelected) {
-        for (const row of paged) next.delete(row.id);
-      } else {
-        for (const row of paged) next.add(row.id);
-      }
-      return next;
-    });
-  }, [allInViewSelected, paged]);
 
   const filtersActive =
     filters.status.length > 0 ||
@@ -357,7 +336,7 @@ const PostsListPage: React.FC = () => {
     try {
       await deletePostRow(row);
       refetch();
-      notify.success('Post deleted.');
+      notify.success(`'${postToastTitle(row.title)}' has been deleted.`);
       setPendingDelete(null);
     } catch (err) {
       if (!(err instanceof NotFoundError)) {
@@ -373,39 +352,6 @@ const PostsListPage: React.FC = () => {
     : pendingDelete.status === 'draft' || pendingDelete.status === 'scheduled'
       ? 'draft'
       : 'posted';
-
-  // Bulk delete
-  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
-  const [bulkDeleting, setBulkDeleting] = useState(false);
-  const selectedRows = useMemo(
-    () => posts.filter((p) => selectedIds.has(p.id) && p.ownership !== 'shared'),
-    [posts, selectedIds],
-  );
-  const bulkDeleteMode: 'draft' | 'posted' = selectedRows.some(
-    (r) => r.status !== 'draft' && r.status !== 'scheduled',
-  )
-    ? 'posted'
-    : 'draft';
-
-  const confirmBulkDelete = useCallback(async () => {
-    if (selectedRows.length === 0) return;
-    setBulkDeleting(true);
-    try {
-      await Promise.all(selectedRows.map((row) => deletePostRow(row)));
-      refetch();
-      notify.success(
-        selectedRows.length === 1 ? 'Post deleted.' : `${selectedRows.length} posts deleted.`,
-      );
-      setSelectedIds(new Set());
-      setBulkDeleteOpen(false);
-    } catch (err) {
-      if (!(err instanceof NotFoundError)) {
-        notify.error('Failed to delete posts.');
-      }
-    } finally {
-      setBulkDeleting(false);
-    }
-  }, [selectedRows, refetch]);
 
   if (error) return <QueryError onRetry={refetch} />;
   if (isLoading) return null;
@@ -558,15 +504,7 @@ const PostsListPage: React.FC = () => {
             <Table tableClassName="w-full table-fixed">
               <TableHeader className="border-b bg-background">
                 <TableRow className="border-0 hover:bg-transparent">
-                  <TableHead className="sticky left-0 z-10 w-[44px] bg-background pl-6">
-                    <Checkbox
-                      indeterminate={someInViewSelected}
-                      checked={allInViewSelected}
-                      onCheckedChange={toggleSelectAllInView}
-                      aria-label="Select all"
-                    />
-                  </TableHead>
-                  <TableHead className="sticky left-[44px] z-10 w-[360px] bg-background pl-2">
+                  <TableHead className="sticky left-0 z-10 w-[360px] bg-background pl-6">
                     <SortableHeader label="Title" column="title" sort={sort} onSort={handleSort} />
                   </TableHead>
                   <TableHead className="w-[140px]">
@@ -600,9 +538,7 @@ const PostsListPage: React.FC = () => {
                   <PostTableRow
                     key={row.id}
                     row={row}
-                    selected={selectedIds.has(row.id)}
                     duplicateEnabled={duplicateEnabled}
-                    onToggleSelect={toggleSelect}
                     onDuplicate={handleDuplicate}
                     onDelete={handleDelete}
                   />
@@ -660,26 +596,6 @@ const PostsListPage: React.FC = () => {
         )}
       </div>
 
-      {/* Floating selection bar */}
-      {selectedIds.size > 0 && (
-        <div className="fixed bottom-6 left-1/2 z-50 flex -translate-x-1/2 items-center gap-1 rounded-full border bg-background py-1.5 pr-2 pl-4 shadow-lg">
-          <span className="text-sm font-medium whitespace-nowrap">{selectedIds.size} selected</span>
-          <Button variant="ghost" size="sm" onClick={() => setSelectedIds(new Set())}>
-            Clear
-          </Button>
-          <Button
-            variant="destructive"
-            size="sm"
-            className="rounded-full"
-            disabled={selectedRows.length === 0}
-            onClick={() => setBulkDeleteOpen(true)}
-          >
-            <Trash2 className="h-4 w-4" />
-            Delete {selectedRows.length} {selectedRows.length === 1 ? 'post' : 'posts'}
-          </Button>
-        </div>
-      )}
-
       <DeletePostDialog
         open={pendingDelete !== null}
         onOpenChange={(open) => {
@@ -690,19 +606,6 @@ const PostsListPage: React.FC = () => {
         pending={deleting}
         onConfirm={confirmDelete}
       />
-
-      <DeletePostDialog
-        open={bulkDeleteOpen}
-        onOpenChange={setBulkDeleteOpen}
-        mode={bulkDeleteMode}
-        title={
-          selectedRows.length === 1
-            ? (selectedRows[0]?.title ?? '')
-            : `${selectedRows.length} selected posts`
-        }
-        pending={bulkDeleting}
-        onConfirm={confirmBulkDelete}
-      />
     </div>
   );
 };
@@ -711,18 +614,14 @@ const PostsListPage: React.FC = () => {
 
 interface PostTableRowProps {
   row: PostRowData;
-  selected: boolean;
   duplicateEnabled: boolean;
-  onToggleSelect: (id: string) => void;
   onDuplicate: (row: PostRowData) => void;
   onDelete: (row: PostRowData) => void;
 }
 
 const PostTableRow: React.FC<PostTableRowProps> = ({
   row,
-  selected,
   duplicateEnabled,
-  onToggleSelect,
   onDuplicate,
   onDelete,
 }) => {
@@ -745,23 +644,10 @@ const PostTableRow: React.FC<PostTableRowProps> = ({
 
   return (
     <TableRow
-      className={cn(
-        clickable ? 'cursor-pointer' : 'cursor-default',
-        selected && 'bg-primary/[0.04] hover:bg-primary/[0.06]',
-      )}
+      className={clickable ? 'cursor-pointer' : 'cursor-default'}
       onClick={clickable ? () => navigate(postHref(row, { edit: goToEdit })) : undefined}
     >
-      <TableCell
-        className="sticky left-0 z-10 w-[44px] bg-background pl-6"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <Checkbox
-          checked={selected}
-          onCheckedChange={() => onToggleSelect(row.id)}
-          aria-label={`Select ${row.title}`}
-        />
-      </TableCell>
-      <TableCell className="sticky left-[44px] z-10 overflow-hidden bg-background pl-2 whitespace-normal">
+      <TableCell className="sticky left-0 z-10 overflow-hidden bg-background pl-6 whitespace-normal">
         <div className="min-w-0">
           <div className="flex items-center gap-1.5">
             <span className="truncate font-medium">{row.title}</span>
