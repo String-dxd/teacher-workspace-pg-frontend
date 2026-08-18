@@ -13,7 +13,6 @@ import {
 } from 'lucide-react';
 import React, { useCallback, useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router';
-import { toast } from 'sonner';
 
 import { QueryError } from '~/components/QueryError';
 import {
@@ -75,7 +74,7 @@ import { usePagination } from '~/features/posts/hooks/usePagination';
 import { formatDate } from '~/helpers/dateTime';
 import { useQuery } from '~/hooks/useQuery';
 import { notify } from '~/lib/notify';
-import { stripSalutation } from '~/lib/utils';
+import { cn, stripSalutation } from '~/lib/utils';
 
 // ─── Local helpers ───────────────────────────────────────────────────────────
 
@@ -296,7 +295,7 @@ const PostsListPage: React.FC = () => {
         .then((draftId) => {
           refetch();
           const href = duplicateDraftHref(row.kind, draftId);
-          toast.success(`'${row.title}' has been duplicated.`, {
+          notify.success(`'${postToastTitle(row.title)}' has been duplicated.`, {
             action: { label: 'View draft', onClick: () => navigate(href) },
           });
         })
@@ -343,10 +342,10 @@ const PostsListPage: React.FC = () => {
   if (isLoading) return null;
 
   return (
-    <div className="flex flex-col">
+    <main className="flex flex-col">
       {/* Admin banner */}
       {IS_ADMIN && (
-        <div className="flex items-center justify-center gap-2 border-b border-amber-6 bg-amber-2 px-6 py-2 text-sm text-amber-11">
+        <div className="flex items-center justify-center gap-2 border-b border-amber-6 bg-amber-2 px-6 py-2 text-sm text-amber-12">
           <Crown className="h-3.5 w-3.5 shrink-0 text-amber-9" />
           <span>
             <span className="font-semibold">You have admin access.</span> To view school posts, use
@@ -361,10 +360,16 @@ const PostsListPage: React.FC = () => {
           <div>
             {IS_ADMIN ? (
               <Popover open={scopeOpen} onOpenChange={setScopeOpen}>
-                <PopoverTrigger className="inline-flex cursor-pointer items-center gap-1.5 bg-transparent p-0 text-2xl font-semibold tracking-tight outline-none">
-                  My Posts
-                  <ChevronDown className="h-5 w-5 text-muted-foreground" />
-                </PopoverTrigger>
+                {/* The scope switcher is the page title, so it has to BE the
+                    heading rather than sit where one should be — otherwise the
+                    page ships with no h1 at all for anyone navigating by
+                    headings. The button keeps its own role inside it. */}
+                <h1 className="text-2xl font-semibold tracking-tight">
+                  <PopoverTrigger className="inline-flex cursor-pointer items-center gap-1.5 bg-transparent p-0 text-2xl font-semibold tracking-tight outline-none">
+                    My Posts
+                    <ChevronDown className="h-5 w-5 text-muted-foreground" />
+                  </PopoverTrigger>
+                </h1>
                 <PopoverContent
                   align="start"
                   className="w-56 gap-0 overflow-hidden rounded-2xl p-1"
@@ -440,8 +445,14 @@ const PostsListPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Table */}
-      <div className="max-w-full overflow-x-auto">
+      {/* Table (sm and up) / stacked rows (below sm).
+
+          The max-height gives the body its own scroll region, which is what
+          lets the pinned header work at all: `overflow-x-auto` already makes
+          this box the scroll container, so a sticky header inside it stays put
+          only if the box itself is what scrolls. Without the height the page
+          scrolled instead and the header went with it. */}
+      <div className="max-h-[calc(100vh-15rem)] max-w-full overflow-x-auto">
         {sorted.length === 0 ? (
           <div className="py-16 text-center">
             {searchQuery ? (
@@ -487,8 +498,28 @@ const PostsListPage: React.FC = () => {
           </div>
         ) : (
           <>
-            <Table tableClassName="w-full table-fixed">
-              <TableHeader className="border-b bg-background">
+            {/* Below sm the table's seven columns run to 1150px in a 360px
+                viewport, so six of them — including the actions menu — sit off
+                the right edge with nothing signalling the sideways scroll.
+                Stacked rows carry the same fields the teacher scans for. */}
+            <ul className="divide-y border-b sm:hidden">
+              {paged.map((row) => (
+                <PostStackedRow
+                  key={row.id}
+                  row={row}
+                  tab={tab}
+                  duplicateEnabled={duplicateEnabled}
+                  onDuplicate={handleDuplicate}
+                  onDelete={handleDelete}
+                />
+              ))}
+            </ul>
+
+            <Table tableClassName="hidden w-full table-fixed sm:table">
+              {/* Pinned: the page shows up to 20 rows, and the two count
+                  columns swap meaning with the tab, so the labels have to stay
+                  on screen while the body scrolls. */}
+              <TableHeader className="sticky top-0 z-20 border-b bg-background">
                 <TableRow className="border-0 hover:bg-transparent">
                   <TableHead className="sticky left-0 z-10 w-[360px] bg-background pl-6">
                     <SortableHeader label="Title" column="title" sort={sort} onSort={handleSort} />
@@ -504,7 +535,7 @@ const PostsListPage: React.FC = () => {
                       onSort={handleSort}
                     />
                   </TableHead>
-                  <TableHead className="w-[150px]">
+                  <TableHead className="w-[150px] pr-6 text-right">
                     {tab === 'with-responses' ? 'Response' : 'Read'}
                   </TableHead>
                   <TableHead className="w-[180px]">To parents of</TableHead>
@@ -592,7 +623,7 @@ const PostsListPage: React.FC = () => {
         pending={deleting}
         onConfirm={confirmDelete}
       />
-    </div>
+    </main>
   );
 };
 
@@ -612,7 +643,6 @@ const PostTableRow: React.FC<PostTableRowProps> = ({
   onDelete,
 }) => {
   const navigate = useNavigate();
-  const isShared = row.ownership === 'shared';
 
   const statusBadge = getPostStatusBadge(row);
 
@@ -666,7 +696,7 @@ const PostTableRow: React.FC<PostTableRowProps> = ({
       <TableCell>
         <Badge variant={statusBadge.variant}>{statusBadge.label}</Badge>
       </TableCell>
-      <TableCell className="pr-6">
+      <TableCell className="pr-6 text-right">
         {counts ? (
           <ReadRateBar readCount={counts.count} totalCount={counts.total} />
         ) : (
@@ -687,52 +717,170 @@ const PostTableRow: React.FC<PostTableRowProps> = ({
       </TableCell>
       <TableCell onClick={(e) => e.stopPropagation()}>
         <div className="flex justify-start">
-          <DropdownMenu>
-            <DropdownMenuTrigger
-              render={
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 text-muted-foreground hover:text-foreground"
-                  aria-label="More actions"
-                />
-              }
-            >
-              <MoreHorizontal className="h-4 w-4" />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              {duplicateEnabled && (
-                <DropdownMenuItem
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onDuplicate(row);
-                  }}
-                >
-                  <Copy className="mr-2 h-4 w-4" />
-                  Duplicate
-                </DropdownMenuItem>
-              )}
-              {!isShared && (
-                <>
-                  {duplicateEnabled && <DropdownMenuSeparator />}
-                  <DropdownMenuItem
-                    className="text-destructive focus:text-destructive"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      void onDelete(row);
-                    }}
-                  >
-                    <Trash2 className="mr-2 h-4 w-4" />
-                    Delete
-                  </DropdownMenuItem>
-                </>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <PostRowActions
+            row={row}
+            duplicateEnabled={duplicateEnabled}
+            onDuplicate={onDuplicate}
+            onDelete={onDelete}
+          />
         </div>
       </TableCell>
     </TableRow>
   );
 };
+
+// ─── Stacked row (below sm) ─────────────────────────────────────────────────
+
+interface PostStackedRowProps {
+  row: PostRowData;
+  tab: PostTab;
+  duplicateEnabled: boolean;
+  onDuplicate: (row: PostRowData) => void;
+  onDelete: (row: PostRowData) => void;
+}
+
+/**
+ * The phone presentation of a post. Same information the teacher scans for in
+ * the table — title, response type, status, date, and the counts — stacked
+ * instead of columned, with the overflow menu in reach. Composed from the same
+ * primitives as the row, so the two cannot drift apart in behaviour.
+ */
+const PostStackedRow: React.FC<PostStackedRowProps> = ({
+  row,
+  tab,
+  duplicateEnabled,
+  onDuplicate,
+  onDelete,
+}) => {
+  const navigate = useNavigate();
+  const statusBadge = getPostStatusBadge(row);
+  const counts = responseCounts(row);
+  const classLabels = classLabelsFor(row);
+
+  const hasSendFailure = Boolean(row.scheduledSendFailureCode);
+  const clickable = (row.status !== 'scheduled' && row.status !== 'posting') || hasSendFailure;
+  const goToEdit = row.status === 'draft' || hasSendFailure;
+
+  const showLowRead =
+    row.kind === 'announcement' &&
+    row.status === 'posted' &&
+    isLowReadRate(row.postedAt, row.stats.readCount, row.stats.totalCount);
+
+  return (
+    <li
+      className={cn('flex items-start gap-3 px-6 py-4', clickable && 'cursor-pointer')}
+      onClick={clickable ? () => navigate(postHref(row, { edit: goToEdit })) : undefined}
+    >
+      <div className="min-w-0 flex-1">
+        <div className="flex items-start gap-1.5">
+          <span className="min-w-0 font-medium">{row.title || 'Untitled'}</span>
+          {showLowRead && (
+            <AlertTriangle className="mt-1 h-3.5 w-3.5 shrink-0 text-warning-foreground" />
+          )}
+        </div>
+
+        <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1">
+          <Badge variant={statusBadge.variant}>{statusBadge.label}</Badge>
+          {row.responseType === 'acknowledge' && (
+            <span className="shrink-0 rounded-full bg-twblue-3 px-1.5 py-0.5 text-[10px] font-medium text-twblue-11 ring-1 ring-twblue-6 ring-inset">
+              Acknowledge
+            </span>
+          )}
+          {row.responseType === 'yes-no' && (
+            <span className="shrink-0 rounded-full bg-violet-3 px-1.5 py-0.5 text-[10px] font-medium text-violet-11 ring-1 ring-violet-6 ring-inset">
+              Yes/No
+            </span>
+          )}
+          <span className="text-xs text-muted-foreground">
+            {dateLabel(row.status)} {row._date ? formatDate(row._date) : '—'}
+          </span>
+        </div>
+
+        {counts && (
+          <p className="mt-1.5 text-xs text-muted-foreground tabular-nums">
+            {tab === 'with-responses' ? 'Responded' : 'Read'} {counts.count} / {counts.total}
+            {classLabels ? ` · ${classLabels}` : ''}
+          </p>
+        )}
+        {!counts && classLabels && (
+          <p className="mt-1.5 text-xs text-muted-foreground">{classLabels}</p>
+        )}
+      </div>
+
+      <div className="shrink-0" onClick={(e) => e.stopPropagation()}>
+        <PostRowActions
+          row={row}
+          duplicateEnabled={duplicateEnabled}
+          onDuplicate={onDuplicate}
+          onDelete={onDelete}
+        />
+      </div>
+    </li>
+  );
+};
+
+// ─── Row actions ────────────────────────────────────────────────────────────
+
+interface PostRowActionsProps {
+  row: PostRowData;
+  duplicateEnabled: boolean;
+  onDuplicate: (row: PostRowData) => void;
+  onDelete: (row: PostRowData) => void;
+}
+
+/**
+ * The per-post overflow menu. Extracted because the table row and the stacked
+ * mobile row both need it — and duplicating a destructive action's wiring in
+ * two places is how the two drift apart.
+ */
+const PostRowActions: React.FC<PostRowActionsProps> = ({
+  row,
+  duplicateEnabled,
+  onDuplicate,
+  onDelete,
+}) => (
+  <DropdownMenu>
+    <DropdownMenuTrigger
+      render={
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8 text-muted-foreground hover:text-foreground"
+          aria-label={`More actions for ${row.title || 'Untitled'}`}
+        />
+      }
+    >
+      <MoreHorizontal className="h-4 w-4" />
+    </DropdownMenuTrigger>
+    <DropdownMenuContent align="end">
+      {duplicateEnabled && (
+        <DropdownMenuItem
+          onClick={(e) => {
+            e.stopPropagation();
+            onDuplicate(row);
+          }}
+        >
+          <Copy className="mr-2 h-4 w-4" />
+          Duplicate
+        </DropdownMenuItem>
+      )}
+      {row.ownership !== 'shared' && (
+        <>
+          {duplicateEnabled && <DropdownMenuSeparator />}
+          <DropdownMenuItem
+            className="text-destructive focus:text-destructive"
+            onClick={(e) => {
+              e.stopPropagation();
+              void onDelete(row);
+            }}
+          >
+            <Trash2 className="mr-2 h-4 w-4" />
+            Delete
+          </DropdownMenuItem>
+        </>
+      )}
+    </DropdownMenuContent>
+  </DropdownMenu>
+);
 
 export { PostsListPage };
