@@ -78,6 +78,15 @@ function EditResponseDialogContent({
   );
   const [comments, setComments] = useState(recipient.comments ?? '');
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  function clearError(field: string) {
+    setErrors((prev) => {
+      if (!(field in prev)) return prev;
+      const next = { ...prev };
+      delete next[field];
+      return next;
+    });
+  }
   const [submitting, setSubmitting] = useState(false);
   const [confirmingDiscard, setConfirmingDiscard] = useState(false);
   const [confirmingSubmit, setConfirmingSubmit] = useState(false);
@@ -177,8 +186,15 @@ function EditResponseDialogContent({
       <Dialog open={open} onOpenChange={handleRootOpenChange}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Discard this response?</DialogTitle>
-            <DialogDescription>Your entries won&rsquo;t be saved.</DialogDescription>
+            <DialogTitle>Discard unsaved changes?</DialogTitle>
+            <DialogDescription>
+              Your edits won&rsquo;t be saved. {recipient.studentName}&rsquo;s response will stay
+              recorded as{' '}
+              <strong className="font-medium text-foreground">
+                {describeCurrentResponse(recipient.response)}
+              </strong>
+              .
+            </DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button variant="ghost" onClick={() => setConfirmingDiscard(false)}>
@@ -191,7 +207,7 @@ function EditResponseDialogContent({
                 onOpenChange(false);
               }}
             >
-              Discard
+              Discard changes
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -255,7 +271,10 @@ function EditResponseDialogContent({
             <RadioGroup
               aria-labelledby="edit-response-consent-type-label"
               value={consentType ?? undefined}
-              onValueChange={(v) => setConsentType(v as ConsentType)}
+              onValueChange={(v) => {
+                setConsentType(v as ConsentType);
+                clearError('consentType');
+              }}
               className="flex gap-4"
             >
               <label className="flex cursor-pointer items-center gap-2">
@@ -284,7 +303,10 @@ function EditResponseDialogContent({
                   <RadioGroup
                     aria-labelledby={`edit-response-question-${q.id}-label`}
                     value={answers[q.id] || undefined}
-                    onValueChange={(v) => setAnswers((prev) => ({ ...prev, [q.id]: v }))}
+                    onValueChange={(v) => {
+                      setAnswers((prev) => ({ ...prev, [q.id]: v }));
+                      clearError(q.id);
+                    }}
                     className="gap-2"
                   >
                     {q.options.map((option) => (
@@ -299,7 +321,10 @@ function EditResponseDialogContent({
                     id={`edit-response-question-${q.id}`}
                     aria-labelledby={`edit-response-question-${q.id}-label`}
                     value={answers[q.id] ?? ''}
-                    onChange={(e) => setAnswers((prev) => ({ ...prev, [q.id]: e.target.value }))}
+                    onChange={(e) => {
+                      setAnswers((prev) => ({ ...prev, [q.id]: e.target.value }));
+                      clearError(q.id);
+                    }}
                     aria-invalid={Boolean(errors[q.id])}
                     autoComplete="off"
                   />
@@ -327,7 +352,10 @@ function EditResponseDialogContent({
             <Textarea
               id="edit-response-comments"
               value={comments}
-              onChange={(e) => setComments(e.target.value)}
+              onChange={(e) => {
+                setComments(e.target.value);
+                if (e.target.value.length <= COMMENTS_MAX_LENGTH) clearError('comments');
+              }}
               aria-invalid={Boolean(errors.comments)}
               placeholder="Type your answer here…"
             />
