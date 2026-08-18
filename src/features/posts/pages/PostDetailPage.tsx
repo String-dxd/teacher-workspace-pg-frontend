@@ -33,7 +33,7 @@ import { AppError, NotFoundError } from '~/features/posts/api/errors';
 import { fetchSchoolStaff } from '~/features/posts/api/school';
 import { fetchSession, getConfigs } from '~/features/posts/api/session';
 import type { ApiSchoolStaff, ApiSession } from '~/features/posts/api/types';
-import { DeletePostDialog } from '~/features/posts/components/DeletePostDialog';
+import { DeletePostDialog, postToastTitle } from '~/features/posts/components/DeletePostDialog';
 import { PostCard } from '~/features/posts/components/PostCard';
 import {
   ReadTrackingCards,
@@ -317,7 +317,7 @@ const PostDetailContent: React.FC<PostDetailContentProps> = ({ post, staff, sess
       } else {
         await deleteConsentForm(post.numericId);
       }
-      notify.success('Post deleted.');
+      notify.success(`'${postToastTitle(post.title)}' has been deleted.`);
       void navigate('..');
     } catch {
       notify.error('Failed to delete. Please try again.');

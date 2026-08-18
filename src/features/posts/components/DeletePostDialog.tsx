@@ -8,6 +8,21 @@ import {
   DialogTitle,
 } from '~/components/ui';
 
+/** Longest title a delete toast quotes before eliding; keeps it to one line. */
+const TOAST_TITLE_MAX = 60;
+
+/**
+ * Title as a delete toast should quote it. Untitled posts read as "Untitled" —
+ * the same word this dialog shows — and a long title is elided rather than
+ * wrapping the toast onto several lines. Shared so the posts list and the post
+ * detail page announce a deletion identically.
+ */
+function postToastTitle(title: string): string {
+  const trimmed = title.trim();
+  if (!trimmed) return 'Untitled';
+  return trimmed.length > TOAST_TITLE_MAX ? `${trimmed.slice(0, TOAST_TITLE_MAX - 1)}…` : trimmed;
+}
+
 interface DeletePostDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -73,5 +88,5 @@ function DeletePostDialog({
   );
 }
 
-export { DeletePostDialog };
+export { DeletePostDialog, postToastTitle };
 export type { DeletePostDialogProps };

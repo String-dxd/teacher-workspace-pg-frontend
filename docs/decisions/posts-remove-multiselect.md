@@ -16,7 +16,8 @@
    states that parents lose it immediately, but confirms in one click — no typed
    `DELETE`.
 3. The success toast names the post that was deleted, in one line, for any title
-   length and for untitled drafts.
+   length and for untitled drafts — identically whether the delete started on the
+   list or on the post detail page.
 4. The Title column occupies the space the checkbox column vacated with no left-edge
    gap, and stays pinned when the table scrolls sideways.
 5. Shared posts remain undeletable.
@@ -47,6 +48,11 @@ The toast moves from the fixed `'Post deleted.'` to `'<title>' has been deleted.
 matching the existing duplicate toast's shape. `postToastTitle()` renders untitled
 drafts as `Untitled` — the same word `DeletePostDialog` already shows — and elides
 past 60 characters so the toast stays one line.
+
+The post **detail** page said `'Post deleted.'` too, so the same deletion announced
+itself differently depending on where it was started. `postToastTitle()` therefore
+lives beside `DeletePostDialog` and both pages import it, rather than the list page
+owning a private copy. Deleting from either surface now reads identically.
 
 ## Rejected options
 

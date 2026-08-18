@@ -56,7 +56,7 @@ import {
 import { NotFoundError } from '~/features/posts/api/errors';
 import { getConfigs } from '~/features/posts/api/session';
 import type { ApiConfig } from '~/features/posts/api/types';
-import { DeletePostDialog } from '~/features/posts/components/DeletePostDialog';
+import { DeletePostDialog, postToastTitle } from '~/features/posts/components/DeletePostDialog';
 import {
   DEFAULT_POST_FILTERS,
   PostFilterPopover,
@@ -221,20 +221,6 @@ function deletePostRow(row: PostRowData): Promise<unknown> {
     return isDraft ? deleteConsentFormDraft(row.numericId) : deleteConsentForm(row.numericId);
   }
   return isDraft ? deleteDraft(row.numericId) : deleteAnnouncement(row.numericId);
-}
-
-/** Longest title the delete toast quotes before eliding; keeps it to one line. */
-const TOAST_TITLE_MAX = 60;
-
-/**
- * Title as the delete toast should quote it: untitled drafts read as "Untitled"
- * — matching DeletePostDialog — and a long title is elided rather than wrapping
- * the toast onto several lines.
- */
-function postToastTitle(title: string): string {
-  const trimmed = title.trim();
-  if (!trimmed) return 'Untitled';
-  return trimmed.length > TOAST_TITLE_MAX ? `${trimmed.slice(0, TOAST_TITLE_MAX - 1)}…` : trimmed;
 }
 
 const PAGE_SIZE = 20;
