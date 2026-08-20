@@ -48,9 +48,19 @@ interface PostFilterPopoverProps {
   value: PostFilters;
   onChange: (next: PostFilters) => void;
   responseOptions?: { value: PostResponseFilter; label: string }[] | null;
+  /** Hide when the view can only ever show one bucket (e.g. School Posts, which is sent-only). */
+  showStatus?: boolean;
+  /** Hide when every row's ownership tag is meaningless (e.g. a whole-school view). */
+  showOwnership?: boolean;
 }
 
-function PostFilterPopover({ value, onChange, responseOptions }: PostFilterPopoverProps) {
+function PostFilterPopover({
+  value,
+  onChange,
+  responseOptions,
+  showStatus = true,
+  showOwnership = true,
+}: PostFilterPopoverProps) {
   const active = countActivePostFilters(value);
 
   function toggle<T extends string>(list: T[], item: T): T[] {
@@ -92,27 +102,33 @@ function PostFilterPopover({ value, onChange, responseOptions }: PostFilterPopov
           )}
         </div>
 
-        <FilterRow label="Status">
-          {STATUS_OPTIONS.map((opt) => (
-            <Chip
-              key={opt.value}
-              label={opt.label}
-              selected={value.status.includes(opt.value)}
-              onClick={() => onChange({ ...value, status: toggle(value.status, opt.value) })}
-            />
-          ))}
-        </FilterRow>
+        {showStatus && (
+          <FilterRow label="Status">
+            {STATUS_OPTIONS.map((opt) => (
+              <Chip
+                key={opt.value}
+                label={opt.label}
+                selected={value.status.includes(opt.value)}
+                onClick={() => onChange({ ...value, status: toggle(value.status, opt.value) })}
+              />
+            ))}
+          </FilterRow>
+        )}
 
-        <FilterRow label="Ownership">
-          {OWNERSHIP_OPTIONS.map((opt) => (
-            <Chip
-              key={opt.value}
-              label={opt.label}
-              selected={value.ownership.includes(opt.value)}
-              onClick={() => onChange({ ...value, ownership: toggle(value.ownership, opt.value) })}
-            />
-          ))}
-        </FilterRow>
+        {showOwnership && (
+          <FilterRow label="Ownership">
+            {OWNERSHIP_OPTIONS.map((opt) => (
+              <Chip
+                key={opt.value}
+                label={opt.label}
+                selected={value.ownership.includes(opt.value)}
+                onClick={() =>
+                  onChange({ ...value, ownership: toggle(value.ownership, opt.value) })
+                }
+              />
+            ))}
+          </FilterRow>
+        )}
 
         {responseOptions && responseOptions.length > 0 && (
           <FilterRow label="Response">

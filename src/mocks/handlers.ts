@@ -5,7 +5,11 @@ import {
   announcementsList,
   scheduledAnnouncementDetail,
 } from './fixtures/announcements';
-import { consentFormDetail, consentFormsList } from './fixtures/consent-forms';
+import {
+  consentFormDetail,
+  consentFormsList,
+  otherTeachersConsentFormsList,
+} from './fixtures/consent-forms';
 import { announcementDraft, consentFormDraft } from './fixtures/drafts';
 import {
   customGroups,
@@ -53,6 +57,12 @@ export const handlers = [
     return HttpResponse.json(envelope([]));
   }),
 
+  // Admin-only "School Posts" oversight view — every announcement in the
+  // school, regardless of creator.
+  http.get(`${BASE}/announcements/schoolAdmins`, () => {
+    return HttpResponse.json(envelope(announcementsList));
+  }),
+
   http.get(`${BASE}/announcements/drafts/:draftId`, () => {
     return HttpResponse.json(envelope([announcementDraft]));
   }),
@@ -71,6 +81,12 @@ export const handlers = [
 
   http.get(`${BASE}/consentForms/shared`, () => {
     return HttpResponse.json(envelope([]));
+  }),
+
+  // Admin-only "School Posts" oversight view — every consent form in the
+  // school, regardless of creator.
+  http.get(`${BASE}/consentForms/schoolAdmins`, () => {
+    return HttpResponse.json(envelope([...consentFormsList, ...otherTeachersConsentFormsList]));
   }),
 
   http.get(`${BASE}/consentForms/drafts/:draftId`, () => {
@@ -418,13 +434,16 @@ export const handlers = [
         { status: 500 },
       );
     }
-    return new HttpResponse('Student Name,Custodian,Onboarded\nAhmad bin Ibrahim,Mrs Ibrahim,Yes\n', {
-      status: 200,
-      headers: {
-        'Content-Type': 'text/csv',
-        'Content-Disposition': `attachment; filename="onboarding-report-${classId ?? `school-${schoolId}`}.csv"`,
+    return new HttpResponse(
+      'Student Name,Custodian,Onboarded\nAhmad bin Ibrahim,Mrs Ibrahim,Yes\n',
+      {
+        status: 200,
+        headers: {
+          'Content-Type': 'text/csv',
+          'Content-Disposition': `attachment; filename="onboarding-report-${classId ?? `school-${schoolId}`}.csv"`,
+        },
       },
-    });
+    );
   }),
 
   http.get(`${BASE}/reports/travel-declaration`, ({ request }) => {

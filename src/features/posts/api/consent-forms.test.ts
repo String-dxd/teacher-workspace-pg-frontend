@@ -8,6 +8,7 @@ vi.mock('./http', () => ({
 
 import {
   fetchConsentForms,
+  fetchSchoolConsentForms,
   fetchSharedConsentForms,
   fetchConsentFormDetail,
   fetchConsentFormDraftDetail,
@@ -43,6 +44,12 @@ describe('api/consent-forms', () => {
       vi.mocked(fetchApi).mockResolvedValue([]);
       await fetchSharedConsentForms();
       expect(fetchApi).toHaveBeenCalledWith('/consentForms/shared');
+    });
+
+    it('fetchSchoolConsentForms calls GET /consentForms/schoolAdmins', async () => {
+      vi.mocked(fetchApi).mockResolvedValue([]);
+      await fetchSchoolConsentForms();
+      expect(fetchApi).toHaveBeenCalledWith('/consentForms/schoolAdmins');
     });
 
     it('fetchConsentFormDetail unwraps array response', async () => {

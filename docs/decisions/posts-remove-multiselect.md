@@ -142,3 +142,70 @@ None.
   `pnpm test:e2e:update`. Playwright browsers are not installed on this machine, so
   this was not run here.
 - **Ratchet:** no proposal — nothing uncovered by an existing control.
+
+## Addendum — School Posts carries the same treatment (2026-08-20)
+
+Requested after approval: everything above had to hold when the scope switcher is
+set to **School posts**, not only My Posts. At the time this record was written that
+option was a disabled "Coming soon" item, so there was no second scope for any of it
+to apply to. The scope itself already existed on the unmerged `postadminview` branch
+(`4bb713b`), which predates the multi-select removal; it was ported onto this branch
+rather than merged, because it was written against the pre-removal page.
+
+What the port brings: `scope` state, the `/announcements/schoolAdmins` and
+`/consentForms/schoolAdmins` loaders (sent posts only — admin oversight does not
+cover other teachers' unsent drafts), other-teacher fixtures, `isA` from the session
+in place of the hardcoded `IS_ADMIN`, a scope-aware column set, and a filter popover
+that hides Status and Ownership where a whole-school view cannot use them.
+
+What this change adds on top, so the treatment actually reaches the second scope:
+
+- The **stacked phone row** is scope-aware. It was written after `postadminview`
+  branched, so the school scope had no phone presentation at all; without this, the
+  1150px table would have been the only way to read school posts on a 360px screen —
+  the exact defect the critique raised.
+- **Delete** is one click, one post, through the same `DeletePostDialog` and the same
+  `postToastTitle` toast, in both scopes. The guard differs by design: My Posts hides
+  Delete on anything shared; School Posts is oversight, so an admin can delete any
+  row. Contract criterion 5 ("shared posts remain undeletable") is therefore scoped
+  to My Posts, and deliberately so — see the tradeoff below.
+- **Duplicate** is hidden in School scope: copying a colleague's post into your own
+  drafts is not what an oversight view is for.
+- The `h1`, the `main` landmark, the pinned header, and the right-aligned tabular
+  counts hold across both scopes. The counts column keeps its position when the scope
+  changes, so the ratios stay in one place as you switch.
+- The Status column is dropped in School scope — every row there is already sent, so
+  it would read identically on all of them — and the creator takes its slot, in the
+  table and in the badge slot of the stacked row.
+
+Two behaviour changes ride along from `4bb713b` and touch **My Posts too**, not only
+the new scope: the Response Required / Read Only tabs now split on `responseType`
+rather than post kind (an Acknowledge announcement is no longer forced into Read
+Only), and an Acknowledge/Yes-No announcement's counts read `responseCount` rather
+than `readCount`. Both are corrections, and both are visible on the existing page.
+
+**Tradeoff, named:** deletion of a post the admin did not write is now reachable in
+two clicks, on content already in parents' hands, with no typed confirmation — the
+combination of this change and the one-click confirm decided above. The dialog still
+states that parents lose it immediately. This is the sharpest edge in the change and
+is recorded rather than assumed.
+
+**Not deliberately ported:** the pagination page-number restyle from `4bb713b`
+(ghost + `rounded-full` + border in place of the `secondary` variant). It is unrelated
+to scope and the current styling came out of the design critique above.
+
+### Verify verdict (addendum)
+
+- **Browser evidence: none.** Neither browser surface could run the app this session —
+  the in-app pane cannot register a service worker, so MSW never boots and the page
+  never renders, and the Chrome extension was not connected. **Nothing below was seen
+  on screen; a human should look at both scopes, including at 375px.**
+- **Covered by test instead:** `src/features/posts/pages/PostsListPage.test.tsx` is
+  new and asserts, in School scope, the `h1` + `main`, the stacked row and its
+  creator, Delete offered on a post the viewer did not create, Duplicate absent, the
+  dialog with no confirmation textbox, the dropped Status column, and that the
+  switcher is hidden entirely for a non-admin.
+- **Regression:** `tsc --noEmit` exit 0; `oxlint` clean but for the pre-existing
+  `exportXlsx.test.ts` warning; 368/368 tests in 28 files.
+- **Still unverified:** everything in the ledger above marked unverified, plus the
+  visual result of the scope-aware column swap at any width.

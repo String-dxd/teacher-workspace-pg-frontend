@@ -17,6 +17,7 @@ import {
   fetchAnnouncementDetail,
   fetchAnnouncementDraftDetail,
   fetchAnnouncements,
+  fetchSchoolAnnouncements,
   fetchSharedAnnouncements,
   removeAccessFromAnnouncement,
   rescheduleAnnouncementDraft,
@@ -44,6 +45,12 @@ describe('api/announcements', () => {
       vi.mocked(fetchApi).mockResolvedValue([]);
       await fetchSharedAnnouncements();
       expect(fetchApi).toHaveBeenCalledWith('/announcements/shared');
+    });
+
+    it('fetchSchoolAnnouncements calls GET /announcements/schoolAdmins', async () => {
+      vi.mocked(fetchApi).mockResolvedValue([]);
+      await fetchSchoolAnnouncements();
+      expect(fetchApi).toHaveBeenCalledWith('/announcements/schoolAdmins');
     });
 
     it('fetchAnnouncementDetail unwraps array response', async () => {

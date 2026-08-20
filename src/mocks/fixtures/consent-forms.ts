@@ -48,6 +48,56 @@ export const consentFormsList: ApiConsentFormSummary[] = [
   },
 ];
 
+// Posts created by other teachers — only surfaced via the school-wide admin
+// endpoints (`/consentForms/schoolAdmins`), never the teacher-scoped ones.
+export const otherTeachersConsentFormsList: ApiConsentFormSummary[] = [
+  {
+    id: 'cf-101',
+    postId: 601,
+    title: 'Parent-Teacher Meeting — Booking Confirmation',
+    date: '2026-07-22T09:00:00+08:00',
+    status: 'OPEN',
+    toParentsOf: ['3C'],
+    respondedMetrics: { respondedPerStudent: 0, totalStudents: 34 },
+    scheduledSendFailureCode: null,
+    createdByName: 'Ms Koh Bee Hwa',
+    consentByDate: '2026-07-29',
+    eventStartDate: null,
+    eventEndDate: null,
+    eventReminderDate: null,
+  },
+  {
+    id: 'cf-102',
+    postId: 602,
+    title: 'Parent-Teacher Conference – Sec 3',
+    date: '2026-07-20T09:00:00+08:00',
+    status: 'OPEN',
+    toParentsOf: ['3A'],
+    respondedMetrics: { respondedPerStudent: 1 / 3, totalStudents: 3 },
+    scheduledSendFailureCode: null,
+    createdByName: 'Ms Tan Mei Lin',
+    consentByDate: '2026-07-27',
+    eventStartDate: null,
+    eventEndDate: null,
+    eventReminderDate: null,
+  },
+  {
+    id: 'cf-103',
+    postId: 603,
+    title: 'Inter-Class Debate Competition — Sign Up Now',
+    date: '2026-07-16T09:00:00+08:00',
+    status: 'OPEN',
+    toParentsOf: ['3A', '3B'],
+    respondedMetrics: { respondedPerStudent: 30 / 42, totalStudents: 42 },
+    scheduledSendFailureCode: null,
+    createdByName: 'Mr Tan Chee Keong',
+    consentByDate: '2026-07-23',
+    eventStartDate: null,
+    eventEndDate: null,
+    eventReminderDate: null,
+  },
+];
+
 export const consentFormDetail: ApiConsentFormDetail = {
   consentFormId: 401,
   title: 'Science Museum Learning Journey',
