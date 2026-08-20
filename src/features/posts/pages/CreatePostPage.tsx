@@ -65,7 +65,6 @@ import type {
   ApiStaffGroups,
 } from '~/features/posts/api/types';
 import { AttachmentSection } from '~/features/posts/components/AttachmentSection';
-import { DiscardChangesDialog } from '~/features/posts/components/DiscardChangesDialog';
 import { DueDateSection } from '~/features/posts/components/DueDateSection';
 import { EnquiryEmailSelector } from '~/features/posts/components/EnquiryEmailSelector';
 import type {
@@ -90,7 +89,7 @@ import { StudentRecipientSelector } from '~/features/posts/components/StudentRec
 import { VenueSection } from '~/features/posts/components/VenueSection';
 import { WebsiteLinksSection } from '~/features/posts/components/WebsiteLinksSection';
 import { useAutoSave, type AutoSaveStatus } from '~/features/posts/hooks/useAutoSave';
-import { useUnsavedChangesGuard } from '~/features/posts/hooks/useUnsavedChangesGuard';
+import { useSaveOnLeave } from '~/features/posts/hooks/useSaveOnLeave';
 import { INITIAL_STATE, type SelectedEntity } from '~/features/posts/state/initial-state';
 import { formReducer } from '~/features/posts/state/reducer';
 import {
@@ -382,7 +381,6 @@ function CreatePostForm({ editId, loaderData }: CreatePostFormProps) {
 
   const [showSendDialog, setShowSendDialog] = useState(false);
   const [showScheduleDialog, setShowScheduleDialog] = useState(false);
-  const [showDiscardDialog, setShowDiscardDialog] = useState(false);
   // Set between schedule step 1 (picker) and step 2 (review). Null for post-now.
   const [pendingScheduledAt, setPendingScheduledAt] = useState<string | null>(null);
   const [fileBannerDismissed, setFileBannerDismissed] = useState(false);
@@ -435,7 +433,6 @@ function CreatePostForm({ editId, loaderData }: CreatePostFormProps) {
 
   const initialDescriptionDocRef = useRef(state.descriptionDoc);
   const initialDescriptionDoc = initialDescriptionDocRef.current;
-  const initialStateRef = useRef(state);
 
   const deferredState = useDeferredValue(state);
 
@@ -497,26 +494,32 @@ function CreatePostForm({ editId, loaderData }: CreatePostFormProps) {
       : null,
   );
 
+  // Drafts and new posts only. A scheduled post is not auto-saved — the teacher
+  // cancels the send first, which returns it to Draft, and auto-save resumes
+  // there. Published posts never reach this page.
+  const autoSaveAllowed = !isSaving && !(detail && detail.status === 'scheduled');
+
   const autoSave = useAutoSave({
     payload: state,
-    save: async (_snapshot, { signal }) => {
-      await handleSaveDraft({ signal });
+    save: async (_snapshot, { signal, keepalive }) => {
+      await handleSaveDraft({ signal, keepalive });
     },
-    intervalMs: 30_000,
-    enabled: !isSaving,
+    intervalMs: 5_000,
+    enabled: autoSaveAllowed,
     shouldSave: (s) => s.title.trim().length > 0 || editorHasContent(s.descriptionDoc),
   });
 
-  const isDirty = JSON.stringify(state) !== JSON.stringify(initialStateRef.current);
-
-  useUnsavedChangesGuard(isDirty);
+  // Leaving saves rather than asks. `shouldSave` still gates it, so an empty
+  // form on the way out writes nothing.
+  useSaveOnLeave({
+    save: autoSave.saveNow,
+    hasUnsavedChanges: autoSave.hasUnsavedChanges,
+    enabled: autoSaveAllowed,
+  });
 
   function handleBackClick() {
-    if (isDirty) {
-      setShowDiscardDialog(true);
-    } else {
-      navigate('..');
-    }
+    // No question asked: unmount fires the save on the way out.
+    navigate('..');
   }
 
   if (editId && !editData) {
@@ -558,25 +561,37 @@ function CreatePostForm({ editId, loaderData }: CreatePostFormProps) {
     }
   }
 
-  async function handleSaveDraft(opts: { signal?: AbortSignal } = {}): Promise<void> {
+  async function handleSaveDraft(
+    opts: { signal?: AbortSignal; keepalive?: boolean } = {},
+  ): Promise<void> {
     try {
       const payloadInput = stateToPayloadInput(state);
       if (state.kind === 'form') {
         const payload = buildConsentFormPayload(payloadInput);
         if (draftIdRef.current?.kind === 'form') {
-          await updateConsentFormDraft(draftIdRef.current.id, payload, { signal: opts.signal });
+          await updateConsentFormDraft(draftIdRef.current.id, payload, {
+            signal: opts.signal,
+            keepalive: opts.keepalive,
+          });
         } else {
           const { consentFormDraftId } = await createConsentFormDraft(payload, {
             signal: opts.signal,
+            keepalive: opts.keepalive,
           });
           draftIdRef.current = { kind: 'form', id: consentFormDraftId };
         }
       } else {
         const payload = buildAnnouncementPayload(payloadInput);
         if (draftIdRef.current?.kind === 'announcement') {
-          await updateDraft(draftIdRef.current.id, payload, { signal: opts.signal });
+          await updateDraft(draftIdRef.current.id, payload, {
+            signal: opts.signal,
+            keepalive: opts.keepalive,
+          });
         } else {
-          const { announcementDraftId } = await createDraft(payload, { signal: opts.signal });
+          const { announcementDraftId } = await createDraft(payload, {
+            signal: opts.signal,
+            keepalive: opts.keepalive,
+          });
           draftIdRef.current = { kind: 'announcement', id: announcementDraftId };
         }
       }
@@ -1182,15 +1197,6 @@ function CreatePostForm({ editId, loaderData }: CreatePostFormProps) {
           } else {
             void handleSendConfirm();
           }
-        }}
-      />
-
-      <DiscardChangesDialog
-        open={showDiscardDialog}
-        onOpenChange={setShowDiscardDialog}
-        onConfirm={() => {
-          setShowDiscardDialog(false);
-          navigate('..');
         }}
       />
     </div>

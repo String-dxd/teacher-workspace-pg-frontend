@@ -43,14 +43,14 @@ export async function fetchConsentFormDraftDetail(draftId: number): Promise<ApiC
 
 export function createConsentForm(
   payload: ApiCreateConsentFormPayload,
-  options?: { signal?: AbortSignal },
+  options?: { signal?: AbortSignal; keepalive?: boolean },
 ): Promise<{ consentFormId: number }> {
   return mutateApi('POST', '/consentForms', payload, options);
 }
 
 export function createConsentFormDraft(
   payload: ApiCreateConsentFormDraftPayload,
-  options?: { signal?: AbortSignal },
+  options?: { signal?: AbortSignal; keepalive?: boolean },
 ): Promise<{ consentFormDraftId: number }> {
   return mutateApi('POST', '/consentForms/drafts', payload, options);
 }
@@ -58,7 +58,7 @@ export function createConsentFormDraft(
 export function updateConsentFormDraft(
   draftId: number,
   payload: ApiCreateConsentFormDraftPayload,
-  options?: { signal?: AbortSignal },
+  options?: { signal?: AbortSignal; keepalive?: boolean },
 ): Promise<void> {
   return mutateApi('PUT', `/consentForms/drafts/${draftId}`, payload, options);
 }
@@ -66,7 +66,7 @@ export function updateConsentFormDraft(
 export function updateConsentFormDueDate(
   formId: number,
   payload: { consentByDate: string },
-  options?: { signal?: AbortSignal },
+  options?: { signal?: AbortSignal; keepalive?: boolean },
 ): Promise<void> {
   return mutateApi('PUT', `/consentForms/${formId}/updateDueDate`, payload, options);
 }
@@ -74,14 +74,14 @@ export function updateConsentFormDueDate(
 export function updateConsentFormReminder(
   formId: number,
   payload: { addReminderType: ApiReminderType; reminderDate: string },
-  options?: { signal?: AbortSignal },
+  options?: { signal?: AbortSignal; keepalive?: boolean },
 ): Promise<void> {
   return mutateApi('PUT', `/consentForms/${formId}/updateReminder`, payload, options);
 }
 
 export function scheduleNewConsentFormDraft(
   payload: ApiCreateConsentFormDraftPayload & { scheduledSendAt: string },
-  options?: { signal?: AbortSignal },
+  options?: { signal?: AbortSignal; keepalive?: boolean },
 ): Promise<{ consentFormDraftId: number; updatedAt: string }> {
   return mutateApi('POST', '/consentForms/drafts/schedule', payload, options);
 }
@@ -89,7 +89,7 @@ export function scheduleNewConsentFormDraft(
 export function scheduleExistingConsentFormDraft(
   draftId: number,
   payload: ApiCreateConsentFormDraftPayload & { scheduledSendAt: string },
-  options?: { signal?: AbortSignal },
+  options?: { signal?: AbortSignal; keepalive?: boolean },
 ): Promise<{ consentFormDraftId: number; updatedAt: string }> {
   return mutateApi('PUT', `/consentForms/drafts/schedule/${draftId}`, payload, options);
 }
@@ -97,7 +97,7 @@ export function scheduleExistingConsentFormDraft(
 export function rescheduleConsentFormDraft(
   draftId: number,
   payload: { scheduledSendAt: string },
-  options?: { signal?: AbortSignal },
+  options?: { signal?: AbortSignal; keepalive?: boolean },
 ): Promise<void> {
   return mutateApi(
     'PUT',
@@ -109,7 +109,7 @@ export function rescheduleConsentFormDraft(
 
 export function cancelConsentFormSchedule(
   draftId: number,
-  options?: { signal?: AbortSignal },
+  options?: { signal?: AbortSignal; keepalive?: boolean },
 ): Promise<void> {
   return mutateApi('POST', `/consentForms/drafts/${draftId}/cancelSchedule`, {}, options);
 }
@@ -141,7 +141,7 @@ export function deleteConsentFormDraft(draftId: number): Promise<void> {
 export function updateConsentFormEnquiryEmail(
   formId: number,
   payload: { enquiryEmailAddress: string },
-  options?: { signal?: AbortSignal },
+  options?: { signal?: AbortSignal; keepalive?: boolean },
 ): Promise<void> {
   return mutateApi('PUT', `/consentForms/${formId}/updateEnquiryEmail`, payload, options);
 }

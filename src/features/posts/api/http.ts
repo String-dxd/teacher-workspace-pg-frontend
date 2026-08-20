@@ -177,7 +177,7 @@ export async function mutateApi<T>(
   method: 'POST' | 'PUT',
   path: string,
   body: unknown,
-  options: { signal?: AbortSignal; timeoutMs?: number } = {},
+  options: { signal?: AbortSignal; timeoutMs?: number; keepalive?: boolean } = {},
 ): Promise<T> {
   const timeout = withTimeout(options.signal, options.timeoutMs ?? DEFAULT_WRITE_TIMEOUT_MS);
   const attempt = async (): Promise<T> => {
@@ -188,6 +188,10 @@ export async function mutateApi<T>(
       signal: timeout.signal,
       redirect: 'manual',
       credentials: 'include',
+      // Lets a save dispatched as the page unloads outlive the document.
+      // Browsers cap keepalive bodies at 64KB; an oversized draft is rejected
+      // here rather than half-sent.
+      keepalive: options.keepalive,
     });
     if (isRedirectResponse(res)) handleRedirectResponse(res);
     if (!res.ok) await handleErrorResponse(res);
