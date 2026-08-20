@@ -1,4 +1,7 @@
+import type { NavigateFunction } from 'react-router';
+
 import { Button } from '~/components/ui';
+import { ServiceUnavailableError } from '~/features/posts/api/errors';
 
 /** Placeholder pending UXD confirmation (issue #118) — kept in one constant
  *  so the confirmed copy is a one-line change. */
@@ -19,7 +22,7 @@ function MaintenancePage() {
     <div className="flex min-h-[400px] flex-1 flex-col items-center justify-center px-6 py-16">
       <div className="flex max-w-md flex-col items-center gap-6 text-center">
         <img
-          src="/404-illustration.png"
+          src="/503-error-illustration.png"
           alt="A person surrounded by scattered papers and screens"
           className="h-auto w-64 object-contain"
         />
@@ -33,6 +36,14 @@ function MaintenancePage() {
       </div>
     </div>
   );
+}
+
+export function navigateOnMaintenance(err: unknown, navigate: NavigateFunction): boolean {
+  if (err instanceof ServiceUnavailableError) {
+    navigate('/posts/maintenance');
+    return true;
+  }
+  return false;
 }
 
 export { MaintenancePage, MAINTENANCE_COPY };

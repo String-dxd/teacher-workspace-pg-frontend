@@ -54,11 +54,10 @@ import {
   duplicateConsentFormDraft,
   loadConsentPostsList,
 } from '~/features/posts/api/consent-forms';
-import { NotFoundError, ServiceUnavailableError } from '~/features/posts/api/errors';
+import { NotFoundError } from '~/features/posts/api/errors';
 import { getConfigs } from '~/features/posts/api/session';
 import type { ApiConfig } from '~/features/posts/api/types';
 import { DeletePostDialog } from '~/features/posts/components/DeletePostDialog';
-import { MaintenancePage } from '~/features/posts/components/MaintenancePage';
 import {
   DEFAULT_POST_FILTERS,
   PostFilterPopover,
@@ -74,8 +73,8 @@ import {
   type SortState,
 } from '~/features/posts/components/SortableHeader';
 import { usePagination } from '~/features/posts/hooks/usePagination';
+import { usePostsQuery } from '~/features/posts/hooks/usePostsQuery';
 import { formatDate } from '~/helpers/dateTime';
-import { useQuery } from '~/hooks/useQuery';
 import { notify } from '~/lib/notify';
 import { cn, stripSalutation } from '~/lib/utils';
 
@@ -233,7 +232,7 @@ const IS_ADMIN = true;
 // ─── Component ──────────────────────────────────────────────────────────────
 
 const PostsListPage: React.FC = () => {
-  const { data, isLoading, error, refetch } = useQuery(
+  const { data, isLoading, error, refetch } = usePostsQuery(
     () =>
       Promise.all([loadPostsList(), loadConsentPostsList(), getConfigs()]).then(
         ([announcements, forms, configs]) => ({
@@ -408,9 +407,6 @@ const PostsListPage: React.FC = () => {
     }
   }, [selectedRows, refetch]);
 
-  // PG signals maintenance with a bare 503 — swap the whole content area for
-  // the static maintenance page (the shell's navigation stays mounted).
-  if (error instanceof ServiceUnavailableError) return <MaintenancePage />;
   if (error) return <QueryError onRetry={refetch} />;
   if (isLoading) return null;
 
