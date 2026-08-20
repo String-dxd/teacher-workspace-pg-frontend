@@ -47,10 +47,22 @@ async function applyAddedStaffInCharge(
 
 const BASE = '/api/web/2/staff';
 
+// Scheduled sends called off this session. The real API flips the record to
+// DRAFT; the fixtures are static, so hold the ids here and let the endpoints
+// below answer as the backend would — otherwise a cancelled post keeps
+// reporting SCHEDULED and the flow looks broken.
+const cancelledSchedules = new Set<number>();
+
 export const handlers = [
   // ─── Announcements ──────────────────────────────────────────────────────────
   http.get(`${BASE}/announcements`, () => {
-    return HttpResponse.json(envelope(announcementsList));
+    return HttpResponse.json(
+      envelope(
+        announcementsList.map((a) =>
+          cancelledSchedules.has(a.postId) ? { ...a, status: 'DRAFT' as const } : a,
+        ),
+      ),
+    );
   }),
 
   http.get(`${BASE}/announcements/shared`, () => {
@@ -71,6 +83,11 @@ export const handlers = [
     // postId 201 is the SCHEDULED fixture (drives reschedule/cancel flows);
     // everything else returns the default POSTED detail.
     const detail = params.postId === '201' ? scheduledAnnouncementDetail : announcementDetail;
+    if (cancelledSchedules.has(Number(params.postId))) {
+      return HttpResponse.json(
+        envelope([{ ...detail, status: 'DRAFT' as const, scheduledSendAt: null }]),
+      );
+    }
     return HttpResponse.json(envelope([detail]));
   }),
 
@@ -284,7 +301,8 @@ export const handlers = [
   }),
 
   // Cancel a scheduled announcement draft — returns the post to DRAFT (U9).
-  http.post(`${BASE}/announcements/drafts/:draftId/cancelSchedule`, () => {
+  http.post(`${BASE}/announcements/drafts/:draftId/cancelSchedule`, ({ params }) => {
+    cancelledSchedules.add(Number(params.draftId));
     return new HttpResponse(null, { status: 204 });
   }),
 

@@ -38,7 +38,7 @@ import {
 } from '~/features/posts/api/consent-forms';
 import { fetchSession, getConfigs } from '~/features/posts/api/session';
 
-import { PostsListPage } from './PostsListPage';
+import { __rowHref, PostsListPage } from './PostsListPage';
 
 // ─── Fixtures ───────────────────────────────────────────────────────────────
 
@@ -230,5 +230,43 @@ describe('School Posts carries the My Posts treatment', () => {
     // "Me" is a My Posts label; a whole-school view names the sender.
     expect(screen.getAllByText(/Koh Bee Hwa/).length).toBeGreaterThan(0);
     expect(screen.queryByText(/^Me$/)).toBeNull();
+  });
+});
+
+// ─── Row destinations ───────────────────────────────────────────────────────
+
+describe('rowHref', () => {
+  it('sends a scheduled post to its detail page, not the draft editor', () => {
+    // postHref routes anything scheduled to drafts/:id/edit, but Reschedule
+    // and Cancel send live on the detail page — so the row has to land there.
+    const row = {
+      ...announcement({ status: 'scheduled', numericId: 201 }),
+      _date: undefined,
+      _dateTs: 0,
+    };
+    expect(__rowHref(row, false)).toBe('announcements/201');
+
+    const scheduledForm = {
+      ...form({ status: 'scheduled', numericId: 602 }),
+      _date: undefined,
+      _dateTs: 0,
+    };
+    expect(__rowHref(scheduledForm, false)).toBe('consent-forms/602');
+  });
+
+  it('leaves every other status to postHref', () => {
+    const draft = {
+      ...announcement({ status: 'draft', numericId: 5 }),
+      _date: undefined,
+      _dateTs: 0,
+    };
+    expect(__rowHref(draft, true)).toBe('announcements/drafts/5/edit');
+
+    const posted = {
+      ...announcement({ status: 'posted', numericId: 9 }),
+      _date: undefined,
+      _dateTs: 0,
+    };
+    expect(__rowHref(posted, false)).toBe('announcements/9');
   });
 });

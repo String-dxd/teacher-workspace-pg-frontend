@@ -101,6 +101,19 @@ function isLowReadRate(postedAt: string | undefined, readCount: number, total: n
   return hoursElapsed >= 48 && readCount / total < 0.5;
 }
 
+/**
+ * Where a row goes when clicked. `postHref` sends anything scheduled to the
+ * draft editor, but a scheduled post's two actions — Reschedule and Cancel
+ * send — live on its detail page, so that is where the row has to land.
+ */
+function rowHref(row: PostRowData, goToEdit: boolean): string {
+  if (row.status === 'scheduled') {
+    const kind = row.kind === 'announcement' ? 'announcements' : 'consent-forms';
+    return `${kind}/${row.numericId}`;
+  }
+  return postHref(row, { edit: goToEdit });
+}
+
 function duplicateDraftHref(kind: 'announcement' | 'form', draftId: number): string {
   return kind === 'announcement'
     ? `announcements/drafts/${draftId}/edit`
@@ -108,6 +121,7 @@ function duplicateDraftHref(kind: 'announcement' | 'form', draftId: number): str
 }
 
 export const __duplicateDraftHref = duplicateDraftHref;
+export const __rowHref = rowHref;
 
 type PostTab = 'view-only' | 'with-responses';
 type PostScope = 'mine' | 'school';
@@ -729,7 +743,9 @@ const PostTableRow: React.FC<PostTableRowProps> = ({
     isLowReadRate(row.postedAt, row.stats.readCount, row.stats.totalCount);
 
   const hasSendFailure = Boolean(row.scheduledSendFailureCode);
-  const clickable = (row.status !== 'scheduled' && row.status !== 'posting') || hasSendFailure;
+  // A scheduled row opens its detail page — that is the only place Reschedule
+  // and Cancel send live, and it was previously reachable only by URL.
+  const clickable = row.status !== 'posting' || hasSendFailure;
   const goToEdit = row.status === 'draft' || hasSendFailure;
 
   const counts = responseCounts(row);
@@ -750,7 +766,7 @@ const PostTableRow: React.FC<PostTableRowProps> = ({
   return (
     <TableRow
       className={clickable ? 'cursor-pointer' : 'cursor-default'}
-      onClick={clickable ? () => navigate(postHref(row, { edit: goToEdit })) : undefined}
+      onClick={clickable ? () => navigate(rowHref(row, goToEdit)) : undefined}
     >
       <TableCell className="sticky left-0 z-10 overflow-hidden bg-background pl-6 whitespace-normal">
         <div className="min-w-0">
@@ -856,7 +872,9 @@ const PostStackedRow: React.FC<PostStackedRowProps> = ({
   const classLabels = classLabelsFor(row);
 
   const hasSendFailure = Boolean(row.scheduledSendFailureCode);
-  const clickable = (row.status !== 'scheduled' && row.status !== 'posting') || hasSendFailure;
+  // A scheduled row opens its detail page — that is the only place Reschedule
+  // and Cancel send live, and it was previously reachable only by URL.
+  const clickable = row.status !== 'posting' || hasSendFailure;
   const goToEdit = row.status === 'draft' || hasSendFailure;
 
   const showLowRead =
@@ -867,7 +885,7 @@ const PostStackedRow: React.FC<PostStackedRowProps> = ({
   return (
     <li
       className={cn('flex items-start gap-3 px-6 py-4', clickable && 'cursor-pointer')}
-      onClick={clickable ? () => navigate(postHref(row, { edit: goToEdit })) : undefined}
+      onClick={clickable ? () => navigate(rowHref(row, goToEdit)) : undefined}
     >
       <div className="min-w-0 flex-1">
         <div className="flex items-start gap-1.5">
