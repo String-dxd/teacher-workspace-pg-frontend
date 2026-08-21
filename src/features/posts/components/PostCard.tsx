@@ -4,6 +4,7 @@ import { Download, Paperclip, Pencil } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
 import {
+  Button,
   Card,
   CardContent,
   Dialog,
@@ -78,15 +79,17 @@ function reminderSummary(reminder: ReminderConfig): string | null {
 
 function EditTrigger({ label, onClick }: { label: string; onClick: () => void }) {
   return (
-    <button
+    <Button
       type="button"
+      variant="ghost"
+      size="icon-sm"
       aria-label={label}
       onClick={onClick}
-      className="shrink-0 rounded-full p-1 text-muted-foreground hover:bg-slate-4 hover:text-foreground sm:rounded-none sm:bg-transparent sm:p-0 sm:text-xs sm:font-medium sm:hover:bg-transparent sm:hover:text-foreground sm:hover:underline sm:underline-offset-2"
+      className="size-auto shrink-0 rounded-full p-1 text-muted-foreground hover:bg-slate-4 hover:text-foreground sm:rounded-none sm:bg-transparent sm:p-0 sm:text-xs sm:font-medium sm:hover:bg-transparent sm:hover:text-foreground sm:hover:underline sm:underline-offset-2"
     >
-      <Pencil className="h-3.5 w-3.5 sm:hidden" />
+      <Pencil className="size-3.5 sm:hidden" />
       <span className="hidden sm:inline">Edit</span>
-    </button>
+    </Button>
   );
 }
 
@@ -172,16 +175,17 @@ export function PostCard({
                 <ul className="space-y-1">
                   {post.targets.map((t) => (
                     <li key={t.id}>
-                      <button
+                      <Button
                         type="button"
-                        className="cursor-pointer text-left text-sm font-medium underline-offset-2 hover:underline"
+                        variant="link"
+                        className="h-auto justify-start px-0 text-left font-medium text-foreground"
                         onClick={() => {
                           setDialogTargetLabel(t.label);
                           setRecipientsDialogOpen(true);
                         }}
                       >
                         {t.label}
-                      </button>
+                      </Button>
                     </li>
                   ))}
                 </ul>

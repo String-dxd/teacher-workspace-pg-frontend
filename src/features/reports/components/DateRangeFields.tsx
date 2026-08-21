@@ -1,6 +1,6 @@
 import { CalendarIcon } from 'lucide-react';
 
-import { Calendar, Popover, PopoverContent, PopoverTrigger } from '~/components/ui';
+import { Calendar, outsideRange, Popover, PopoverContent, PopoverTrigger } from '~/components/ui';
 import { formatLocalDate } from '~/helpers/dateTime';
 
 interface DateRangeFieldsProps {
@@ -55,7 +55,7 @@ function DatePickerField({
           onSelect={(date) => {
             if (date) onChange(localDateToIso(date));
           }}
-          disabled={minDate ? { before: isoToLocalDate(minDate) } : undefined}
+          disabled={outsideRange(minDate ? isoToLocalDate(minDate) : undefined)}
         />
       </PopoverContent>
     </Popover>

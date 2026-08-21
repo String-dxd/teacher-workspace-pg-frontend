@@ -71,3 +71,24 @@ export class RateLimitError extends AppError {
     this.name = 'RateLimitError';
   }
 }
+
+/** PG returns a bare 503 while under maintenance — not an unexpected error,
+ *  so callers render the maintenance page instead of toasts or retries. */
+export class ServiceUnavailableError extends AppError {
+  constructor(message = 'Parents Gateway is under maintenance.') {
+    super(message, 503, 503);
+    this.name = 'ServiceUnavailableError';
+  }
+}
+
+/** PG returns a bare 401 when School Cockpit (the source of truth for staff
+ *  status) disagrees with EduPass — the staff member isn't authorised to use
+ *  PG right now (issue #129). Distinct from `SessionExpiredError`, which
+ *  covers PG's enveloped -401/-4012 session-expiry codes; callers render the
+ *  unauthorised page instead of toasts or retries. */
+export class UnauthorisedError extends AppError {
+  constructor(message = 'Not authorised to access Parents Gateway.') {
+    super(message, 401, 401);
+    this.name = 'UnauthorisedError';
+  }
+}

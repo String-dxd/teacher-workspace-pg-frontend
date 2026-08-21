@@ -1,6 +1,5 @@
 import {
   AlertTriangle,
-  Check,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
@@ -21,12 +20,11 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
   Input,
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
   Table,
   TableBody,
   TableCell,
@@ -54,10 +52,15 @@ import {
   loadConsentPostsList,
   loadSchoolConsentPostsList,
 } from '~/features/posts/api/consent-forms';
-import { NotFoundError } from '~/features/posts/api/errors';
+import {
+  NotFoundError,
+  ServiceUnavailableError,
+  UnauthorisedError,
+} from '~/features/posts/api/errors';
 import { fetchSession, getConfigs } from '~/features/posts/api/session';
 import type { ApiConfig } from '~/features/posts/api/types';
 import { DeletePostDialog, postToastTitle } from '~/features/posts/components/DeletePostDialog';
+import { MaintenancePage } from '~/features/posts/components/MaintenancePage';
 import {
   DEFAULT_POST_FILTERS,
   PostFilterPopover,
@@ -72,9 +75,10 @@ import {
   type SortDirection,
   type SortState,
 } from '~/features/posts/components/SortableHeader';
+import { UnauthorisedPage } from '~/features/posts/components/UnauthorisedPage';
 import { usePagination } from '~/features/posts/hooks/usePagination';
+import { usePostsQuery } from '~/features/posts/hooks/usePostsQuery';
 import { formatDate } from '~/helpers/dateTime';
-import { useQuery } from '~/hooks/useQuery';
 import { notify } from '~/lib/notify';
 import { cn, stripSalutation } from '~/lib/utils';
 
@@ -253,7 +257,8 @@ const PAGE_SIZE = 20;
 
 const PostsListPage: React.FC = () => {
   const [scope, setScope] = useState<PostScope>('mine');
-  const { data, isLoading, error, refetch } = useQuery(
+  // usePostsQuery rethrows a 503 so the boundary shows the maintenance page.
+  const { data, isLoading, error, refetch } = usePostsQuery(
     () =>
       Promise.all([
         scope === 'school'
@@ -376,6 +381,10 @@ const PostsListPage: React.FC = () => {
       ? 'draft'
       : 'posted';
 
+  // PG signals maintenance with a bare 503 — swap the whole content area for
+  // the static maintenance page (the shell's navigation stays mounted).
+  if (error instanceof ServiceUnavailableError) return <MaintenancePage />;
+  if (error instanceof UnauthorisedError) return <UnauthorisedPage />;
   if (error) return <QueryError onRetry={refetch} />;
   if (isLoading) return null;
 
@@ -399,57 +408,35 @@ const PostsListPage: React.FC = () => {
         <div className="flex items-start justify-between gap-4">
           <div>
             {isAdmin ? (
-              <Popover open={scopeOpen} onOpenChange={setScopeOpen}>
+              <DropdownMenu open={scopeOpen} onOpenChange={setScopeOpen}>
                 {/* The scope switcher is the page title, so it has to BE the
                     heading rather than sit where one should be — otherwise the
                     page ships with no h1 at all for anyone navigating by
-                    headings. The button keeps its own role inside it. */}
+                    headings. The trigger keeps its own role inside it. */}
                 <h1 className="text-2xl font-semibold tracking-tight">
-                  <PopoverTrigger className="inline-flex cursor-pointer items-center gap-1.5 bg-transparent p-0 text-2xl font-semibold tracking-tight outline-none">
+                  <DropdownMenuTrigger className="inline-flex cursor-pointer items-center gap-1.5 bg-transparent p-0 text-2xl font-semibold tracking-tight outline-none">
                     {scope === 'school' ? 'School Posts' : 'My Posts'}
                     <ChevronDown className="h-5 w-5 text-muted-foreground" />
-                  </PopoverTrigger>
+                  </DropdownMenuTrigger>
                 </h1>
-                <PopoverContent
-                  align="start"
-                  className="w-56 gap-0 overflow-hidden rounded-2xl p-1"
-                >
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setScope('mine');
-                      setScopeOpen(false);
-                    }}
-                    className={cn(
-                      'flex w-full flex-col rounded-xl px-3 py-2 text-left transition-colors',
-                      scope === 'mine' ? 'bg-accent' : 'hover:bg-slate-4',
-                    )}
+                <DropdownMenuContent align="start" className="w-56 min-w-56">
+                  <DropdownMenuRadioGroup
+                    value={scope}
+                    onValueChange={(value) => setScope(value as PostScope)}
                   >
-                    <span className="flex items-center justify-between">
+                    <DropdownMenuRadioItem value="mine" className="flex-col items-start gap-0">
                       <span className="text-sm font-medium">My posts</span>
-                      {scope === 'mine' && <Check className="h-4 w-4 text-primary" />}
-                    </span>
-                    <span className="text-xs text-muted-foreground">Posts you created</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setScope('school');
-                      setScopeOpen(false);
-                    }}
-                    className={cn(
-                      'flex w-full flex-col rounded-xl px-3 py-2 text-left transition-colors',
-                      scope === 'school' ? 'bg-accent' : 'hover:bg-slate-4',
-                    )}
-                  >
-                    <span className="flex items-center justify-between">
+                      <span className="text-xs text-muted-foreground">Posts you created</span>
+                    </DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem value="school" className="flex-col items-start gap-0">
                       <span className="text-sm font-medium">School posts</span>
-                      {scope === 'school' && <Check className="h-4 w-4 text-primary" />}
-                    </span>
-                    <span className="text-xs text-muted-foreground">Posts across your school</span>
-                  </button>
-                </PopoverContent>
-              </Popover>
+                      <span className="text-xs text-muted-foreground">
+                        Posts across your school
+                      </span>
+                    </DropdownMenuRadioItem>
+                  </DropdownMenuRadioGroup>
+                </DropdownMenuContent>
+              </DropdownMenu>
             ) : (
               <h1 className="text-2xl font-semibold tracking-tight">My Posts</h1>
             )}

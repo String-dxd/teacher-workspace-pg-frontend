@@ -42,21 +42,21 @@ export async function fetchAnnouncementDraftDetail(draftId: number): Promise<Api
 
 export function createAnnouncement(
   payload: ApiCreateAnnouncementPayload,
-  options?: { signal?: AbortSignal },
+  options?: { signal?: AbortSignal; keepalive?: boolean },
 ): Promise<{ postId: number }> {
   return mutateApi('POST', '/announcements', payload, options);
 }
 
 export function createDraft(
   payload: ApiCreateDraftPayload,
-  options?: { signal?: AbortSignal; timeoutMs?: number },
+  options?: { signal?: AbortSignal; timeoutMs?: number; keepalive?: boolean },
 ): Promise<{ announcementDraftId: number }> {
   return mutateApi('POST', '/announcements/drafts', payload, options);
 }
 
 export function scheduleNewAnnouncementDraft(
   payload: ApiCreateDraftPayload & { scheduledSendAt: string },
-  options?: { signal?: AbortSignal },
+  options?: { signal?: AbortSignal; keepalive?: boolean },
 ): Promise<{ announcementDraftId: number; updatedAt: string }> {
   return mutateApi('POST', '/announcements/drafts/schedule', payload, options);
 }
@@ -64,7 +64,7 @@ export function scheduleNewAnnouncementDraft(
 export function scheduleExistingAnnouncementDraft(
   draftId: number,
   payload: ApiCreateDraftPayload & { scheduledSendAt: string },
-  options?: { signal?: AbortSignal },
+  options?: { signal?: AbortSignal; keepalive?: boolean },
 ): Promise<{ announcementDraftId: number; updatedAt: string }> {
   return mutateApi('PUT', `/announcements/drafts/schedule/${draftId}`, payload, options);
 }
@@ -72,7 +72,7 @@ export function scheduleExistingAnnouncementDraft(
 export function rescheduleAnnouncementDraft(
   draftId: number,
   payload: { scheduledSendAt: string },
-  options?: { signal?: AbortSignal },
+  options?: { signal?: AbortSignal; keepalive?: boolean },
 ): Promise<void> {
   return mutateApi(
     'PUT',
@@ -84,7 +84,7 @@ export function rescheduleAnnouncementDraft(
 
 export function cancelAnnouncementSchedule(
   draftId: number,
-  options?: { signal?: AbortSignal },
+  options?: { signal?: AbortSignal; keepalive?: boolean },
 ): Promise<void> {
   return mutateApi('POST', `/announcements/drafts/${draftId}/cancelSchedule`, {}, options);
 }
@@ -92,7 +92,7 @@ export function cancelAnnouncementSchedule(
 export function updateDraft(
   draftId: number,
   payload: ApiCreateDraftPayload,
-  options?: { signal?: AbortSignal },
+  options?: { signal?: AbortSignal; keepalive?: boolean },
 ): Promise<void> {
   return mutateApi('PUT', `/announcements/drafts/${draftId}`, payload, options);
 }

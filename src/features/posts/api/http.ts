@@ -4,8 +4,10 @@ import {
   NotFoundError,
   RateLimitError,
   RedirectError,
+  ServiceUnavailableError,
   SessionExpiredError,
   TimeoutError,
+  UnauthorisedError,
   ValidationError,
 } from './errors';
 
@@ -76,6 +78,16 @@ async function handleErrorResponse(res: Response): Promise<never> {
       // found' page instead of a generic error.
       if (res.status === 404) {
         throw new NotFoundError(message, code, res.status);
+      }
+      // pgw-web returns a bare 503 (no envelope) while under maintenance.
+      if (res.status === 503) {
+        throw new ServiceUnavailableError();
+      }
+      // pgw-web returns a bare 401 (no envelope) when SC flags the staff
+      // member as inactive/unauthorised — distinct from the enveloped
+      // -401/-4012 session-expiry codes handled above (issue #129).
+      if (res.status === 401) {
+        throw new UnauthorisedError();
       }
       throw new AppError(message, code, res.status);
   }
@@ -177,7 +189,7 @@ export async function mutateApi<T>(
   method: 'POST' | 'PUT',
   path: string,
   body: unknown,
-  options: { signal?: AbortSignal; timeoutMs?: number } = {},
+  options: { signal?: AbortSignal; timeoutMs?: number; keepalive?: boolean } = {},
 ): Promise<T> {
   const timeout = withTimeout(options.signal, options.timeoutMs ?? DEFAULT_WRITE_TIMEOUT_MS);
   const attempt = async (): Promise<T> => {
@@ -188,6 +200,10 @@ export async function mutateApi<T>(
       signal: timeout.signal,
       redirect: 'manual',
       credentials: 'include',
+      // Lets a save dispatched as the page unloads outlive the document.
+      // Browsers cap keepalive bodies at 64KB; an oversized draft is rejected
+      // here rather than half-sent.
+      keepalive: options.keepalive,
     });
     if (isRedirectResponse(res)) handleRedirectResponse(res);
     if (!res.ok) await handleErrorResponse(res);

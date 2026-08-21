@@ -1,4 +1,4 @@
-import { Check, ChevronDown, Crown, Download } from 'lucide-react';
+import { ChevronDown, Crown, Download } from 'lucide-react';
 import { useState } from 'react';
 import { useSearchParams } from 'react-router';
 
@@ -6,10 +6,13 @@ import { QueryError } from '~/components/QueryError';
 import {
   Button,
   Card,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuTrigger,
   Label,
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
+  RadioGroup,
   Separator,
   Tabs,
   TabsList,
@@ -17,8 +20,6 @@ import {
 } from '~/components/ui';
 import { AppError } from '~/features/posts/api/errors';
 import type { ApiSchoolClass } from '~/features/posts/api/types';
-import { DateRangeFields } from '~/features/reports/components/DateRangeFields';
-import { DeclarationStatusOption } from '~/features/reports/components/DeclarationStatusOption';
 import {
   fetchOnboardingReport,
   fetchSchoolClasses,
@@ -28,6 +29,8 @@ import {
   type DeclarationStatus,
   type ReportTarget,
 } from '~/features/reports/api/reports';
+import { DateRangeFields } from '~/features/reports/components/DateRangeFields';
+import { DeclarationStatusOption } from '~/features/reports/components/DeclarationStatusOption';
 import { downloadBlob } from '~/helpers/downloadBlob';
 import { useQuery } from '~/hooks/useQuery';
 import { notify } from '~/lib/notify';
@@ -146,22 +149,23 @@ const ReportsListPage: React.FC = () => {
         <Label>
           Declaration status <span className="text-destructive">*</span>
         </Label>
-        <div role="radiogroup" aria-label="Declaration status" className="space-y-2">
+        <RadioGroup
+          aria-label="Declaration status"
+          className="space-y-2"
+          value={declarationStatus ?? ''}
+          onValueChange={(next) => setDeclarationStatus(next as typeof declarationStatus)}
+        >
           <DeclarationStatusOption
-            name="declaration-status"
             value="not_declared"
             label="Did not declare (no declarations made)"
             selected={declarationStatus === 'not_declared'}
-            onSelect={() => setDeclarationStatus('not_declared')}
           />
           <DeclarationStatusOption
-            name="declaration-status"
             value="declared"
             label="Declared (include travelling and not travelling)"
             selected={declarationStatus === 'declared'}
-            onSelect={() => setDeclarationStatus('declared')}
           />
-        </div>
+        </RadioGroup>
       </div>
 
       <div className="space-y-1.5">
@@ -226,40 +230,34 @@ const ReportsListPage: React.FC = () => {
   const scopeHeader = (
     <div className="px-6 pt-6">
       {IS_ADMIN ? (
-        <Popover open={scopeOpen} onOpenChange={setScopeOpen}>
-          <PopoverTrigger className="inline-flex cursor-pointer items-center gap-1.5 rounded-md bg-transparent p-0 text-2xl font-semibold tracking-tight outline-none focus-visible:ring-2 focus-visible:ring-ring/50">
-            {scopeTitle}
-            <ChevronDown className="h-5 w-5 text-muted-foreground" />
-          </PopoverTrigger>
-          <PopoverContent align="start" className="w-64 gap-0 overflow-hidden rounded-2xl p-1">
-            <button
-              type="button"
-              onClick={() => handleScopeChange('my')}
-              className="flex w-full flex-col rounded-xl px-3 py-2 text-left data-[active=true]:bg-accent"
-              data-active={scope === 'my'}
+        <DropdownMenu open={scopeOpen} onOpenChange={setScopeOpen}>
+          {/* The switcher IS the page title, so it sits inside the h1 rather
+              than replacing it — the admin branch previously rendered no h1 at
+              all, leaving nothing to navigate by. */}
+          <h1 className="text-2xl font-semibold tracking-tight">
+            <DropdownMenuTrigger className="inline-flex cursor-pointer items-center gap-1.5 rounded-md bg-transparent p-0 text-2xl font-semibold tracking-tight outline-none focus-visible:ring-2 focus-visible:ring-ring/50">
+              {scopeTitle}
+              <ChevronDown className="h-5 w-5 text-muted-foreground" />
+            </DropdownMenuTrigger>
+          </h1>
+          <DropdownMenuContent align="start" className="w-64 min-w-64">
+            <DropdownMenuRadioGroup
+              value={scope}
+              onValueChange={(value) => handleScopeChange(value as typeof scope)}
             >
-              <span className="flex items-center justify-between">
+              <DropdownMenuRadioItem value="my" className="flex-col items-start gap-0">
                 <span className="text-sm font-medium">My reports</span>
-                {scope === 'my' && <Check className="h-4 w-4 text-primary" />}
-              </span>
-              <span className="text-xs text-muted-foreground">
-                Reports for your class{ownClass ? ` (${ownClass.label})` : ''}
-              </span>
-            </button>
-            <button
-              type="button"
-              onClick={() => handleScopeChange('school')}
-              className="flex w-full flex-col rounded-xl px-3 py-2 text-left data-[active=true]:bg-accent"
-              data-active={scope === 'school'}
-            >
-              <span className="flex items-center justify-between">
+                <span className="text-xs text-muted-foreground">
+                  Reports for your class{ownClass ? ` (${ownClass.label})` : ''}
+                </span>
+              </DropdownMenuRadioItem>
+              <DropdownMenuRadioItem value="school" className="flex-col items-start gap-0">
                 <span className="text-sm font-medium">School reports</span>
-                {scope === 'school' && <Check className="h-4 w-4 text-primary" />}
-              </span>
-              <span className="text-xs text-muted-foreground">Reports across your school</span>
-            </button>
-          </PopoverContent>
-        </Popover>
+                <span className="text-xs text-muted-foreground">Reports across your school</span>
+              </DropdownMenuRadioItem>
+            </DropdownMenuRadioGroup>
+          </DropdownMenuContent>
+        </DropdownMenu>
       ) : (
         <h1 className="text-2xl font-semibold tracking-tight">My Reports</h1>
       )}

@@ -1,6 +1,6 @@
 import { memo } from 'react';
 
-import { Card, CardContent, Progress } from '~/components/ui';
+import { Card, CardContent, Progress, Toggle } from '~/components/ui';
 import type { AnnouncementStats, ConsentFormStats, ResponseType } from '~/data/posts-registry';
 import { cn } from '~/lib/utils';
 
@@ -82,37 +82,35 @@ const ResponseCard = memo(function ResponseCard({
               {label}
             </span>
             {onMainActivate ? (
-              <button
-                type="button"
-                onClick={onMainActivate}
-                aria-pressed={active === 'main'}
+              <Toggle
+                pressed={active === 'main'}
+                onPressedChange={() => onMainActivate()}
                 className={cn(
-                  'rounded-md text-left transition-colors',
-                  'focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none',
-                  active === 'main' ? 'ring-2 ring-primary' : 'hover:bg-muted/40',
+                  'h-auto min-w-0 justify-start px-0 text-left',
+                  active === 'main'
+                    ? 'ring-2 ring-primary data-pressed:bg-transparent'
+                    : 'hover:bg-muted/40',
                 )}
               >
                 {mainContent}
-              </button>
+              </Toggle>
             ) : (
               mainContent
             )}
             {pendingNote &&
               (onPendingActivate ? (
-                <button
-                  type="button"
-                  onClick={onPendingActivate}
-                  aria-pressed={active === 'pending'}
+                <Toggle
+                  pressed={active === 'pending'}
+                  onPressedChange={() => onPendingActivate()}
                   className={cn(
-                    'rounded-md px-1 text-left text-sm font-medium text-warning-foreground transition-colors',
-                    'focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none',
+                    'h-auto min-w-0 justify-start px-1 text-left text-sm font-medium text-warning-foreground',
                     active === 'pending'
-                      ? 'bg-warning/20 ring-2 ring-warning'
+                      ? 'bg-warning/20 ring-2 ring-warning data-pressed:bg-warning/20'
                       : 'hover:bg-warning/10',
                   )}
                 >
                   {pendingNote}
-                </button>
+                </Toggle>
               ) : (
                 <span className="text-sm font-medium text-warning-foreground">{pendingNote}</span>
               ))}
