@@ -1,41 +1,32 @@
-import * as React from 'react';
+import { Collapsible as CollapsiblePrimitive } from '@base-ui/react/collapsible';
 
 import { cn } from '~/lib/utils';
 
-interface CollapsibleProps extends React.HTMLAttributes<HTMLDivElement> {
-  open?: boolean;
-  onOpenChange?: (open: boolean) => void;
+function Collapsible({ className, ...props }: CollapsiblePrimitive.Root.Props) {
+  return <CollapsiblePrimitive.Root data-slot="collapsible" className={cn(className)} {...props} />;
 }
 
-function Collapsible({
-  open: _open = false,
-  onOpenChange: _onOpenChange,
-  children,
-  className,
-  ...props
-}: CollapsibleProps) {
+function CollapsibleTrigger({ className, ...props }: CollapsiblePrimitive.Trigger.Props) {
   return (
-    <div className={cn(className)} {...props}>
-      {children}
-    </div>
+    <CollapsiblePrimitive.Trigger
+      data-slot="collapsible-trigger"
+      className={cn('cursor-pointer outline-none', className)}
+      {...props}
+    />
   );
 }
 
-interface CollapsiblePanelProps extends React.HTMLAttributes<HTMLDivElement> {
-  keepMounted?: boolean;
-}
-
-function CollapsiblePanel({
-  children,
-  className,
-  keepMounted: _keepMounted,
-  ...props
-}: CollapsiblePanelProps) {
+function CollapsiblePanel({ className, ...props }: CollapsiblePrimitive.Panel.Props) {
   return (
-    <div className={cn(className)} {...props}>
-      {children}
-    </div>
+    <CollapsiblePrimitive.Panel
+      data-slot="collapsible-panel"
+      className={cn(
+        'h-[var(--collapsible-panel-height)] overflow-hidden transition-[height] duration-150 ease-out data-ending-style:h-0 data-starting-style:h-0',
+        className,
+      )}
+      {...props}
+    />
   );
 }
 
-export { Collapsible, CollapsiblePanel };
+export { Collapsible, CollapsiblePanel, CollapsibleTrigger };

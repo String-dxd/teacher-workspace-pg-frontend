@@ -1,6 +1,16 @@
 import { CalendarIcon } from 'lucide-react';
 
-import { Calendar, Label, Popover, PopoverContent, PopoverTrigger } from '~/components/ui';
+import {
+  Calendar,
+  Label,
+  outsideRange,
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+  RadioGroup,
+  RadioGroupCard,
+  RadioGroupCardIndicator,
+} from '~/components/ui';
 import type { ReminderConfig } from '~/data/posts-registry';
 import { formatLocalDate } from '~/helpers/dateTime';
 
@@ -70,21 +80,24 @@ function ReminderSection({ value, onChange, consentByDate }: ReminderSectionProp
     <div className="space-y-2">
       <p className="text-sm font-medium">Send more reminders to parents</p>
 
-      <div className="space-y-2" role="radiogroup">
+      <RadioGroup
+        className="space-y-2"
+        name="reminder-type"
+        aria-label="Reminder frequency"
+        value={value.type}
+        onValueChange={(next) => handleRadioChange(next as ReminderRadioValue)}
+      >
         {REMINDER_OPTIONS.map((option) => (
-          <label key={option.value} className="flex cursor-pointer items-center gap-2">
-            <input
-              type="radio"
-              className="h-3.5 w-3.5 accent-primary"
-              name="reminder-type"
-              value={option.value}
-              checked={value.type === option.value}
-              onChange={() => handleRadioChange(option.value)}
-            />
+          <RadioGroupCard
+            key={option.value}
+            value={option.value}
+            className="flex items-center gap-2"
+          >
+            <RadioGroupCardIndicator className="size-3.5" />
             <span className="text-sm">{option.label}</span>
-          </label>
+          </RadioGroupCard>
         ))}
-      </div>
+      </RadioGroup>
 
       {showPicker && (
         <div className="space-y-1.5 pt-1">
@@ -105,10 +118,10 @@ function ReminderSection({ value, onChange, consentByDate }: ReminderSectionProp
                 onSelect={(date) => {
                   if (date) handleDateChange(localDateToIso(date));
                 }}
-                disabled={{
-                  before: isoToLocalDate(minDate),
-                  after: maxDate ? isoToLocalDate(maxDate) : undefined,
-                }}
+                disabled={outsideRange(
+                  isoToLocalDate(minDate),
+                  maxDate ? isoToLocalDate(maxDate) : undefined,
+                )}
               />
             </PopoverContent>
           </Popover>

@@ -103,8 +103,10 @@ function renderPage() {
 
 /** Switch the scope switcher to School posts and wait for the reload. */
 async function selectSchoolScope() {
+  // The switcher is a Base UI dropdown: the trigger is a button, the options
+  // are menuitemradios.
   fireEvent.click(await screen.findByRole('button', { name: /my posts/i }));
-  fireEvent.click(await screen.findByRole('button', { name: /school posts/i }));
+  fireEvent.click(await screen.findByRole('menuitemradio', { name: /school posts/i }));
   await waitFor(() => expect(loadSchoolConsentPostsList).toHaveBeenCalled());
 }
 

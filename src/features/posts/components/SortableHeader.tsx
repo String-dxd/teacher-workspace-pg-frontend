@@ -1,7 +1,13 @@
-import { ArrowDown, ArrowUp, Check, ChevronDown } from 'lucide-react';
+import { ArrowDown, ArrowUp, ChevronDown } from 'lucide-react';
 import { useState } from 'react';
 
-import { Popover, PopoverContent, PopoverTrigger } from '~/components/ui';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuTrigger,
+} from '~/components/ui';
 import { cn } from '~/lib/utils';
 
 export type SortDirection = 'asc' | 'desc';
@@ -29,8 +35,8 @@ function SortableHeader({ label, column, sort, onSort }: SortableHeaderProps) {
   }
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger
+    <DropdownMenu open={open} onOpenChange={setOpen}>
+      <DropdownMenuTrigger
         className={cn(
           '-ml-2 flex cursor-pointer items-center gap-1 rounded-md px-2 py-1 whitespace-nowrap transition-colors',
           'hover:bg-muted hover:text-foreground',
@@ -47,38 +53,23 @@ function SortableHeader({ label, column, sort, onSort }: SortableHeaderProps) {
             <ChevronDown className="h-3 w-3" />
           )}
         </span>
-      </PopoverTrigger>
-      <PopoverContent align="start" className="w-52 gap-1 p-3">
-        <button
-          type="button"
-          onClick={() => pick('asc')}
-          className={cn(
-            'flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm hover:bg-muted',
-            isSortedBy && sortDir === 'asc' && 'bg-muted',
-          )}
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" className="w-52 min-w-52">
+        <DropdownMenuRadioGroup
+          value={sortDir ?? ''}
+          onValueChange={(value) => pick(value as SortDirection)}
         >
-          <ArrowUp className="h-4 w-4 text-muted-foreground" />
-          Sort ascending
-          {isSortedBy && sortDir === 'asc' && (
-            <Check className="ml-auto h-4 w-4 text-muted-foreground" />
-          )}
-        </button>
-        <button
-          type="button"
-          onClick={() => pick('desc')}
-          className={cn(
-            'flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm hover:bg-muted',
-            isSortedBy && sortDir === 'desc' && 'bg-muted',
-          )}
-        >
-          <ArrowDown className="h-4 w-4 text-muted-foreground" />
-          Sort descending
-          {isSortedBy && sortDir === 'desc' && (
-            <Check className="ml-auto h-4 w-4 text-muted-foreground" />
-          )}
-        </button>
-      </PopoverContent>
-    </Popover>
+          <DropdownMenuRadioItem value="asc">
+            <ArrowUp className="text-muted-foreground" />
+            Sort ascending
+          </DropdownMenuRadioItem>
+          <DropdownMenuRadioItem value="desc">
+            <ArrowDown className="text-muted-foreground" />
+            Sort descending
+          </DropdownMenuRadioItem>
+        </DropdownMenuRadioGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 

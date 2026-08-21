@@ -23,6 +23,11 @@ import {
   PopoverContent,
   PopoverTrigger,
   Separator,
+  Sheet,
+  SheetClose,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
 } from '~/components/ui';
 import { describeScheduledSendFailure, type Post } from '~/data/posts-registry';
 import {
@@ -65,7 +70,6 @@ import type {
   ApiStaffGroups,
 } from '~/features/posts/api/types';
 import { AttachmentSection } from '~/features/posts/components/AttachmentSection';
-import { DiscardChangesDialog } from '~/features/posts/components/DiscardChangesDialog';
 import { DueDateSection } from '~/features/posts/components/DueDateSection';
 import { EnquiryEmailSelector } from '~/features/posts/components/EnquiryEmailSelector';
 import type {
@@ -73,6 +77,7 @@ import type {
   SelectedEntity as SelectorEntity,
 } from '~/features/posts/components/EntitySelector';
 import { EventScheduleSection } from '~/features/posts/components/EventScheduleSection';
+import { navigateOnMaintenance } from '~/features/posts/components/MaintenancePage';
 import { PostPreview } from '~/features/posts/components/PostPreview';
 import { PostTypePicker, type PostKind } from '~/features/posts/components/PostTypePicker';
 import { MAX_QUESTIONS, QuestionBuilder } from '~/features/posts/components/QuestionBuilder';
@@ -87,10 +92,12 @@ import { SendConfirmationDialog } from '~/features/posts/components/SendConfirma
 import { ShortcutsSection } from '~/features/posts/components/ShortcutsSection';
 import { StaffSearchSelector } from '~/features/posts/components/StaffSearchSelector';
 import { StudentRecipientSelector } from '~/features/posts/components/StudentRecipientSelector';
+import { navigateOnUnauthorised } from '~/features/posts/components/UnauthorisedPage';
 import { VenueSection } from '~/features/posts/components/VenueSection';
 import { WebsiteLinksSection } from '~/features/posts/components/WebsiteLinksSection';
 import { useAutoSave, type AutoSaveStatus } from '~/features/posts/hooks/useAutoSave';
-import { useUnsavedChangesGuard } from '~/features/posts/hooks/useUnsavedChangesGuard';
+import { usePostsQuery } from '~/features/posts/hooks/usePostsQuery';
+import { useSaveOnLeave } from '~/features/posts/hooks/useSaveOnLeave';
 import { INITIAL_STATE, type SelectedEntity } from '~/features/posts/state/initial-state';
 import { formReducer } from '~/features/posts/state/reducer';
 import {
@@ -102,7 +109,6 @@ import {
   type PostKind as ValidationPostKind,
 } from '~/features/posts/validation/create-post-validation';
 import { textToTiptapDoc } from '~/helpers/tiptap';
-import { useQuery } from '~/hooks/useQuery';
 import { notify } from '~/lib/notify';
 import { cn, stripSalutation } from '~/lib/utils';
 import {
@@ -328,7 +334,7 @@ function CreatePostPageInner({ editId, postKind, draft }: CreatePostPageInnerPro
     isLoading,
     error,
     refetch,
-  } = useQuery(() => {
+  } = usePostsQuery(() => {
     let detailPromise: Promise<Post | null> = Promise.resolve(null);
     if (editId && /^\d+$/.test(editId)) {
       const numericId = Number(editId);
@@ -382,7 +388,6 @@ function CreatePostForm({ editId, loaderData }: CreatePostFormProps) {
 
   const [showSendDialog, setShowSendDialog] = useState(false);
   const [showScheduleDialog, setShowScheduleDialog] = useState(false);
-  const [showDiscardDialog, setShowDiscardDialog] = useState(false);
   // Set between schedule step 1 (picker) and step 2 (review). Null for post-now.
   const [pendingScheduledAt, setPendingScheduledAt] = useState<string | null>(null);
   const [fileBannerDismissed, setFileBannerDismissed] = useState(false);
@@ -435,7 +440,6 @@ function CreatePostForm({ editId, loaderData }: CreatePostFormProps) {
 
   const initialDescriptionDocRef = useRef(state.descriptionDoc);
   const initialDescriptionDoc = initialDescriptionDocRef.current;
-  const initialStateRef = useRef(state);
 
   const deferredState = useDeferredValue(state);
 
@@ -497,26 +501,32 @@ function CreatePostForm({ editId, loaderData }: CreatePostFormProps) {
       : null,
   );
 
+  // Drafts and new posts only. A scheduled post is not auto-saved — the teacher
+  // cancels the send first, which returns it to Draft, and auto-save resumes
+  // there. Published posts never reach this page.
+  const autoSaveAllowed = !isSaving && !(detail && detail.status === 'scheduled');
+
   const autoSave = useAutoSave({
     payload: state,
-    save: async (_snapshot, { signal }) => {
-      await handleSaveDraft({ signal });
+    save: async (_snapshot, { signal, keepalive }) => {
+      await handleSaveDraft({ signal, keepalive });
     },
-    intervalMs: 30_000,
-    enabled: !isSaving,
+    intervalMs: 5_000,
+    enabled: autoSaveAllowed,
     shouldSave: (s) => s.title.trim().length > 0 || editorHasContent(s.descriptionDoc),
   });
 
-  const isDirty = JSON.stringify(state) !== JSON.stringify(initialStateRef.current);
-
-  useUnsavedChangesGuard(isDirty);
+  // Leaving saves rather than asks. `shouldSave` still gates it, so an empty
+  // form on the way out writes nothing.
+  useSaveOnLeave({
+    save: autoSave.saveNow,
+    hasUnsavedChanges: autoSave.hasUnsavedChanges,
+    enabled: autoSaveAllowed,
+  });
 
   function handleBackClick() {
-    if (isDirty) {
-      setShowDiscardDialog(true);
-    } else {
-      navigate('..');
-    }
+    // No question asked: unmount fires the save on the way out.
+    navigate('..');
   }
 
   if (editId && !editData) {
@@ -558,25 +568,37 @@ function CreatePostForm({ editId, loaderData }: CreatePostFormProps) {
     }
   }
 
-  async function handleSaveDraft(opts: { signal?: AbortSignal } = {}): Promise<void> {
+  async function handleSaveDraft(
+    opts: { signal?: AbortSignal; keepalive?: boolean } = {},
+  ): Promise<void> {
     try {
       const payloadInput = stateToPayloadInput(state);
       if (state.kind === 'form') {
         const payload = buildConsentFormPayload(payloadInput);
         if (draftIdRef.current?.kind === 'form') {
-          await updateConsentFormDraft(draftIdRef.current.id, payload, { signal: opts.signal });
+          await updateConsentFormDraft(draftIdRef.current.id, payload, {
+            signal: opts.signal,
+            keepalive: opts.keepalive,
+          });
         } else {
           const { consentFormDraftId } = await createConsentFormDraft(payload, {
             signal: opts.signal,
+            keepalive: opts.keepalive,
           });
           draftIdRef.current = { kind: 'form', id: consentFormDraftId };
         }
       } else {
         const payload = buildAnnouncementPayload(payloadInput);
         if (draftIdRef.current?.kind === 'announcement') {
-          await updateDraft(draftIdRef.current.id, payload, { signal: opts.signal });
+          await updateDraft(draftIdRef.current.id, payload, {
+            signal: opts.signal,
+            keepalive: opts.keepalive,
+          });
         } else {
-          const { announcementDraftId } = await createDraft(payload, { signal: opts.signal });
+          const { announcementDraftId } = await createDraft(payload, {
+            signal: opts.signal,
+            keepalive: opts.keepalive,
+          });
           draftIdRef.current = { kind: 'announcement', id: announcementDraftId };
         }
       }
@@ -621,6 +643,8 @@ function CreatePostForm({ editId, loaderData }: CreatePostFormProps) {
       navigate('..');
     } catch (err) {
       setSaveState('idle');
+      if (navigateOnMaintenance(err, navigate)) return;
+      if (navigateOnUnauthorised(err, navigate)) return;
       if (err instanceof ValidationError) {
         const stamped = stampValidationError(err);
         if (!stamped) notify.error(reportValidationError(err));
@@ -646,6 +670,8 @@ function CreatePostForm({ editId, loaderData }: CreatePostFormProps) {
       navigate('..');
     } catch (err) {
       setSaveState('idle');
+      if (navigateOnMaintenance(err, navigate)) return;
+      if (navigateOnUnauthorised(err, navigate)) return;
       if (err instanceof ValidationError) {
         const stamped = stampValidationError(err);
         if (!stamped) notify.error(reportValidationError(err));
@@ -679,13 +705,16 @@ function CreatePostForm({ editId, loaderData }: CreatePostFormProps) {
       <div className="sticky top-0 z-10 border-b bg-white/95 px-6 py-3 backdrop-blur-sm">
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <button
+            <Button
               type="button"
+              variant="ghost"
+              size="icon-sm"
+              aria-label="Back"
               onClick={handleBackClick}
-              className="text-muted-foreground hover:text-foreground"
+              className="text-muted-foreground"
             >
-              <ArrowLeft className="h-5 w-5" />
-            </button>
+              <ArrowLeft className="size-5" />
+            </Button>
             <h1 className="text-xl font-semibold tracking-tight">
               {isEditing ? 'Edit Post' : 'New Post'}
             </h1>
@@ -776,14 +805,16 @@ function CreatePostForm({ editId, loaderData }: CreatePostFormProps) {
                   posting to avoid losing them.
                 </p>
               </div>
-              <button
+              <Button
                 type="button"
+                variant="ghost"
+                size="icon-xs"
                 onClick={() => setFileBannerDismissed(true)}
-                className="shrink-0 rounded p-0.5 text-amber-11 hover:bg-amber-4 hover:text-amber-12"
+                className="size-5 shrink-0 rounded-md text-amber-11 hover:bg-amber-4 hover:text-amber-12"
                 aria-label="Dismiss"
               >
-                <X className="h-3.5 w-3.5" />
-              </button>
+                <X className="size-3.5" />
+              </Button>
             </div>
           )}
 
@@ -1121,34 +1152,26 @@ function CreatePostForm({ editId, loaderData }: CreatePostFormProps) {
         )}
       </div>
 
-      {/* Mobile preview */}
-      <div
-        className={cn(
-          'fixed inset-0 z-50 transition-opacity duration-150 lg:hidden',
-          showPreview ? 'pointer-events-auto bg-black/50' : 'pointer-events-none bg-transparent',
-        )}
-        onClick={() => setShowPreview(false)}
-      >
-        <div
-          className={cn(
-            'absolute top-0 right-0 bottom-0 w-[360px] overflow-y-auto bg-white p-4 shadow-xl transition-transform duration-150',
-            showPreview ? 'translate-x-0' : 'translate-x-full',
-          )}
-          onClick={(e) => e.stopPropagation()}
+      {/* Mobile preview — a Sheet rather than a hand-built scrim + panel, so the
+          slide-over gets the focus trap, scroll lock and escape handling that
+          Base UI's dialog supplies. */}
+      <Sheet open={showPreview} onOpenChange={setShowPreview}>
+        <SheetContent
+          side="right"
+          showCloseButton={false}
+          className="w-[360px] overflow-y-auto sm:max-w-none lg:hidden"
         >
-          <div className="mb-4 flex items-center justify-between">
-            <p className="text-sm font-medium">Preview</p>
-            <Button variant="ghost" size="sm" onClick={() => setShowPreview(false)}>
-              Close
-            </Button>
-          </div>
+          <SheetHeader className="mb-4 flex-row items-center justify-between">
+            <SheetTitle className="text-sm">Preview</SheetTitle>
+            <SheetClose render={<Button variant="ghost" size="sm" />}>Close</SheetClose>
+          </SheetHeader>
           <PostPreview
             formState={deferredState}
             currentUserName={stripSalutation(session.staffName ?? 'Daniel Tan')}
             defaultEnquiryEmail={session.schoolEmailAddress ?? 'enquiry@school.edu.sg'}
           />
-        </div>
-      </div>
+        </SheetContent>
+      </Sheet>
 
       {/* Schedule step 1 — pick the release date and time. */}
       <SchedulePickerDialog
@@ -1182,15 +1205,6 @@ function CreatePostForm({ editId, loaderData }: CreatePostFormProps) {
           } else {
             void handleSendConfirm();
           }
-        }}
-      />
-
-      <DiscardChangesDialog
-        open={showDiscardDialog}
-        onOpenChange={setShowDiscardDialog}
-        onConfirm={() => {
-          setShowDiscardDialog(false);
-          navigate('..');
         }}
       />
     </div>

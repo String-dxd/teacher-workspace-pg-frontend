@@ -53,7 +53,34 @@ const BASE = '/api/web/2/staff';
 // reporting SCHEDULED and the flow looks broken.
 const cancelledSchedules = new Set<number>();
 
+// Simulates PG maintenance (issue #118): when the flag is set, every staff
+// endpoint returns a bare 503, like pgw-web during a maintenance window.
+// Toggle from the browser console:
+//   localStorage.setItem('pg-simulate-maintenance', '1')  // on
+//   localStorage.removeItem('pg-simulate-maintenance')    // off
+function maintenanceSimulated(): boolean {
+  return (
+    typeof localStorage !== 'undefined' && localStorage.getItem('pg-simulate-maintenance') === '1'
+  );
+}
+
+// Simulates PG returning a bare 401 (issue #129): when the flag is set,
+// every staff endpoint returns 401, like pgw-web when SC flags the signed-in
+// staff member as inactive/unauthorised. Toggle from the browser console:
+//   localStorage.setItem('pg-simulate-unauthorised', '1')  // on
+//   localStorage.removeItem('pg-simulate-unauthorised')    // off
+function unauthorisedSimulated(): boolean {
+  return (
+    typeof localStorage !== 'undefined' && localStorage.getItem('pg-simulate-unauthorised') === '1'
+  );
+}
+
 export const handlers = [
+  http.all(`${BASE}/*`, () => {
+    if (maintenanceSimulated()) return new HttpResponse(null, { status: 503 });
+    if (unauthorisedSimulated()) return new HttpResponse(null, { status: 401 });
+    return undefined; // fall through to the real handlers below
+  }),
   // ─── Announcements ──────────────────────────────────────────────────────────
   http.get(`${BASE}/announcements`, () => {
     return HttpResponse.json(

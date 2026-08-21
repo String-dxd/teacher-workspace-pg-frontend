@@ -4,12 +4,17 @@ import { useRef, useState, type Dispatch } from 'react';
 import {
   Badge,
   Button,
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogTitle,
   Popover,
   PopoverContent,
   PopoverDescription,
   PopoverHeader,
   PopoverTitle,
   PopoverTrigger,
+  Toggle,
 } from '~/components/ui';
 import { uploadAttachment, type AttachmentUploadType } from '~/features/posts/api/uploads';
 import type { PostFormAction } from '~/features/posts/state/actions';
@@ -357,28 +362,41 @@ function PhotosSubSection({
         onChange={(e) => void onPick(e.target.files)}
       />
 
-      {/* Lightbox */}
-      {lightboxSrc && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm"
-          onClick={() => setLightboxSrc(null)}
+      {/* Lightbox — a Dialog rather than a bare fixed overlay, so it gets the
+          focus trap, scroll lock, escape handling and inert background that
+          Base UI's dialog supplies. */}
+      <Dialog
+        open={lightboxSrc !== null}
+        onOpenChange={(open) => {
+          if (!open) setLightboxSrc(null);
+        }}
+      >
+        <DialogContent
+          showCloseButton={false}
+          className="w-auto max-w-none bg-transparent p-0 ring-0 sm:max-w-none"
         >
-          <img
-            src={lightboxSrc}
-            alt="Enlarged preview"
-            className="max-h-[90vh] max-w-[90vw] rounded-xl object-contain shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
-          />
-          <button
-            type="button"
+          <DialogTitle className="sr-only">Enlarged preview</DialogTitle>
+          {lightboxSrc && (
+            <img
+              src={lightboxSrc}
+              alt="Enlarged preview"
+              className="max-h-[90vh] max-w-[90vw] rounded-xl object-contain shadow-2xl"
+            />
+          )}
+          <DialogClose
             aria-label="Close preview"
-            onClick={() => setLightboxSrc(null)}
-            className="absolute top-4 right-4 flex h-9 w-9 items-center justify-center rounded-full bg-white/15 text-white backdrop-blur-sm hover:bg-white/25"
+            render={
+              <Button
+                variant="ghost"
+                size="icon"
+                className="absolute top-4 right-4 rounded-full bg-white/15 text-white backdrop-blur-sm hover:bg-white/25 hover:text-white"
+              />
+            }
           >
-            <X className="h-5 w-5" />
-          </button>
-        </div>
-      )}
+            <X className="size-5" />
+          </DialogClose>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -433,20 +451,20 @@ function PhotoRow({
 
       {/* Cover toggle */}
       {isReady && (
-        <button
-          type="button"
+        <Toggle
           aria-label={item.isCover ? 'Unmark as cover' : 'Mark as cover'}
           disabled={!canToggleCover}
-          onClick={onToggleCover}
+          pressed={item.isCover}
+          onPressedChange={() => onToggleCover()}
           className={cn(
-            'shrink-0 rounded-full px-2.5 py-1 text-[11px] font-medium transition-colors',
+            'h-auto min-w-0 shrink-0 rounded-full px-2.5 py-1 text-[11px] font-medium',
             item.isCover
-              ? 'bg-primary text-primary-foreground'
-              : 'border border-border text-muted-foreground enabled:hover:border-primary/60 enabled:hover:text-primary disabled:opacity-40',
+              ? 'bg-primary text-primary-foreground data-pressed:bg-primary data-pressed:text-primary-foreground'
+              : 'border border-border text-muted-foreground hover:border-primary/60 hover:text-primary disabled:opacity-40',
           )}
         >
           Cover
-        </button>
+        </Toggle>
       )}
 
       {/* Remove */}

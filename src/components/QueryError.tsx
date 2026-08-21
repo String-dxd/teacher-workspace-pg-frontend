@@ -1,3 +1,5 @@
+import { Button } from '~/components/ui';
+
 interface QueryErrorProps {
   onRetry?: () => void;
 }
@@ -11,13 +13,9 @@ export function QueryError({ onRetry }: QueryErrorProps) {
           Please check your connection and try again.
         </p>
         {onRetry && (
-          <button
-            type="button"
-            onClick={onRetry}
-            className="mt-4 rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground hover:bg-primary/90"
-          >
+          <Button type="button" onClick={onRetry} className="mt-4">
             Retry
-          </button>
+          </Button>
         )}
       </div>
     </div>

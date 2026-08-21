@@ -1,3 +1,5 @@
+import { Button } from '~/components/ui';
+
 export type PostKind = 'post' | 'post-with-response';
 
 interface PostTypePickerProps {
@@ -70,22 +72,27 @@ function PostTypePicker({ onSelect }: PostTypePickerProps) {
 
         <div className="mx-auto grid grid-cols-1 gap-4 sm:grid-cols-2">
           {CREATE_OPTIONS.map((option) => (
-            <button
+            <Button
               key={option.kind}
               type="button"
+              variant="secondary"
               onClick={() => onSelect(option.kind)}
-              className="group flex flex-col overflow-hidden rounded-xl border-2 border-border bg-card text-left transition-all duration-150 ease-out hover:border-slate-8 hover:shadow-sm active:scale-[0.98]"
+              className="group h-auto flex-col items-stretch justify-start overflow-hidden rounded-xl border-2 border-border bg-card p-0 text-left whitespace-normal transition-all duration-150 ease-out hover:border-slate-8 hover:bg-card hover:shadow-sm active:scale-[0.98]"
             >
-              <div className="h-28 border-b border-border bg-muted">{option.mockup}</div>
-              <div className="flex flex-1 flex-col justify-between p-4">
-                <div>
-                  <p className="text-sm font-semibold text-foreground">{option.title}</p>
-                  <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+              <span className="block h-28 w-full border-b border-border bg-muted">
+                {option.mockup}
+              </span>
+              <span className="flex flex-1 flex-col justify-between p-4">
+                <span className="block">
+                  <span className="block text-sm font-semibold text-foreground">
+                    {option.title}
+                  </span>
+                  <span className="mt-1 block text-xs leading-relaxed font-normal text-muted-foreground">
                     {option.description}
-                  </p>
-                </div>
-              </div>
-            </button>
+                  </span>
+                </span>
+              </span>
+            </Button>
           ))}
         </div>
       </div>

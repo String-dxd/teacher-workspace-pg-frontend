@@ -6,8 +6,12 @@ export interface UseAutoSaveOptions<TPayload> {
   /** Current payload. Hook serializes with JSON.stringify for change detection. */
   payload: TPayload;
   /** Called to persist. Must accept a signal and respect it. */
-  save: (payload: TPayload, opts: { signal: AbortSignal }) => Promise<void>;
-  /** Poll interval in ms. Defaults to 30_000. */
+  save: (payload: TPayload, opts: { signal: AbortSignal; keepalive?: boolean }) => Promise<void>;
+  /**
+   * How often to check for unsaved work, in ms. Defaults to 5_000. A tick with
+   * no change writes nothing, so this is the longest a teacher's edit can sit
+   * unsaved — not a write every 5s regardless.
+   */
   intervalMs?: number;
   /** When false, autosave stops scheduling new ticks but doesn't cancel in-flight. */
   enabled?: boolean;
@@ -24,11 +28,13 @@ export interface UseAutoSaveResult {
   /** JSON.stringify of the payload at the moment of the last successful save. */
   lastSavedSerialized: string | null;
   /** Force an immediate save; aborts any in-flight autosave first. */
-  saveNow: () => Promise<void>;
+  saveNow: (opts?: { keepalive?: boolean }) => Promise<void>;
+  /** True when the payload has changed since the last successful save. */
+  hasUnsavedChanges: boolean;
 }
 
 export function useAutoSave<TPayload>(options: UseAutoSaveOptions<TPayload>): UseAutoSaveResult {
-  const { payload, save, intervalMs = 30_000, enabled = true, shouldSave } = options;
+  const { payload, save, intervalMs = 5_000, enabled = true, shouldSave } = options;
 
   const [status, setStatus] = useState<AutoSaveStatus>('idle');
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
@@ -39,6 +45,11 @@ export function useAutoSave<TPayload>(options: UseAutoSaveOptions<TPayload>): Us
   const shouldSaveRef = useRef(shouldSave);
   const lastSerializedRef = useRef<string | null>(null);
   const inFlightRef = useRef<AbortController | null>(null);
+  /** Payload of the save currently on the wire, if any. */
+  const inFlightSerializedRef = useRef<string | null>(null);
+
+  const serialized = JSON.stringify(payload);
+  const hasUnsavedChanges = serialized !== lastSerializedRef.current;
 
   // Keep refs up-to-date without re-running the interval effect.
   useEffect(() => {
@@ -47,25 +58,35 @@ export function useAutoSave<TPayload>(options: UseAutoSaveOptions<TPayload>): Us
     shouldSaveRef.current = shouldSave;
   }, [payload, save, shouldSave]);
 
-  const runSave = useCallback(async (): Promise<void> => {
+  const runSave = useCallback(async (opts?: { keepalive?: boolean }): Promise<void> => {
     const current = payloadRef.current;
     if (shouldSaveRef.current && !shouldSaveRef.current(current)) return;
 
-    const serialized = JSON.stringify(current);
-    if (serialized === lastSerializedRef.current) return;
+    const snapshot = JSON.stringify(current);
+    if (snapshot === lastSerializedRef.current) return;
+    // Already on the wire with exactly this content. Without this, leaving the
+    // page a moment after a tick fires sends the same body twice: the tick's
+    // save has not landed yet, so the snapshot still looks unsaved.
+    if (snapshot === inFlightSerializedRef.current) return;
 
-    // Abort any previous in-flight save.
-    inFlightRef.current?.abort();
+    // A leaving save must outlive the component: unmount aborts whatever sits
+    // in inFlightRef, so a keepalive save is deliberately not tracked there —
+    // otherwise the save fired on the way out cancels itself.
     const controller = new AbortController();
-    inFlightRef.current = controller;
+    const tracked = !opts?.keepalive;
+    if (tracked) {
+      inFlightRef.current?.abort();
+      inFlightRef.current = controller;
+    }
+    inFlightSerializedRef.current = snapshot;
 
     setStatus('saving');
     try {
-      await saveRef.current(current, { signal: controller.signal });
+      await saveRef.current(current, { signal: controller.signal, keepalive: opts?.keepalive });
       // Only mark saved if this is still the latest request.
-      if (inFlightRef.current === controller) {
-        lastSerializedRef.current = serialized;
-        setLastSavedSerialized(serialized);
+      if (!tracked || inFlightRef.current === controller) {
+        lastSerializedRef.current = snapshot;
+        setLastSavedSerialized(snapshot);
         setLastSavedAt(new Date());
         setStatus('saved');
       }
@@ -74,7 +95,10 @@ export function useAutoSave<TPayload>(options: UseAutoSaveOptions<TPayload>): Us
       setStatus('error');
       throw err;
     } finally {
-      if (inFlightRef.current === controller) {
+      if (inFlightSerializedRef.current === snapshot) {
+        inFlightSerializedRef.current = null;
+      }
+      if (tracked && inFlightRef.current === controller) {
         inFlightRef.current = null;
       }
     }
@@ -97,9 +121,12 @@ export function useAutoSave<TPayload>(options: UseAutoSaveOptions<TPayload>): Us
     };
   }, []);
 
-  const saveNow = useCallback(async () => {
-    await runSave();
-  }, [runSave]);
+  const saveNow = useCallback(
+    async (opts?: { keepalive?: boolean }) => {
+      await runSave(opts);
+    },
+    [runSave],
+  );
 
-  return { status, lastSavedAt, lastSavedSerialized, saveNow };
+  return { status, lastSavedAt, lastSavedSerialized, saveNow, hasUnsavedChanges };
 }

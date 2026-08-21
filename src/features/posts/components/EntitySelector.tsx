@@ -1,6 +1,8 @@
+import { Combobox } from '@base-ui/react/combobox';
 import { Check, ChevronDown, Minus, User, Users, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
+import { Button, Toggle, ToggleGroup, ToggleGroupItem } from '~/components/ui';
 import { cn } from '~/lib/utils';
 
 // Ported from the design-teacher-workspace EntitySelector (PR #165), adapted
@@ -143,17 +145,25 @@ function toSelectedEntity(item: EntityItem): SelectedEntity {
 interface ResultRowProps {
   item: EntityItem;
   isSelected: boolean;
-  onToggle: () => void;
+  locked?: boolean;
   isExpanded?: boolean;
   onToggleExpand?: () => void;
   excludedMemberNames?: Set<string>;
   onMemberToggle?: (name: string) => void;
 }
 
+/**
+ * One option in the list. The selectable part is a real `Combobox.Item`, so
+ * Base UI owns its `role="option"`, `aria-selected`, highlight state and
+ * keyboard traversal. The expand chevron and the member list sit *outside*
+ * the Item — they are disclosure controls, not options, and nesting them
+ * inside would put buttons inside an option and fight the widget's own
+ * click handling.
+ */
 function ResultRow({
   item,
   isSelected,
-  onToggle,
+  locked = false,
   isExpanded = false,
   onToggleExpand,
   excludedMemberNames = new Set(),
@@ -165,22 +175,18 @@ function ResultRow({
 
   return (
     <>
-      {/* Row: selection area + expand chevron as siblings inside a flex div */}
       <div
         className={cn(
           'flex w-full transition-colors',
           isSelected ? 'bg-twblue-1' : 'hover:bg-slate-4',
         )}
       >
-        {/* Selection toggle — takes all available space */}
-        <button
-          type="button"
-          onMouseDown={(e) => e.preventDefault()}
-          onClick={onToggle}
-          aria-pressed={isSelected}
-          className="flex flex-1 items-center gap-3 px-3 py-2 text-left text-sm"
+        <Combobox.Item
+          value={toSelectedEntity(item)}
+          disabled={locked}
+          className="flex min-w-0 flex-1 cursor-pointer items-center gap-3 px-3 py-2 text-left text-sm outline-none select-none data-disabled:cursor-not-allowed data-disabled:opacity-60 data-highlighted:bg-slate-4"
         >
-          {/* Checkbox */}
+          {/* Checkbox — Minus when the group is selected with members excluded */}
           <span
             className={cn(
               'flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded border-2 transition-colors',
@@ -192,12 +198,12 @@ function ResultRow({
             {isSelected && excludedMemberNames.size === 0 && <Check className="h-3 w-3" />}
             {isSelected && excludedMemberNames.size > 0 && <Minus className="h-3 w-3" />}
           </span>
-          <div className="min-w-0 flex-1">
-            <p className="truncate font-semibold">{item.label}</p>
+          <span className="min-w-0 flex-1">
+            <span className="block truncate font-semibold">{item.label}</span>
             {item.sublabel && (
-              <p className="truncate text-xs text-muted-foreground">{item.sublabel}</p>
+              <span className="block truncate text-xs text-muted-foreground">{item.sublabel}</span>
             )}
-          </div>
+          </span>
           {item.type === 'group' && item.count !== undefined && (
             <span className="shrink-0 text-xs text-muted-foreground">
               {isSelected && excludedMemberNames.size > 0 ? (
@@ -216,27 +222,34 @@ function ResultRow({
           {item.badge && (
             <span className="shrink-0 font-mono text-xs text-muted-foreground">{item.badge}</span>
           )}
-        </button>
+        </Combobox.Item>
 
         {/* Expand chevron — only for groups with member names */}
         {hasMembers && (
-          <button
+          <Button
             type="button"
-            aria-label={isExpanded ? 'Hide members' : 'Show members'}
+            variant="ghost"
+            size="icon-sm"
+            // Named per group: every group row carries one of these, so a bare
+            // "Show members" is ambiguous to anyone listing the buttons.
+            aria-label={
+              isExpanded ? `Hide members of ${item.label}` : `Show members of ${item.label}`
+            }
+            aria-expanded={isExpanded}
             onMouseDown={(e) => e.preventDefault()}
             onClick={() => onToggleExpand?.()}
             className={cn(
-              'flex shrink-0 items-center px-2 transition-colors',
+              'h-auto shrink-0 rounded-none px-2',
               isSelected ? 'hover:bg-twblue-3' : 'hover:bg-slate-4',
             )}
           >
             <ChevronDown
               className={cn(
-                'h-3.5 w-3.5 text-muted-foreground transition-transform duration-150',
+                'size-3.5 text-muted-foreground transition-transform duration-150',
                 isExpanded && 'rotate-180',
               )}
             />
-          </button>
+          </Button>
         )}
       </div>
 
@@ -252,18 +265,18 @@ function ResultRow({
             );
           })()}
 
-          {/* Scrollable numbered list */}
           <div className="max-h-[200px] overflow-y-auto" style={{ scrollbarWidth: 'thin' }}>
             {(item.memberDetails ?? item.memberNames!.map((name): MemberDetail => ({ name }))).map(
               (detail, index) => {
                 const isMemberIncluded = isSelected && !excludedMemberNames.has(detail.name);
                 return (
-                  <button
+                  <Toggle
                     key={detail.name}
-                    type="button"
+                    pressed={isMemberIncluded}
+                    disabled={locked}
                     onMouseDown={(e) => e.preventDefault()}
-                    onClick={() => onMemberToggle?.(detail.name)}
-                    className="flex w-full cursor-pointer items-center gap-2 rounded px-1.5 py-1 text-xs hover:bg-twblue-3"
+                    onPressedChange={() => onMemberToggle?.(detail.name)}
+                    className="h-auto w-full min-w-0 justify-start gap-2 rounded px-1.5 py-1 text-xs font-normal hover:bg-twblue-3 data-pressed:bg-transparent"
                   >
                     <span
                       className={cn(
@@ -298,13 +311,12 @@ function ResultRow({
                         {detail.badge}
                       </span>
                     )}
-                  </button>
+                  </Toggle>
                 );
               },
             )}
           </div>
 
-          {/* Note when roster is incomplete */}
           {(() => {
             const shown = item.memberDetails?.length ?? item.memberNames!.length;
             return (
@@ -322,63 +334,10 @@ function ResultRow({
   );
 }
 
-function EntityChip({
-  entity,
-  onRemove,
-  extra,
-  large = false,
-  onChipClick,
-  removable = true,
-  highlighted = false,
-}: {
-  entity: SelectedEntity;
-  onRemove: () => void;
-  extra?: React.ReactNode;
-  large?: boolean;
-  onChipClick?: () => void;
-  removable?: boolean;
-  highlighted?: boolean;
-}) {
-  const names = entity.memberNames ?? [];
-  const tooltipTitle =
-    names.length > 0
-      ? names.length > 12
-        ? `${names.slice(0, 12).join(', ')} and ${names.length - 12} more`
-        : names.join(', ')
-      : undefined;
-
+/** Shared visual for a selected entity, used by both chip presentations. */
+function chipBody(entity: SelectedEntity, extra: React.ReactNode, large: boolean) {
   return (
-    <span
-      title={tooltipTitle}
-      role={onChipClick ? 'button' : undefined}
-      tabIndex={onChipClick ? 0 : undefined}
-      onMouseDown={onChipClick ? (e) => e.preventDefault() : undefined}
-      onClick={onChipClick}
-      onKeyDown={
-        onChipClick
-          ? (e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
-                onChipClick();
-              }
-            }
-          : undefined
-      }
-      className={cn(
-        'inline-flex shrink-0 items-center rounded-md font-medium',
-        large
-          ? cn(
-              'gap-2 border px-3 py-1.5 text-sm text-slate-12',
-              highlighted ? 'border-twblue-6 bg-twblue-2' : 'border-input bg-background',
-            )
-          : cn(
-              'gap-1 bg-twblue-2 px-2 py-0.5 text-xs text-twblue-9',
-              highlighted && 'ring-1 ring-inset ring-twblue-6',
-              extra ? 'max-w-[260px]' : 'max-w-[180px]',
-            ),
-        onChipClick && 'cursor-pointer hover:bg-slate-3',
-      )}
-    >
+    <>
       {entity.type === 'group' ? (
         <Users className={cn('shrink-0', large ? 'h-3.5 w-3.5 text-slate-9' : 'h-3 w-3')} />
       ) : (
@@ -393,24 +352,116 @@ function EntityChip({
       {extra != null && (
         <span className={cn('flex shrink-0 items-center', large ? 'ml-2' : 'ml-1')}>{extra}</span>
       )}
+    </>
+  );
+}
+
+function chipClasses(large: boolean, highlighted: boolean, hasExtra: boolean, clickable: boolean) {
+  return cn(
+    'inline-flex shrink-0 items-center rounded-md font-medium',
+    large
+      ? cn(
+          'gap-2 border px-3 py-1.5 text-sm text-slate-12',
+          highlighted ? 'border-twblue-6 bg-twblue-2' : 'border-input bg-background',
+        )
+      : cn(
+          'gap-1 bg-twblue-2 px-2 py-0.5 text-xs text-twblue-9',
+          highlighted && 'ring-1 ring-inset ring-twblue-6',
+          hasExtra ? 'max-w-[260px]' : 'max-w-[180px]',
+        ),
+    clickable && 'cursor-pointer hover:bg-slate-3',
+  );
+}
+
+function chipTooltip(entity: SelectedEntity) {
+  const names = entity.memberNames ?? [];
+  if (names.length === 0) return undefined;
+  return names.length > 12
+    ? `${names.slice(0, 12).join(', ')} and ${names.length - 12} more`
+    : names.join(', ');
+}
+
+/** Inline chip — a real `Combobox.Chip`, so Backspace/Delete traversal works. */
+function InlineChip({
+  entity,
+  extra,
+  removable,
+  highlighted,
+}: {
+  entity: SelectedEntity;
+  extra?: React.ReactNode;
+  removable: boolean;
+  highlighted: boolean;
+}) {
+  return (
+    <Combobox.Chip
+      title={chipTooltip(entity)}
+      className={chipClasses(false, highlighted, extra != null, false)}
+    >
+      {chipBody(entity, extra, false)}
       {removable && (
-        <button
+        <Combobox.ChipRemove
+          aria-label={`Remove ${entity.label}`}
+          className="ml-0.5 shrink-0 cursor-pointer rounded-full p-0.5 hover:bg-twblue-4 hover:text-twblue-9"
+        >
+          <X className="size-2.5" />
+        </Combobox.ChipRemove>
+      )}
+    </Combobox.Chip>
+  );
+}
+
+/** Below-the-input chip. Sits outside the combobox, so it uses a plain Button. */
+function BelowChip({
+  entity,
+  extra,
+  removable,
+  highlighted,
+  onRemove,
+  onChipClick,
+}: {
+  entity: SelectedEntity;
+  extra?: React.ReactNode;
+  removable: boolean;
+  highlighted: boolean;
+  onRemove: () => void;
+  onChipClick?: () => void;
+}) {
+  return (
+    <span
+      title={chipTooltip(entity)}
+      role={onChipClick ? 'button' : undefined}
+      tabIndex={onChipClick ? 0 : undefined}
+      onMouseDown={onChipClick ? (e) => e.preventDefault() : undefined}
+      onClick={onChipClick}
+      onKeyDown={
+        onChipClick
+          ? (e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                onChipClick();
+              }
+            }
+          : undefined
+      }
+      className={chipClasses(true, highlighted, extra != null, onChipClick != null)}
+    >
+      {chipBody(entity, extra, true)}
+      {removable && (
+        <Button
           type="button"
+          variant="ghost"
+          size="icon-xs"
           aria-label={`Remove ${entity.label}`}
           onMouseDown={(e) => e.preventDefault()}
           onClick={(e) => {
             e.stopPropagation();
             onRemove();
           }}
-          className={cn(
-            'shrink-0 rounded-full',
-            large
-              ? 'ml-1 p-0.5 text-slate-9 hover:bg-slate-4 hover:text-slate-12'
-              : 'ml-0.5 p-0.5 hover:bg-twblue-4 hover:text-twblue-9',
-          )}
+          className="ml-1 size-auto shrink-0 rounded-full p-0.5 text-slate-9 hover:bg-slate-4 hover:text-slate-12"
         >
-          <X className={cn(large ? 'h-3 w-3' : 'h-2.5 w-2.5')} />
-        </button>
+          <X className="size-3" />
+        </Button>
       )}
     </span>
   );
@@ -445,15 +496,14 @@ export function EntitySelector({
   const [groupExclusions, setGroupExclusions] = useState<Map<string, Set<string>>>(new Map());
   const [chipsExpanded, setChipsExpanded] = useState(false);
 
+  const inputRef = useRef<HTMLInputElement>(null);
+
   // Auto-collapse when enough chips have been removed
   useEffect(() => {
     if (maxVisibleTokens != null && value.length <= maxVisibleTokens) {
       setChipsExpanded(false);
     }
   }, [value.length, maxVisibleTokens]);
-
-  const wrapperRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
 
   // Sync activeScope when scopes change
   useEffect(() => {
@@ -467,35 +517,39 @@ export function EntitySelector({
     setExpandedGroupId(null);
   }, [query]);
 
-  // Outside-click to close
-  useEffect(() => {
-    function handleMouseDown(e: MouseEvent) {
-      if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) {
-        setIsOpen(false);
-        setQuery('');
-      }
-    }
-    document.addEventListener('mousedown', handleMouseDown);
-    return () => document.removeEventListener('mousedown', handleMouseDown);
-  }, []);
+  /**
+   * Base UI hands back the whole next selection. Reconcile it against the
+   * current one so locked entities can't be dropped and per-group member
+   * exclusions survive a re-render.
+   */
+  function handleSelectionChange(next: SelectedEntity[]) {
+    const nextIds = new Set(next.map((e) => e.id));
 
-  function handleToggle(item: EntityItem) {
-    const isSelected = value.some((e) => e.id === item.id);
-    if (isSelected) {
-      if (nonRemovableIds?.has(item.id)) return;
-      onChange(value.filter((e) => e.id !== item.id));
-      if (groupExclusions.has(item.id)) {
-        const next = new Map(groupExclusions);
-        next.delete(item.id);
-        setGroupExclusions(next);
-      }
-    } else if (multiSelect) {
-      onChange([...value, toSelectedEntity(item)]);
-    } else {
-      onChange([toSelectedEntity(item)]);
+    // A locked entity must never leave the selection, however it was deselected.
+    const rescued = value.filter((e) => nonRemovableIds?.has(e.id) && !nextIds.has(e.id));
+
+    let merged = [...rescued, ...next].map((entity) => {
+      const excl = groupExclusions.get(entity.id);
+      return excl && excl.size > 0 ? { ...entity, excludedMemberNames: [...excl] } : entity;
+    });
+
+    // Single-select mode: keep only the most recent pick, then close.
+    if (!multiSelect) {
+      merged = merged.slice(-1);
       setIsOpen(false);
       setQuery('');
     }
+
+    // Drop exclusions for groups that are no longer selected.
+    const mergedIds = new Set(merged.map((e) => e.id));
+    const staleGroups = [...groupExclusions.keys()].filter((id) => !mergedIds.has(id));
+    if (staleGroups.length > 0) {
+      const nextExcl = new Map(groupExclusions);
+      for (const id of staleGroups) nextExcl.delete(id);
+      setGroupExclusions(nextExcl);
+    }
+
+    onChange(merged);
   }
 
   function handleMemberToggle(item: EntityItem, memberName: string) {
@@ -528,6 +582,7 @@ export function EntitySelector({
 
     // If all members are now excluded, remove the group entirely
     if (allNames.length > 0 && newExcl.size >= allNames.length) {
+      if (nonRemovableIds?.has(groupId)) return;
       onChange(value.filter((e) => e.id !== groupId));
       const next = new Map(groupExclusions);
       next.delete(groupId);
@@ -559,13 +614,9 @@ export function EntitySelector({
 
   function handleClearAll() {
     onChange(value.filter((e) => nonRemovableIds?.has(e.id)));
+    setGroupExclusions(new Map());
   }
   const hasRemovableValue = value.some((e) => !nonRemovableIds?.has(e.id));
-
-  function closePanel() {
-    setIsOpen(false);
-    setQuery('');
-  }
 
   /** Open the dropdown and expand the given group so the user can (de)select members. */
   function openGroup(entity: SelectedEntity) {
@@ -585,6 +636,20 @@ export function EntitySelector({
   // all groups + individuals immediately on open (searchFn('') returns all).
   const searchResults = !scopes || query ? searchFn(query) : { groups: [], individuals: [] };
 
+  const activeScopeDef = scopes?.find((s) => s.id === activeScope);
+
+  // The flat list of rows currently on screen, in render order. Base UI builds
+  // its keyboard-navigation collection from this, so it has to match what
+  // `renderSearchResults` / `renderBrowseTab` actually paint.
+  const visibleItems: EntityItem[] =
+    !scopes || query
+      ? [...searchResults.groups, ...searchResults.individuals]
+      : activeScopeDef
+        ? (activeScopeDef.sections?.flatMap((section) => section.items) ?? activeScopeDef.items)
+        : [];
+
+  const visibleValues = visibleItems.map(toSelectedEntity);
+
   function renderSectionHeader(title: string) {
     return <div className="px-3 py-1.5 text-xs font-semibold text-muted-foreground">{title}</div>;
   }
@@ -594,7 +659,7 @@ export function EntitySelector({
       key={item.id}
       item={item}
       isSelected={value.some((e) => e.id === item.id)}
-      onToggle={() => handleToggle(item)}
+      locked={nonRemovableIds?.has(item.id) && value.some((e) => e.id === item.id)}
       isExpanded={expandedGroupId === item.id}
       onToggleExpand={() => setExpandedGroupId((prev) => (prev === item.id ? null : item.id))}
       excludedMemberNames={groupExclusions.get(item.id)}
@@ -603,7 +668,7 @@ export function EntitySelector({
   );
 
   function renderBrowseTab() {
-    const scope = scopes?.find((s) => s.id === activeScope);
+    const scope = activeScopeDef;
     if (!scope) return null;
 
     if (!scope.sections && scope.items.length === 0) {
@@ -648,168 +713,167 @@ export function EntitySelector({
 
   // Scope tab bar — top of the dropdown panel
   const scopeTabs = scopes && scopes.length > 0 && (
-    <div className="flex gap-1 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
+    <ToggleGroup
+      value={activeScope ? [activeScope] : []}
+      onValueChange={(next) => {
+        const picked = next[next.length - 1];
+        if (!picked) return;
+        setActiveScope(picked);
+        setQuery('');
+        setIsOpen(true);
+        inputRef.current?.focus();
+      }}
+      className="gap-1 overflow-x-auto"
+      style={{ scrollbarWidth: 'none' }}
+    >
       {scopes.map((scope) => (
-        <button
+        <ToggleGroupItem
           key={scope.id}
-          type="button"
+          value={scope.id}
           onMouseDown={(e) => e.preventDefault()}
-          onClick={() => {
-            setActiveScope(scope.id);
-            setQuery('');
-            setIsOpen(true);
-            inputRef.current?.focus();
-          }}
           className={cn(
-            'rounded-md px-3 py-1.5 text-xs font-medium whitespace-nowrap transition-colors',
+            'h-auto min-w-0 rounded-md px-3 py-1.5 text-xs font-medium whitespace-nowrap',
             activeScope === scope.id
-              ? 'bg-twblue-2 text-twblue-9'
+              ? 'bg-twblue-2 text-twblue-9 data-pressed:bg-twblue-2 data-pressed:text-twblue-9'
               : 'text-muted-foreground hover:bg-slate-4 hover:text-foreground',
           )}
         >
           {scope.label}
-        </button>
+        </ToggleGroupItem>
       ))}
-    </div>
+    </ToggleGroup>
   );
+
+  const inlineChips =
+    maxVisibleTokens != null && !chipsExpanded && value.length > maxVisibleTokens
+      ? value.slice(0, maxVisibleTokens)
+      : value;
 
   return (
     <>
-      <div ref={wrapperRef} className="relative">
+      <Combobox.Root<SelectedEntity, true>
+        multiple
+        // We do our own filtering through `searchFn` / the browse tabs, so Base
+        // UI must not filter again — but it still needs the visible rows as its
+        // collection, or the list reports itself empty and arrow-key traversal
+        // and `aria-activedescendant` never engage.
+        filter={null}
+        items={visibleValues}
+        value={value}
+        onValueChange={handleSelectionChange}
+        open={isOpen}
+        onOpenChange={setIsOpen}
+        inputValue={query}
+        onInputValueChange={(next) => {
+          setQuery(next);
+          // Typing always reveals the results, even where a bare click does
+          // not open the panel (`openOnFocus={false}`).
+          if (next && !isOpen) setIsOpen(true);
+        }}
+        openOnInputClick={openOnFocus}
+        itemToStringLabel={(entity) => entity.label}
+        itemToStringValue={(entity) => entity.id}
+        isItemEqualToValue={(a, b) => a.id === b.id}
+      >
         {/* Token input container — selected chips + inline search input */}
-        <div
-          role="combobox"
-          aria-expanded={isOpen}
-          aria-haspopup="listbox"
-          onClick={() => {
-            setIsOpen(true);
-            inputRef.current?.focus();
-          }}
+        <Combobox.Chips
           className={cn(
             'flex min-h-9 w-full flex-wrap items-center gap-1.5 rounded-[14px] border border-input bg-background px-2.5 py-1.5 transition-colors',
             'cursor-text hover:border-ring',
-            isOpen && 'border-ring ring-[3px] ring-ring/50',
+            'focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/50',
           )}
         >
-          {/* Selected chips (inline mode only — skipped when chipsBelow) */}
           {!chipsBelow &&
-            (maxVisibleTokens != null && !chipsExpanded && value.length > maxVisibleTokens
-              ? value.slice(0, maxVisibleTokens)
-              : value
-            ).map((entity) => (
-              <EntityChip
+            !hideChips &&
+            inlineChips.map((entity) => (
+              <InlineChip
                 key={entity.id}
                 entity={entity}
-                onRemove={() => handleRemove(entity)}
                 extra={renderChipExtra?.(entity)}
                 removable={!nonRemovableIds?.has(entity.id)}
-                highlighted={highlightedIds?.has(entity.id)}
+                highlighted={highlightedIds?.has(entity.id) ?? false}
               />
             ))}
 
           {/* "+N more" overflow badge (inline mode only) */}
-          {!chipsBelow &&
-            maxVisibleTokens != null &&
-            !chipsExpanded &&
-            value.length > maxVisibleTokens && (
-              <button
-                type="button"
-                onMouseDown={(e) => e.preventDefault()}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setChipsExpanded(true);
-                }}
-                className="inline-flex shrink-0 cursor-pointer items-center rounded-md border border-dashed border-slate-6 px-2 py-0.5 text-xs text-slate-11 hover:bg-slate-3"
-              >
-                +{value.length - maxVisibleTokens} more
-              </button>
-            )}
+          {!chipsBelow && !hideChips && inlineChips.length < value.length && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="xs"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={(e) => {
+                e.stopPropagation();
+                setChipsExpanded(true);
+              }}
+              className="h-auto shrink-0 rounded-md border border-dashed border-slate-6 px-2 py-0.5 text-xs font-normal text-slate-11 hover:bg-slate-3"
+            >
+              +{value.length - inlineChips.length} more
+            </Button>
+          )}
 
-          {/* Inline search input (always present, flex-1 expands to fill row) */}
-          <input
+          <Combobox.Input
             ref={inputRef}
-            type="text"
-            value={query}
             placeholder={value.length === 0 || chipsBelow ? placeholder : undefined}
-            onChange={(e) => {
-              setQuery(e.target.value);
-              if (!isOpen) setIsOpen(true);
-            }}
-            onFocus={() => {
-              if (openOnFocus) setIsOpen(true);
-            }}
-            onKeyDown={(e) => {
-              if (e.key === 'Escape') {
-                if (query) setQuery('');
-                else closePanel();
-              }
-              // Backspace on empty input removes the last chip (inline mode only)
-              if (
-                !chipsBelow &&
-                e.key === 'Backspace' &&
-                !query &&
-                value.length > 0 &&
-                !nonRemovableIds?.has(value[value.length - 1].id)
-              ) {
-                handleRemove(value[value.length - 1]);
-              }
-            }}
             className="min-w-[100px] flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
           />
 
           {/* Clear all — visible when ≥1 removable chip is selected (inline mode only) */}
           {!chipsBelow && value.length > 0 && hasRemovableValue && !hideClearAll && (
-            <button
+            <Button
               type="button"
+              variant="link"
+              size="xs"
               onMouseDown={(e) => e.preventDefault()}
               onClick={handleClearAll}
-              className="ml-auto shrink-0 text-xs text-muted-foreground transition-colors hover:text-destructive"
+              className="ml-auto h-auto shrink-0 px-0 text-muted-foreground hover:text-destructive hover:no-underline"
             >
               Clear all
-            </button>
+            </Button>
           )}
-        </div>
+        </Combobox.Chips>
 
-        {/* Dropdown panel */}
-        {isOpen && (
-          <div className="absolute z-20 mt-1 w-full overflow-hidden rounded-lg border bg-popover shadow-md">
-            {/* Browse tabs — visible when scopes exist and not searching */}
-            {scopes && scopes.length > 0 && !query && (
-              <div className="border-b px-2 py-1.5">{scopeTabs}</div>
-            )}
+        <Combobox.Portal>
+          <Combobox.Positioner sideOffset={4} className="z-50 w-(--anchor-width) outline-none">
+            <Combobox.Popup className="w-full overflow-hidden rounded-lg border bg-popover shadow-md outline-none">
+              {/* Browse tabs — visible when scopes exist and not searching */}
+              {scopes && scopes.length > 0 && !query && (
+                <div className="border-b px-2 py-1.5">{scopeTabs}</div>
+              )}
 
-            {/* Results */}
-            <div style={{ maxHeight: maxScrollHeight, overflowY: 'auto' }}>
-              {!scopes || query ? renderSearchResults() : renderBrowseTab()}
-            </div>
-          </div>
-        )}
-      </div>
+              <Combobox.List style={{ maxHeight: maxScrollHeight, overflowY: 'auto' }}>
+                {!scopes || query ? renderSearchResults() : renderBrowseTab()}
+              </Combobox.List>
+            </Combobox.Popup>
+          </Combobox.Positioner>
+        </Combobox.Portal>
+      </Combobox.Root>
 
-      {/* Chips below area — rendered outside the relative wrapper so it's never clipped */}
+      {/* Chips below area — rendered outside the combobox so it's never clipped */}
       {chipsBelow && !hideChips && value.length > 0 && (
         <div className="mt-2 flex flex-wrap items-center gap-2">
           {value.map((entity) => (
-            <EntityChip
+            <BelowChip
               key={entity.id}
               entity={entity}
-              onRemove={() => handleRemove(entity)}
               extra={renderChipExtra?.(entity)}
-              large
-              onChipClick={entity.type === 'group' ? () => openGroup(entity) : undefined}
               removable={!nonRemovableIds?.has(entity.id)}
-              highlighted={highlightedIds?.has(entity.id)}
+              highlighted={highlightedIds?.has(entity.id) ?? false}
+              onRemove={() => handleRemove(entity)}
+              onChipClick={entity.type === 'group' ? () => openGroup(entity) : undefined}
             />
           ))}
           {hasRemovableValue && !hideClearAll && (
-            <button
+            <Button
               type="button"
+              variant="link"
+              size="xs"
               onMouseDown={(e) => e.preventDefault()}
               onClick={handleClearAll}
-              className="ml-auto shrink-0 text-xs text-muted-foreground transition-colors hover:text-destructive"
+              className="ml-auto h-auto shrink-0 px-0 text-muted-foreground hover:text-destructive hover:no-underline"
             >
               Clear all
-            </button>
+            </Button>
           )}
         </div>
       )}
