@@ -1,6 +1,5 @@
 import { Check } from 'lucide-react';
 
-import { RadioGroup, RadioGroupCard } from '~/components/ui';
 import { RESPONSE_TYPE_META, type ResponseType } from '~/data/posts-registry';
 import { cn } from '~/lib/utils';
 
@@ -33,21 +32,19 @@ function ResponseTypeSelector({
 
   return (
     <div className="space-y-4">
-      <RadioGroup
-        value={value}
-        onValueChange={(next) => onChange(next as ResponseType)}
-        aria-label="Response type"
-        className="grid gap-3 sm:grid-cols-2"
-      >
+      <div role="radiogroup" aria-label="Response type" className="grid gap-3 sm:grid-cols-2">
         {options.map((option) => {
           const selected = value === option.value;
           return (
-            <RadioGroupCard
+            <button
               key={option.value}
-              value={option.value}
+              type="button"
+              role="radio"
+              aria-checked={selected}
+              onClick={() => onChange(option.value)}
               className={cn(
-                'group relative flex flex-col overflow-hidden rounded-xl border bg-card p-4',
-                'hover:border-input hover:bg-muted',
+                'group relative flex flex-col overflow-hidden rounded-xl border bg-card p-4 text-left transition-colors',
+                'hover:border-input hover:bg-muted focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none',
                 selected
                   ? 'border-primary bg-primary/[0.04] ring-1 ring-primary/20 hover:bg-primary/[0.04]'
                   : 'border-border',
@@ -63,10 +60,10 @@ function ResponseTypeSelector({
                 <p className="text-sm font-semibold text-foreground">{option.label}</p>
                 <p className="text-xs text-muted-foreground">{option.description}</p>
               </div>
-            </RadioGroupCard>
+            </button>
           );
         })}
-      </RadioGroup>
+      </div>
 
       {showChildren && children}
     </div>

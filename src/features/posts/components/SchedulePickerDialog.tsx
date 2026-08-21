@@ -11,7 +11,6 @@ import {
   DialogHeader,
   DialogTitle,
   Label,
-  outsideRange,
   Popover,
   PopoverContent,
   PopoverTrigger,
@@ -254,7 +253,7 @@ export function SchedulePickerDialog({
                     setDate(d);
                     setDateOpen(false);
                   }}
-                  disabled={outsideRange(today, maxDate)}
+                  disabled={{ before: today, after: maxDate }}
                 />
               </PopoverContent>
             </Popover>

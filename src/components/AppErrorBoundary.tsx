@@ -1,7 +1,5 @@
 import { Component, type ReactNode } from 'react';
 
-import { Button } from '~/components/ui';
-
 interface Props {
   children: ReactNode;
 }
@@ -23,13 +21,13 @@ export class AppErrorBoundary extends Component<Props, State> {
         <div className="flex min-h-[200px] items-center justify-center">
           <div className="text-center">
             <p className="text-lg font-medium">Something went wrong</p>
-            <Button
+            <button
               type="button"
               onClick={() => this.setState({ hasError: false })}
-              className="mt-4"
+              className="mt-4 rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground hover:bg-primary/90"
             >
               Try again
-            </Button>
+            </button>
           </div>
         </div>
       );

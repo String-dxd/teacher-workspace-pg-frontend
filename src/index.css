@@ -106,11 +106,15 @@
   --accent-foreground: var(--slate-12);
   --destructive: var(--crimson-9);
 
-  /* Status tokens — Flow DS mappings: success→lime, caution→amber, info→brand */
+  /* Status tokens — Flow DS mappings: success→lime, caution→amber, info→brand.
+     Each foreground sits on its own step-3 tint, not on white, so it needs the
+     high-contrast step: lime-11 measured 4.29:1 and amber-11 4.25:1 against
+     those tints, both under the 4.5 AA floor. twblue-11 clears it at 5.03 and
+     stays where it is. Hue mappings are unchanged. */
   --success: var(--lime-3);
-  --success-foreground: var(--lime-11);
+  --success-foreground: var(--lime-12);
   --warning: var(--amber-3);
-  --warning-foreground: var(--amber-11);
+  --warning-foreground: var(--amber-12);
   --info: var(--twblue-3);
   --info-foreground: var(--twblue-11);
 

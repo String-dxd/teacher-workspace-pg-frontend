@@ -4,9 +4,6 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Button,
   Input,
-  RadioGroup,
-  RadioGroupCard,
-  RadioGroupCardIndicator,
   Select,
   SelectContent,
   SelectItem,
@@ -16,10 +13,6 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from '~/components/ui/popover';
 import { Separator } from '~/components/ui/separator';
 import { cn } from '~/lib/utils';
-
-/** Sentinel value for the "Other…" row, which is a radio choice like any preset
- *  but stands for "whatever the inline username + domain fields resolve to". */
-const OTHER_OPTION = '__other__';
 
 interface EnquiryEmailSelectorProps {
   emailOptions: string[];
@@ -131,88 +124,94 @@ export function EnquiryEmailSelector({
         <Separator />
 
         {/* ── Preset options ─────────────────────────────────────────────── */}
-        <RadioGroup
-          aria-label="Enquiry email"
-          className="gap-0"
-          value={showOther ? OTHER_OPTION : value}
-          onValueChange={(next) =>
-            next === OTHER_OPTION ? handleSelectOther() : handleSelectPreset(next)
-          }
-        >
-          <div className="py-1">
-            {emailOptions.map((email) => (
-              <RadioGroupCard
-                key={email}
-                value={email}
-                className="flex w-full items-center gap-3 px-4 py-2.5 text-sm hover:bg-accent hover:text-accent-foreground"
-              >
-                <RadioGroupCardIndicator className="size-4" />
-                <span className="truncate">{email}</span>
-              </RadioGroupCard>
-            ))}
-          </div>
-
-          <Separator />
-
-          {/* ── "Other" row — expands inline when selected ─────────────────── */}
-          <div className="py-1">
-            <RadioGroupCard
-              value={OTHER_OPTION}
+        <div className="py-1">
+          {emailOptions.map((email) => (
+            <button
+              key={email}
+              type="button"
+              onClick={() => handleSelectPreset(email)}
               className="flex w-full items-center gap-3 px-4 py-2.5 text-sm hover:bg-accent hover:text-accent-foreground"
             >
-              <RadioGroupCardIndicator className="size-4" />
-              <span
-                className={cn('truncate', !showOther ? 'text-muted-foreground' : 'text-foreground')}
-              >
-                {showOther && customUsername ? `${customUsername}@${customDomain}` : 'Other…'}
-              </span>
-            </RadioGroupCard>
+              <RadioDot selected={!showOther && value === email} />
+              <span className="truncate">{email}</span>
+            </button>
+          ))}
+        </div>
 
-            {showOther && (
-              <div className="space-y-2.5 px-4 pb-3">
-                {/* Username + domain pill toggle */}
-                <div className="flex items-center gap-1.5">
-                  <Input
-                    ref={usernameRef}
-                    type="text"
-                    placeholder="username"
-                    value={customUsername}
-                    onChange={(e) => setCustomUsername(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && handleConfirm()}
-                    className="min-w-0 flex-1"
-                  />
-                  <span className="shrink-0 text-sm text-muted-foreground">@</span>
-                  <Select
-                    value={customDomain}
-                    onValueChange={(v) => v !== null && setCustomDomain(v)}
-                  >
-                    <SelectTrigger className="w-[11rem] shrink-0">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {domains.map((d) => (
-                        <SelectItem key={d} value={d}>
-                          {d}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+        <Separator />
 
-                <Button
-                  type="button"
-                  size="sm"
-                  className="w-full"
-                  disabled={!customIsValid}
-                  onClick={handleConfirm}
+        {/* ── "Other" row — expands inline when selected ─────────────────── */}
+        <div className="py-1">
+          <button
+            type="button"
+            onClick={handleSelectOther}
+            className="flex w-full items-center gap-3 px-4 py-2.5 text-sm hover:bg-accent hover:text-accent-foreground"
+          >
+            <RadioDot selected={showOther} />
+            <span
+              className={cn('truncate', !showOther ? 'text-muted-foreground' : 'text-foreground')}
+            >
+              {showOther && customUsername ? `${customUsername}@${customDomain}` : 'Other…'}
+            </span>
+          </button>
+
+          {showOther && (
+            <div className="space-y-2.5 px-4 pb-3">
+              {/* Username + domain pill toggle */}
+              <div className="flex items-center gap-1.5">
+                <Input
+                  ref={usernameRef}
+                  type="text"
+                  placeholder="username"
+                  value={customUsername}
+                  onChange={(e) => setCustomUsername(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleConfirm()}
+                  className="min-w-0 flex-1"
+                />
+                <span className="shrink-0 text-sm text-muted-foreground">@</span>
+                <Select
+                  value={customDomain}
+                  onValueChange={(v) => v !== null && setCustomDomain(v)}
                 >
-                  {hasCustomValue ? 'Update' : 'Confirm'}
-                </Button>
+                  <SelectTrigger className="w-[11rem] shrink-0">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {domains.map((d) => (
+                      <SelectItem key={d} value={d}>
+                        {d}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
-            )}
-          </div>
-        </RadioGroup>
+
+              <Button
+                type="button"
+                size="sm"
+                className="w-full"
+                disabled={!customIsValid}
+                onClick={handleConfirm}
+              >
+                {hasCustomValue ? 'Update' : 'Confirm'}
+              </Button>
+            </div>
+          )}
+        </div>
       </PopoverContent>
     </Popover>
+  );
+}
+
+function RadioDot({ selected }: { selected: boolean }) {
+  return (
+    <span
+      className={cn(
+        'flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2 transition-colors',
+        selected ? 'border-primary bg-primary' : 'border-muted-foreground/40',
+      )}
+    >
+      {selected && <span className="h-1.5 w-1.5 rounded-full bg-white" />}
+    </span>
   );
 }

@@ -33,7 +33,8 @@ import { AppError, NotFoundError } from '~/features/posts/api/errors';
 import { fetchSchoolStaff } from '~/features/posts/api/school';
 import { fetchSession, getConfigs } from '~/features/posts/api/session';
 import type { ApiSchoolStaff, ApiSession } from '~/features/posts/api/types';
-import { DeletePostDialog } from '~/features/posts/components/DeletePostDialog';
+import { CancelSendDialog } from '~/features/posts/components/CancelSendDialog';
+import { DeletePostDialog, postToastTitle } from '~/features/posts/components/DeletePostDialog';
 import { PostCard } from '~/features/posts/components/PostCard';
 import {
   ReadTrackingCards,
@@ -45,8 +46,8 @@ import {
 } from '~/features/posts/components/RecipientFilterPopover';
 import { RecipientReadTable } from '~/features/posts/components/RecipientReadTable';
 import { SchedulePickerDialog } from '~/features/posts/components/SchedulePickerDialog';
-import { usePostsQuery } from '~/features/posts/hooks/usePostsQuery';
 import { formatDate, formatDateTime } from '~/helpers/dateTime';
+import { useQuery } from '~/hooks/useQuery';
 import { notify } from '~/lib/notify';
 import { stripSalutation } from '~/lib/utils';
 
@@ -82,7 +83,11 @@ function DetailHeader({ post, onDelete, onRefetch }: DetailHeaderProps) {
   const [rescheduleOpen, setRescheduleOpen] = useState(false);
   const [rescheduling, setRescheduling] = useState(false);
   const [cancelling, setCancelling] = useState(false);
-  const canReschedule = post.status === 'scheduled';
+  const [cancelOpen, setCancelOpen] = useState(false);
+  // A scheduled post is locked to two actions: change when it goes, or call the
+  // send off. Everything else — editing it, deleting it — lives behind Draft,
+  // which is exactly what cancelling returns it to.
+  const isScheduled = post.status === 'scheduled';
 
   async function handleRescheduleConfirm(scheduledSendAt: string) {
     const draftId = extractDraftNumericId(post.id);
@@ -109,16 +114,12 @@ function DetailHeader({ post, onDelete, onRefetch }: DetailHeaderProps) {
     }
   }
 
-  async function handleCancelSchedule() {
+  async function handleCancelSend() {
     const draftId = extractDraftNumericId(post.id);
     if (draftId === null) {
       notify.error('Could not resolve the scheduled post id.');
       return;
     }
-    const confirmed = window.confirm(
-      'Cancel the scheduled send? The post will return to Draft so you can edit or reschedule it.',
-    );
-    if (!confirmed) return;
     setCancelling(true);
     try {
       if (post.kind === 'form') {
@@ -126,11 +127,12 @@ function DetailHeader({ post, onDelete, onRefetch }: DetailHeaderProps) {
       } else {
         await cancelAnnouncementSchedule(draftId);
       }
-      notify.success('Scheduled send cancelled.');
+      notify.success('Send cancelled. The post is back in Draft.');
+      setCancelOpen(false);
       onRefetch();
     } catch (err) {
       if (!(err instanceof AppError)) {
-        notify.error('Failed to cancel the scheduled send.');
+        notify.error('Could not cancel the send. Please try again.');
       }
     } finally {
       setCancelling(false);
@@ -195,15 +197,15 @@ function DetailHeader({ post, onDelete, onRefetch }: DetailHeaderProps) {
       </div>
 
       <div className="flex shrink-0 items-center gap-2">
-        {canReschedule && (
+        {isScheduled ? (
           <>
             <Button
               variant="ghost"
               size="sm"
-              onClick={handleCancelSchedule}
+              onClick={() => setCancelOpen(true)}
               disabled={cancelling || rescheduling}
             >
-              Cancel schedule
+              Cancel send
             </Button>
             <Button
               variant="secondary"
@@ -214,32 +216,49 @@ function DetailHeader({ post, onDelete, onRefetch }: DetailHeaderProps) {
               Reschedule
             </Button>
           </>
-        )}
-
-        <Button
-          variant="ghost"
-          size="sm"
-          className="text-destructive hover:text-destructive"
-          onClick={onDelete}
-        >
-          Delete
-        </Button>
-        {/* Sent posts (posted/open/closed/posting) edit their fields inline via
-            PostCard's quick-edit dialogs instead of this full-page flow. */}
-        {deleteMode(post) === 'draft' && (
-          <Button variant="secondary" size="sm" render={<Link to="edit" />} nativeButton={false}>
-            Edit
-          </Button>
+        ) : (
+          <>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-destructive hover:text-destructive"
+              onClick={onDelete}
+            >
+              Delete
+            </Button>
+            {/* Sent posts (posted/open/closed/posting) edit their fields inline via
+                PostCard's quick-edit dialogs instead of this full-page flow. */}
+            {deleteMode(post) === 'draft' && (
+              <Button
+                variant="secondary"
+                size="sm"
+                render={<Link to="edit" />}
+                nativeButton={false}
+              >
+                Edit
+              </Button>
+            )}
+          </>
         )}
       </div>
 
-      {canReschedule && (
-        <SchedulePickerDialog
-          open={rescheduleOpen}
-          onOpenChange={setRescheduleOpen}
-          onConfirm={handleRescheduleConfirm}
-          busy={rescheduling}
-        />
+      {isScheduled && (
+        <>
+          <SchedulePickerDialog
+            open={rescheduleOpen}
+            onOpenChange={setRescheduleOpen}
+            onConfirm={handleRescheduleConfirm}
+            busy={rescheduling}
+          />
+          <CancelSendDialog
+            open={cancelOpen}
+            onOpenChange={setCancelOpen}
+            title={post.title}
+            scheduledFor={formatDateTime(post.scheduledAt) ?? undefined}
+            onConfirm={handleCancelSend}
+            pending={cancelling}
+          />
+        </>
       )}
     </div>
   );
@@ -254,7 +273,7 @@ interface PostDetailPageProps {
 const PostDetailPage: React.FC<PostDetailPageProps> = ({ postKind }) => {
   const { id } = useParams();
   const numericId = Number(id);
-  const { data, isLoading, error, refetch } = usePostsQuery(
+  const { data, isLoading, error, refetch } = useQuery(
     () =>
       Promise.all([
         postKind === 'form' ? loadConsentPostDetail(numericId) : loadPostDetail(numericId),
@@ -317,7 +336,7 @@ const PostDetailContent: React.FC<PostDetailContentProps> = ({ post, staff, sess
       } else {
         await deleteConsentForm(post.numericId);
       }
-      notify.success('Post deleted.');
+      notify.success(`'${postToastTitle(post.title)}' has been deleted.`);
       void navigate('..');
     } catch {
       notify.error('Failed to delete. Please try again.');

@@ -25,14 +25,6 @@ import { cn } from '~/lib/utils';
 
 import { summariseRecipients } from './summarise-recipients';
 
-// NOTE ON PRIMITIVES: this file deliberately does NOT compose `~/components/ui`.
-// Everything below the phone frame is a simulation of the parent-facing PG app,
-// not teacher-workspace chrome — its buttons carry that app's brand colour
-// (#c9826b) and are inert mock-ups of controls the parent will tap on their own
-// device. Rendering them with our `Button` would make the preview stop looking
-// like the thing it is previewing. A Base UI conformance sweep should skip this
-// file; every other feature file composes the primitives.
-
 // Built once — `generateHTML` only reads the schema, so the extensions never
 // need a maxLength here (CharacterCount has no effect on static rendering).
 const RICH_TEXT_EXTENSIONS = createRichTextExtensions();
