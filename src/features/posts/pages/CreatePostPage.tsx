@@ -43,12 +43,7 @@ import {
   scheduleNewConsentFormDraft,
   updateConsentFormDraft,
 } from '~/features/posts/api/consent-forms';
-import {
-  AppError,
-  ServiceUnavailableError,
-  UnauthorisedError,
-  ValidationError,
-} from '~/features/posts/api/errors';
+import { AppError, ValidationError } from '~/features/posts/api/errors';
 import {
   buildAnnouncementPayload,
   buildConsentFormPayload,
@@ -78,6 +73,7 @@ import type {
   SelectedEntity as SelectorEntity,
 } from '~/features/posts/components/EntitySelector';
 import { EventScheduleSection } from '~/features/posts/components/EventScheduleSection';
+import { navigateOnMaintenance } from '~/features/posts/components/MaintenancePage';
 import { PostPreview } from '~/features/posts/components/PostPreview';
 import { PostTypePicker, type PostKind } from '~/features/posts/components/PostTypePicker';
 import { MAX_QUESTIONS, QuestionBuilder } from '~/features/posts/components/QuestionBuilder';
@@ -92,9 +88,11 @@ import { SendConfirmationDialog } from '~/features/posts/components/SendConfirma
 import { ShortcutsSection } from '~/features/posts/components/ShortcutsSection';
 import { StaffSearchSelector } from '~/features/posts/components/StaffSearchSelector';
 import { StudentRecipientSelector } from '~/features/posts/components/StudentRecipientSelector';
+import { navigateOnUnauthorised } from '~/features/posts/components/UnauthorisedPage';
 import { VenueSection } from '~/features/posts/components/VenueSection';
 import { WebsiteLinksSection } from '~/features/posts/components/WebsiteLinksSection';
 import { useAutoSave, type AutoSaveStatus } from '~/features/posts/hooks/useAutoSave';
+import { usePostsQuery } from '~/features/posts/hooks/usePostsQuery';
 import { useUnsavedChangesGuard } from '~/features/posts/hooks/useUnsavedChangesGuard';
 import { INITIAL_STATE, type SelectedEntity } from '~/features/posts/state/initial-state';
 import { formReducer } from '~/features/posts/state/reducer';
@@ -107,7 +105,6 @@ import {
   type PostKind as ValidationPostKind,
 } from '~/features/posts/validation/create-post-validation';
 import { textToTiptapDoc } from '~/helpers/tiptap';
-import { useQuery } from '~/hooks/useQuery';
 import { notify } from '~/lib/notify';
 import { cn, stripSalutation } from '~/lib/utils';
 import {
@@ -333,7 +330,7 @@ function CreatePostPageInner({ editId, postKind, draft }: CreatePostPageInnerPro
     isLoading,
     error,
     refetch,
-  } = useQuery(() => {
+  } = usePostsQuery(() => {
     let detailPromise: Promise<Post | null> = Promise.resolve(null);
     if (editId && /^\d+$/.test(editId)) {
       const numericId = Number(editId);
@@ -626,16 +623,9 @@ function CreatePostForm({ editId, loaderData }: CreatePostFormProps) {
       navigate('..');
     } catch (err) {
       setSaveState('idle');
-      if (err instanceof ServiceUnavailableError) {
-        // PG is under maintenance — abandon the form for the static
-        // maintenance page (no toast; issue #118).
-        navigate('/posts/maintenance');
-      } else if (err instanceof UnauthorisedError) {
-        // SC has flagged this staff member as unauthorised — abandon the
-        // form for the static unauthorised page (no toast, no retry;
-        // issue #129).
-        navigate('/posts/unauthorised');
-      } else if (err instanceof ValidationError) {
+      if (navigateOnMaintenance(err, navigate)) return;
+      if (navigateOnUnauthorised(err, navigate)) return;
+      if (err instanceof ValidationError) {
         const stamped = stampValidationError(err);
         if (!stamped) notify.error(reportValidationError(err));
       } else if (!(err instanceof AppError)) {
@@ -660,16 +650,9 @@ function CreatePostForm({ editId, loaderData }: CreatePostFormProps) {
       navigate('..');
     } catch (err) {
       setSaveState('idle');
-      if (err instanceof ServiceUnavailableError) {
-        // PG is under maintenance — abandon the form for the static
-        // maintenance page (no toast; issue #118).
-        navigate('/posts/maintenance');
-      } else if (err instanceof UnauthorisedError) {
-        // SC has flagged this staff member as unauthorised — abandon the
-        // form for the static unauthorised page (no toast, no retry;
-        // issue #129).
-        navigate('/posts/unauthorised');
-      } else if (err instanceof ValidationError) {
+      if (navigateOnMaintenance(err, navigate)) return;
+      if (navigateOnUnauthorised(err, navigate)) return;
+      if (err instanceof ValidationError) {
         const stamped = stampValidationError(err);
         if (!stamped) notify.error(reportValidationError(err));
       } else if (err instanceof Error && !(err instanceof AppError)) {

@@ -150,6 +150,8 @@ export const consentFormDetail: ApiConsentFormDetail = {
     },
   ],
   staffOwners: [
+    // 1001 is the mock session user — demo hook for the remove-yourself flow.
+    { staffID: 1001, staffName: 'Ms Tan Wei Ling' },
     { staffID: 1002, staffName: 'Mr Lim Kah Hoe' },
     { staffID: 1003, staffName: 'Ms Wong Siew Mei' },
   ],

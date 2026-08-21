@@ -120,6 +120,10 @@ export function updateAnnouncementStaffInCharge(postId: number, staffIds: number
   return mutateApi('POST', `/announcements/${postId}/addStaffInCharge`, { staffGroups });
 }
 
+export function removeAccessFromAnnouncement(postId: number): Promise<void> {
+  return mutateApi('PUT', `/announcements/${postId}/removeAccess`, {});
+}
+
 export function deleteAnnouncement(postId: number): Promise<void> {
   return deleteApi(`/announcements/${postId}`);
 }

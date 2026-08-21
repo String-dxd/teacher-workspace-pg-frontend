@@ -1,4 +1,7 @@
+import type { NavigateFunction } from 'react-router';
+
 import { Button } from '~/components/ui';
+import { UnauthorisedError } from '~/features/posts/api/errors';
 
 /** Placeholder pending UXD confirmation (issue #129) — kept in one constant
  *  so the confirmed copy is a one-line change. */
@@ -35,6 +38,19 @@ function UnauthorisedPage() {
       </div>
     </div>
   );
+}
+
+/**
+ * Mirrors `navigateOnMaintenance`: a 401 from School Cockpit abandons whatever
+ * the teacher was doing for the static page, with no toast and no retry.
+ * Returns true when it handled the error, so callers can stop.
+ */
+export function navigateOnUnauthorised(err: unknown, navigate: NavigateFunction): boolean {
+  if (err instanceof UnauthorisedError) {
+    navigate('/posts/unauthorised');
+    return true;
+  }
+  return false;
 }
 
 export { UnauthorisedPage, UNAUTHORISED_COPY };

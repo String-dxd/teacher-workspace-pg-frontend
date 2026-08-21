@@ -1,8 +1,15 @@
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, History } from 'lucide-react';
 import React, { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
 
-import { Badge, Button } from '~/components/ui';
+import {
+  Badge,
+  Button,
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '~/components/ui';
 import {
   describeScheduledSendFailure,
   getPostStatusBadge,
@@ -26,7 +33,6 @@ import { AppError, NotFoundError } from '~/features/posts/api/errors';
 import { fetchSchoolStaff } from '~/features/posts/api/school';
 import { fetchSession, getConfigs } from '~/features/posts/api/session';
 import type { ApiSchoolStaff, ApiSession } from '~/features/posts/api/types';
-import { ConsentFormHistoryList } from '~/features/posts/components/ConsentFormHistoryList';
 import { DeletePostDialog } from '~/features/posts/components/DeletePostDialog';
 import { PostCard } from '~/features/posts/components/PostCard';
 import {
@@ -39,8 +45,8 @@ import {
 } from '~/features/posts/components/RecipientFilterPopover';
 import { RecipientReadTable } from '~/features/posts/components/RecipientReadTable';
 import { SchedulePickerDialog } from '~/features/posts/components/SchedulePickerDialog';
+import { usePostsQuery } from '~/features/posts/hooks/usePostsQuery';
 import { formatDate, formatDateTime } from '~/helpers/dateTime';
-import { useQuery } from '~/hooks/useQuery';
 import { notify } from '~/lib/notify';
 import { stripSalutation } from '~/lib/utils';
 
@@ -149,10 +155,42 @@ function DetailHeader({ post, onDelete, onRefetch }: DetailHeaderProps) {
             <h1 className="text-2xl font-semibold tracking-tight">{post.title}</h1>
             <Badge variant={badge.variant}>{badge.label}</Badge>
           </div>
-          <p className="text-sm text-muted-foreground">
-            Posted {postedDate}
-            {post.createdBy ? ` · ${stripSalutation(post.createdBy)}` : ''}
-          </p>
+          <div className="flex items-center gap-1.5">
+            <p className="text-sm text-muted-foreground">
+              Posted {postedDate}
+              {post.createdBy ? ` · ${stripSalutation(post.createdBy)}` : ''}
+            </p>
+            {post.kind === 'form' && post.history.length > 0 && (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger
+                    aria-label="Post history"
+                    className="text-muted-foreground outline-none hover:text-foreground"
+                  >
+                    <History className="h-3.5 w-3.5" />
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" align="start" className="w-max max-w-xs px-3 py-2">
+                    <ol className="space-y-2">
+                      {post.history.map((entry) => (
+                        <li key={entry.historyId}>
+                          <p className="text-xs font-medium">
+                            {entry.action}
+                            <span className="font-normal opacity-80">
+                              {' '}
+                              by {stripSalutation(entry.actionBy)}
+                            </span>
+                          </p>
+                          <p className="text-[11px] opacity-70">
+                            {formatDateTime(entry.actionAt) ?? entry.actionAt}
+                          </p>
+                        </li>
+                      ))}
+                    </ol>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
+          </div>
         </div>
       </div>
 
@@ -216,7 +254,7 @@ interface PostDetailPageProps {
 const PostDetailPage: React.FC<PostDetailPageProps> = ({ postKind }) => {
   const { id } = useParams();
   const numericId = Number(id);
-  const { data, isLoading, error, refetch } = useQuery(
+  const { data, isLoading, error, refetch } = usePostsQuery(
     () =>
       Promise.all([
         postKind === 'form' ? loadConsentPostDetail(numericId) : loadPostDetail(numericId),
@@ -303,6 +341,7 @@ const PostDetailContent: React.FC<PostDetailContentProps> = ({ post, staff, sess
   const cardProps = {
     staff,
     emailOptions,
+    currentStaffId: session.staffId,
     onSaved: refetch,
   };
 
@@ -343,6 +382,7 @@ const PostDetailContent: React.FC<PostDetailContentProps> = ({ post, staff, sess
 interface DetailCardProps {
   staff: ApiSchoolStaff[];
   emailOptions: string[];
+  currentStaffId?: number;
   onSaved: () => void;
   attachments: { name: string; sizeKb: number; url: string }[];
 }
@@ -352,6 +392,7 @@ function AnnouncementDetail({
   attachments,
   staff,
   emailOptions,
+  currentStaffId,
   onSaved,
 }: { post: AnnouncementPost } & DetailCardProps) {
   const [filter, setFilter] = useState<RecipientFilterValue>(DEFAULT_RECIPIENT_FILTER);
@@ -381,6 +422,7 @@ function AnnouncementDetail({
               filter={filter}
               onFilterChange={setFilter}
               exportId={String(post.id)}
+              dueDate={post.dueDate}
             />
           </div>
         )}
@@ -392,6 +434,7 @@ function AnnouncementDetail({
           attachments={attachments}
           staff={staff}
           emailOptions={emailOptions}
+          currentStaffId={currentStaffId}
           onSaved={onSaved}
         />
       </div>
@@ -404,6 +447,7 @@ function ConsentFormDetail({
   attachments,
   staff,
   emailOptions,
+  currentStaffId,
   onSaved,
 }: { post: ConsentFormPost } & DetailCardProps) {
   const showTable =
@@ -423,11 +467,10 @@ function ConsentFormDetail({
               responseType={post.responseType}
               exportId={String(post.id)}
               questions={post.questions}
+              dueDate={post.consentByDate}
             />
           </div>
         )}
-
-        <ConsentFormHistoryList entries={post.history} />
       </div>
 
       <div className="lg:sticky lg:top-6 lg:self-start">
@@ -436,6 +479,7 @@ function ConsentFormDetail({
           attachments={attachments}
           staff={staff}
           emailOptions={emailOptions}
+          currentStaffId={currentStaffId}
           onSaved={onSaved}
         />
       </div>

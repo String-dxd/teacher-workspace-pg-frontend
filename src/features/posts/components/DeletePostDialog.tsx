@@ -92,7 +92,7 @@ function DeletePostDialog({
         )}
 
         <DialogFooter>
-          <Button variant="ghost" onClick={() => handleOpenChange(false)} disabled={pending}>
+          <Button variant="secondary" onClick={() => handleOpenChange(false)} disabled={pending}>
             Cancel
           </Button>
           <Button variant="destructive" onClick={handleConfirm} disabled={!canDelete || pending}>

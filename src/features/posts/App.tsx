@@ -3,9 +3,8 @@ import { Toaster } from 'sonner';
 
 import '~/index.css';
 
-import { AppErrorBoundary } from '~/components/AppErrorBoundary';
-
 import { MaintenancePage } from './components/MaintenancePage';
+import { PostsErrorBoundary } from './components/PostsErrorBoundary';
 import { UnauthorisedPage } from './components/UnauthorisedPage';
 import { CreatePostPage } from './pages/CreatePostPage';
 import { PostDetailPage } from './pages/PostDetailPage';
@@ -13,10 +12,10 @@ import { PostsListPage } from './pages/PostsListPage';
 
 function PostsLayout() {
   return (
-    <AppErrorBoundary>
+    <PostsErrorBoundary>
       <Outlet />
       <Toaster />
-    </AppErrorBoundary>
+    </PostsErrorBoundary>
   );
 }
 

@@ -18,6 +18,10 @@ interface StaffSearchSelectorProps {
   onChange: (staff: SelectedEntity[]) => void;
   /** Staff already on the post can't be removed by the creator — only added to. */
   lockedStaffIds?: Set<string>;
+  /** Staff ids rendered with a tinted highlight (e.g. the signed-in teacher). */
+  highlightedStaffIds?: Set<string>;
+  /** Hides the "Clear all" control (e.g. when only the teacher's own chip is removable). */
+  hideClearAll?: boolean;
 }
 
 export function StaffSearchSelector({
@@ -25,17 +29,25 @@ export function StaffSearchSelector({
   value,
   onChange,
   lockedStaffIds,
+  highlightedStaffIds,
+  hideClearAll,
 }: StaffSearchSelectorProps) {
+  // The list is for adding new staff only — anyone already added (including
+  // yourself) is removed here, not toggled, so they don't appear as a
+  // selectable row once they're on the post.
+  const selectedIds = useMemo(() => new Set(value.map((e) => e.id)), [value]);
   const items: EntityItem[] = useMemo(
     () =>
-      staff.map((s) => ({
-        id: String(s.staffId),
-        label: stripSalutation(s.name),
-        sublabel: [s.className, s.email].filter(Boolean).join(' · '),
-        type: 'individual' as const,
-        count: 1,
-      })),
-    [staff],
+      staff
+        .filter((s) => !selectedIds.has(String(s.staffId)))
+        .map((s) => ({
+          id: String(s.staffId),
+          label: stripSalutation(s.name),
+          sublabel: [s.className, s.email].filter(Boolean).join(' · '),
+          type: 'individual' as const,
+          count: 1,
+        })),
+    [staff, selectedIds],
   );
 
   function searchFn(query: string): SearchResults {
@@ -58,6 +70,9 @@ export function StaffSearchSelector({
       noResultsText="No staff found"
       chipsBelow
       nonRemovableIds={lockedStaffIds}
+      highlightedIds={highlightedStaffIds}
+      hideClearAll={hideClearAll}
+      openOnFocus={false}
     />
   );
 }
