@@ -46,8 +46,8 @@ import {
 } from '~/features/posts/components/RecipientFilterPopover';
 import { RecipientReadTable } from '~/features/posts/components/RecipientReadTable';
 import { SchedulePickerDialog } from '~/features/posts/components/SchedulePickerDialog';
+import { usePostsQuery } from '~/features/posts/hooks/usePostsQuery';
 import { formatDate, formatDateTime } from '~/helpers/dateTime';
-import { useQuery } from '~/hooks/useQuery';
 import { notify } from '~/lib/notify';
 import { stripSalutation } from '~/lib/utils';
 
@@ -273,7 +273,7 @@ interface PostDetailPageProps {
 const PostDetailPage: React.FC<PostDetailPageProps> = ({ postKind }) => {
   const { id } = useParams();
   const numericId = Number(id);
-  const { data, isLoading, error, refetch } = useQuery(
+  const { data, isLoading, error, refetch } = usePostsQuery(
     () =>
       Promise.all([
         postKind === 'form' ? loadConsentPostDetail(numericId) : loadPostDetail(numericId),
