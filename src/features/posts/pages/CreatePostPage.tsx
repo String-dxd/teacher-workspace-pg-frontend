@@ -23,6 +23,11 @@ import {
   PopoverContent,
   PopoverTrigger,
   Separator,
+  Sheet,
+  SheetClose,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
 } from '~/components/ui';
 import { describeScheduledSendFailure, type Post } from '~/data/posts-registry';
 import {
@@ -679,13 +684,16 @@ function CreatePostForm({ editId, loaderData }: CreatePostFormProps) {
       <div className="sticky top-0 z-10 border-b bg-white/95 px-6 py-3 backdrop-blur-sm">
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <button
+            <Button
               type="button"
+              variant="ghost"
+              size="icon-sm"
+              aria-label="Back"
               onClick={handleBackClick}
-              className="text-muted-foreground hover:text-foreground"
+              className="text-muted-foreground"
             >
-              <ArrowLeft className="h-5 w-5" />
-            </button>
+              <ArrowLeft className="size-5" />
+            </Button>
             <h1 className="text-xl font-semibold tracking-tight">
               {isEditing ? 'Edit Post' : 'New Post'}
             </h1>
@@ -776,14 +784,16 @@ function CreatePostForm({ editId, loaderData }: CreatePostFormProps) {
                   posting to avoid losing them.
                 </p>
               </div>
-              <button
+              <Button
                 type="button"
+                variant="ghost"
+                size="icon-xs"
                 onClick={() => setFileBannerDismissed(true)}
-                className="shrink-0 rounded p-0.5 text-amber-11 hover:bg-amber-4 hover:text-amber-12"
+                className="size-5 shrink-0 rounded-md text-amber-11 hover:bg-amber-4 hover:text-amber-12"
                 aria-label="Dismiss"
               >
-                <X className="h-3.5 w-3.5" />
-              </button>
+                <X className="size-3.5" />
+              </Button>
             </div>
           )}
 
@@ -1121,34 +1131,26 @@ function CreatePostForm({ editId, loaderData }: CreatePostFormProps) {
         )}
       </div>
 
-      {/* Mobile preview */}
-      <div
-        className={cn(
-          'fixed inset-0 z-50 transition-opacity duration-150 lg:hidden',
-          showPreview ? 'pointer-events-auto bg-black/50' : 'pointer-events-none bg-transparent',
-        )}
-        onClick={() => setShowPreview(false)}
-      >
-        <div
-          className={cn(
-            'absolute top-0 right-0 bottom-0 w-[360px] overflow-y-auto bg-white p-4 shadow-xl transition-transform duration-150',
-            showPreview ? 'translate-x-0' : 'translate-x-full',
-          )}
-          onClick={(e) => e.stopPropagation()}
+      {/* Mobile preview — a Sheet rather than a hand-built scrim + panel, so the
+          slide-over gets the focus trap, scroll lock and escape handling that
+          Base UI's dialog supplies. */}
+      <Sheet open={showPreview} onOpenChange={setShowPreview}>
+        <SheetContent
+          side="right"
+          showCloseButton={false}
+          className="w-[360px] overflow-y-auto sm:max-w-none lg:hidden"
         >
-          <div className="mb-4 flex items-center justify-between">
-            <p className="text-sm font-medium">Preview</p>
-            <Button variant="ghost" size="sm" onClick={() => setShowPreview(false)}>
-              Close
-            </Button>
-          </div>
+          <SheetHeader className="mb-4 flex-row items-center justify-between">
+            <SheetTitle className="text-sm">Preview</SheetTitle>
+            <SheetClose render={<Button variant="ghost" size="sm" />}>Close</SheetClose>
+          </SheetHeader>
           <PostPreview
             formState={deferredState}
             currentUserName={stripSalutation(session.staffName ?? 'Daniel Tan')}
             defaultEnquiryEmail={session.schoolEmailAddress ?? 'enquiry@school.edu.sg'}
           />
-        </div>
-      </div>
+        </SheetContent>
+      </Sheet>
 
       {/* Schedule step 1 — pick the release date and time. */}
       <SchedulePickerDialog

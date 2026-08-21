@@ -1,6 +1,5 @@
 import {
   AlertTriangle,
-  Check,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
@@ -23,12 +22,11 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
   Input,
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
   Table,
   TableBody,
   TableCell,
@@ -428,36 +426,28 @@ const PostsListPage: React.FC = () => {
         <div className="flex items-start justify-between gap-4">
           <div>
             {IS_ADMIN ? (
-              <Popover open={scopeOpen} onOpenChange={setScopeOpen}>
-                <PopoverTrigger className="inline-flex cursor-pointer items-center gap-1.5 bg-transparent p-0 text-2xl font-semibold tracking-tight outline-none">
+              <DropdownMenu open={scopeOpen} onOpenChange={setScopeOpen}>
+                <DropdownMenuTrigger className="inline-flex cursor-pointer items-center gap-1.5 bg-transparent p-0 text-2xl font-semibold tracking-tight outline-none">
                   My Posts
                   <ChevronDown className="h-5 w-5 text-muted-foreground" />
-                </PopoverTrigger>
-                <PopoverContent
-                  align="start"
-                  className="w-56 gap-0 overflow-hidden rounded-2xl p-1"
-                >
-                  <button
-                    type="button"
-                    onClick={() => setScopeOpen(false)}
-                    className="flex w-full flex-col rounded-xl bg-accent px-3 py-2 text-left"
-                  >
-                    <span className="flex items-center justify-between">
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="w-56 min-w-56">
+                  <DropdownMenuRadioGroup value="mine">
+                    <DropdownMenuRadioItem value="mine" className="flex-col items-start gap-0">
                       <span className="text-sm font-medium">My posts</span>
-                      <Check className="h-4 w-4 text-primary" />
-                    </span>
-                    <span className="text-xs text-muted-foreground">Posts you created</span>
-                  </button>
-                  <button
-                    type="button"
-                    disabled
-                    className="flex w-full cursor-not-allowed flex-col rounded-xl px-3 py-2 text-left opacity-50"
-                  >
-                    <span className="text-sm font-medium">School posts</span>
-                    <span className="text-xs text-muted-foreground">Coming soon</span>
-                  </button>
-                </PopoverContent>
-              </Popover>
+                      <span className="text-xs text-muted-foreground">Posts you created</span>
+                    </DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem
+                      value="school"
+                      disabled
+                      className="flex-col items-start gap-0"
+                    >
+                      <span className="text-sm font-medium">School posts</span>
+                      <span className="text-xs text-muted-foreground">Coming soon</span>
+                    </DropdownMenuRadioItem>
+                  </DropdownMenuRadioGroup>
+                </DropdownMenuContent>
+              </DropdownMenu>
             ) : (
               <h1 className="text-2xl font-semibold tracking-tight">My Posts</h1>
             )}
