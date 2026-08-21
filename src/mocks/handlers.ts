@@ -53,7 +53,22 @@ const BASE = '/api/web/2/staff';
 // reporting SCHEDULED and the flow looks broken.
 const cancelledSchedules = new Set<number>();
 
+// Simulates PG maintenance (issue #118): when the flag is set, every staff
+// endpoint returns a bare 503, like pgw-web during a maintenance window.
+// Toggle from the browser console:
+//   localStorage.setItem('pg-simulate-maintenance', '1')  // on
+//   localStorage.removeItem('pg-simulate-maintenance')    // off
+function maintenanceSimulated(): boolean {
+  return (
+    typeof localStorage !== 'undefined' && localStorage.getItem('pg-simulate-maintenance') === '1'
+  );
+}
+
 export const handlers = [
+  http.all(`${BASE}/*`, () => {
+    if (maintenanceSimulated()) return new HttpResponse(null, { status: 503 });
+    return undefined; // fall through to the real handlers below
+  }),
   // ─── Announcements ──────────────────────────────────────────────────────────
   http.get(`${BASE}/announcements`, () => {
     return HttpResponse.json(
