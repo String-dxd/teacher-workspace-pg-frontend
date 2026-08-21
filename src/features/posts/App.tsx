@@ -3,18 +3,18 @@ import { Toaster } from 'sonner';
 
 import '~/index.css';
 
-import { AppErrorBoundary } from '~/components/AppErrorBoundary';
-
+import { MaintenancePage } from './components/MaintenancePage';
+import { PostsErrorBoundary } from './components/PostsErrorBoundary';
 import { CreatePostPage } from './pages/CreatePostPage';
 import { PostDetailPage } from './pages/PostDetailPage';
 import { PostsListPage } from './pages/PostsListPage';
 
 function PostsLayout() {
   return (
-    <AppErrorBoundary>
+    <PostsErrorBoundary>
       <Outlet />
       <Toaster />
-    </AppErrorBoundary>
+    </PostsErrorBoundary>
   );
 }
 
@@ -23,6 +23,7 @@ function PostRoutes() {
     <Routes>
       <Route element={<PostsLayout />}>
         <Route index element={<PostsListPage />} />
+        <Route path="maintenance" element={<MaintenancePage />} />
         <Route path="new" element={<CreatePostPage postKind="announcement" draft={false} />} />
         <Route path="announcements/:id" element={<PostDetailPage postKind="announcement" />} />
         <Route

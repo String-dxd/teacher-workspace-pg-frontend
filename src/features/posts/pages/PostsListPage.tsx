@@ -73,8 +73,8 @@ import {
   type SortState,
 } from '~/features/posts/components/SortableHeader';
 import { usePagination } from '~/features/posts/hooks/usePagination';
+import { usePostsQuery } from '~/features/posts/hooks/usePostsQuery';
 import { formatDate } from '~/helpers/dateTime';
-import { useQuery } from '~/hooks/useQuery';
 import { notify } from '~/lib/notify';
 import { cn, stripSalutation } from '~/lib/utils';
 
@@ -232,7 +232,7 @@ const IS_ADMIN = true;
 // ─── Component ──────────────────────────────────────────────────────────────
 
 const PostsListPage: React.FC = () => {
-  const { data, isLoading, error, refetch } = useQuery(
+  const { data, isLoading, error, refetch } = usePostsQuery(
     () =>
       Promise.all([loadPostsList(), loadConsentPostsList(), getConfigs()]).then(
         ([announcements, forms, configs]) => ({

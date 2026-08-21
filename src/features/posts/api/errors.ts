@@ -71,3 +71,12 @@ export class RateLimitError extends AppError {
     this.name = 'RateLimitError';
   }
 }
+
+/** PG returns a bare 503 while under maintenance — not an unexpected error,
+ *  so callers render the maintenance page instead of toasts or retries. */
+export class ServiceUnavailableError extends AppError {
+  constructor(message = 'Parents Gateway is under maintenance.') {
+    super(message, 503, 503);
+    this.name = 'ServiceUnavailableError';
+  }
+}

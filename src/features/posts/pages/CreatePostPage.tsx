@@ -73,6 +73,7 @@ import type {
   SelectedEntity as SelectorEntity,
 } from '~/features/posts/components/EntitySelector';
 import { EventScheduleSection } from '~/features/posts/components/EventScheduleSection';
+import { navigateOnMaintenance } from '~/features/posts/components/MaintenancePage';
 import { PostPreview } from '~/features/posts/components/PostPreview';
 import { PostTypePicker, type PostKind } from '~/features/posts/components/PostTypePicker';
 import { MAX_QUESTIONS, QuestionBuilder } from '~/features/posts/components/QuestionBuilder';
@@ -90,6 +91,7 @@ import { StudentRecipientSelector } from '~/features/posts/components/StudentRec
 import { VenueSection } from '~/features/posts/components/VenueSection';
 import { WebsiteLinksSection } from '~/features/posts/components/WebsiteLinksSection';
 import { useAutoSave, type AutoSaveStatus } from '~/features/posts/hooks/useAutoSave';
+import { usePostsQuery } from '~/features/posts/hooks/usePostsQuery';
 import { useUnsavedChangesGuard } from '~/features/posts/hooks/useUnsavedChangesGuard';
 import { INITIAL_STATE, type SelectedEntity } from '~/features/posts/state/initial-state';
 import { formReducer } from '~/features/posts/state/reducer';
@@ -102,7 +104,6 @@ import {
   type PostKind as ValidationPostKind,
 } from '~/features/posts/validation/create-post-validation';
 import { textToTiptapDoc } from '~/helpers/tiptap';
-import { useQuery } from '~/hooks/useQuery';
 import { notify } from '~/lib/notify';
 import { cn, stripSalutation } from '~/lib/utils';
 import {
@@ -328,7 +329,7 @@ function CreatePostPageInner({ editId, postKind, draft }: CreatePostPageInnerPro
     isLoading,
     error,
     refetch,
-  } = useQuery(() => {
+  } = usePostsQuery(() => {
     let detailPromise: Promise<Post | null> = Promise.resolve(null);
     if (editId && /^\d+$/.test(editId)) {
       const numericId = Number(editId);
@@ -621,6 +622,7 @@ function CreatePostForm({ editId, loaderData }: CreatePostFormProps) {
       navigate('..');
     } catch (err) {
       setSaveState('idle');
+      if (navigateOnMaintenance(err, navigate)) return;
       if (err instanceof ValidationError) {
         const stamped = stampValidationError(err);
         if (!stamped) notify.error(reportValidationError(err));
@@ -646,6 +648,7 @@ function CreatePostForm({ editId, loaderData }: CreatePostFormProps) {
       navigate('..');
     } catch (err) {
       setSaveState('idle');
+      if (navigateOnMaintenance(err, navigate)) return;
       if (err instanceof ValidationError) {
         const stamped = stampValidationError(err);
         if (!stamped) notify.error(reportValidationError(err));
