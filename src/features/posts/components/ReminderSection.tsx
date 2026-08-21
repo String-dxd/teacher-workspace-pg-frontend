@@ -3,6 +3,7 @@ import { CalendarIcon } from 'lucide-react';
 import {
   Calendar,
   Label,
+  outsideRange,
   Popover,
   PopoverContent,
   PopoverTrigger,
@@ -117,10 +118,10 @@ function ReminderSection({ value, onChange, consentByDate }: ReminderSectionProp
                 onSelect={(date) => {
                   if (date) handleDateChange(localDateToIso(date));
                 }}
-                disabled={{
-                  before: isoToLocalDate(minDate),
-                  after: maxDate ? isoToLocalDate(maxDate) : undefined,
-                }}
+                disabled={outsideRange(
+                  isoToLocalDate(minDate),
+                  maxDate ? isoToLocalDate(maxDate) : undefined,
+                )}
               />
             </PopoverContent>
           </Popover>
