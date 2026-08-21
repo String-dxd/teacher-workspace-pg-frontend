@@ -48,32 +48,28 @@ function QuestionBuilder({ questions, dispatch, onQuestionFocus }: QuestionBuild
               className="h-10 flex-1 rounded-full"
             />
             <div className="flex shrink-0 flex-col gap-0.5">
-              <Button
+              <button
                 type="button"
-                variant="ghost"
-                size="icon-xs"
                 disabled={index === 0}
                 onClick={() =>
                   dispatch({ type: 'MOVE_QUESTION', id: question.id, direction: 'up' })
                 }
-                className="size-5 rounded-md text-muted-foreground disabled:opacity-30"
+                className="rounded p-0.5 text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-30"
                 aria-label="Move up"
               >
-                <ChevronUp className="size-4" />
-              </Button>
-              <Button
+                <ChevronUp className="h-4 w-4" />
+              </button>
+              <button
                 type="button"
-                variant="ghost"
-                size="icon-xs"
                 disabled={index === questions.length - 1}
                 onClick={() =>
                   dispatch({ type: 'MOVE_QUESTION', id: question.id, direction: 'down' })
                 }
-                className="size-5 rounded-md text-muted-foreground disabled:opacity-30"
+                className="rounded p-0.5 text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-30"
                 aria-label="Move down"
               >
-                <ChevronDown className="size-4" />
-              </Button>
+                <ChevronDown className="h-4 w-4" />
+              </button>
             </div>
           </div>
 
@@ -91,16 +87,14 @@ function QuestionBuilder({ questions, dispatch, onQuestionFocus }: QuestionBuild
                 })
               }
             />
-            <Button
+            <button
               type="button"
-              variant="ghost"
-              size="icon-sm"
               onClick={() => dispatch({ type: 'REMOVE_QUESTION', id: question.id })}
-              className="size-7 shrink-0 rounded-md text-destructive hover:bg-destructive/10 hover:text-destructive"
+              className="shrink-0 rounded p-1.5 text-destructive hover:bg-destructive/10"
               aria-label="Delete question"
             >
-              <Trash2 className="size-4" />
-            </Button>
+              <Trash2 className="h-4 w-4" />
+            </button>
           </div>
 
           {/* Type toggle */}
@@ -157,10 +151,8 @@ function QuestionBuilder({ questions, dispatch, onQuestionFocus }: QuestionBuild
                     className="h-8 flex-1 text-sm"
                   />
                   {question.options.length > MIN_MCQ_OPTIONS && (
-                    <Button
+                    <button
                       type="button"
-                      variant="ghost"
-                      size="icon-xs"
                       onClick={() => {
                         const newOptions = question.options.filter((_, i) => i !== optIndex);
                         dispatch({
@@ -169,19 +161,17 @@ function QuestionBuilder({ questions, dispatch, onQuestionFocus }: QuestionBuild
                           payload: { options: newOptions as [string, ...string[]] },
                         });
                       }}
-                      className="size-5 shrink-0 rounded-md text-slate-9 hover:bg-transparent hover:text-destructive"
+                      className="shrink-0 rounded p-0.5 text-slate-9 hover:text-destructive"
                       aria-label="Remove option"
                     >
-                      <X className="size-3" />
-                    </Button>
+                      <X className="h-3 w-3" />
+                    </button>
                   )}
                 </div>
               ))}
               {question.options.length < MAX_MCQ_OPTIONS && (
-                <Button
+                <button
                   type="button"
-                  variant="link"
-                  size="xs"
                   onClick={() => {
                     dispatch({
                       type: 'UPDATE_QUESTION',
@@ -189,11 +179,11 @@ function QuestionBuilder({ questions, dispatch, onQuestionFocus }: QuestionBuild
                       payload: { options: [...question.options, ''] as [string, ...string[]] },
                     });
                   }}
-                  className="ml-4 h-auto self-start px-0 text-primary hover:text-primary/80 hover:no-underline"
+                  className="ml-4 flex items-center gap-1 text-xs text-primary hover:text-primary/80"
                 >
-                  <Plus className="size-3" />
+                  <Plus className="h-3 w-3" />
                   Add option
-                </Button>
+                </button>
               )}
             </div>
           )}

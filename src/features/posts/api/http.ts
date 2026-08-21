@@ -4,10 +4,8 @@ import {
   NotFoundError,
   RateLimitError,
   RedirectError,
-  ServiceUnavailableError,
   SessionExpiredError,
   TimeoutError,
-  UnauthorisedError,
   ValidationError,
 } from './errors';
 
@@ -78,16 +76,6 @@ async function handleErrorResponse(res: Response): Promise<never> {
       // found' page instead of a generic error.
       if (res.status === 404) {
         throw new NotFoundError(message, code, res.status);
-      }
-      // pgw-web returns a bare 503 (no envelope) while under maintenance.
-      if (res.status === 503) {
-        throw new ServiceUnavailableError();
-      }
-      // pgw-web returns a bare 401 (no envelope) when SC flags the staff
-      // member as inactive/unauthorised — distinct from the enveloped
-      // -401/-4012 session-expiry codes handled above (issue #129).
-      if (res.status === 401) {
-        throw new UnauthorisedError();
       }
       throw new AppError(message, code, res.status);
   }

@@ -5,7 +5,11 @@ import {
   announcementsList,
   scheduledAnnouncementDetail,
 } from './fixtures/announcements';
-import { consentFormDetail, consentFormsList } from './fixtures/consent-forms';
+import {
+  consentFormDetail,
+  consentFormsList,
+  otherTeachersConsentFormsList,
+} from './fixtures/consent-forms';
 import { announcementDraft, consentFormDraft } from './fixtures/drafts';
 import {
   customGroups,
@@ -43,41 +47,32 @@ async function applyAddedStaffInCharge(
 
 const BASE = '/api/web/2/staff';
 
-// Simulates PG maintenance (issue #118): when the flag is set, every staff
-// endpoint returns a bare 503, like pgw-web during a maintenance window.
-// Toggle from the browser console:
-//   localStorage.setItem('pg-simulate-maintenance', '1')  // on
-//   localStorage.removeItem('pg-simulate-maintenance')    // off
-function maintenanceSimulated(): boolean {
-  return (
-    typeof localStorage !== 'undefined' && localStorage.getItem('pg-simulate-maintenance') === '1'
-  );
-}
-
-// Simulates PG returning a bare 401 (issue #129): when the flag is set,
-// every staff endpoint returns 401, like pgw-web when SC flags the signed-in
-// staff member as inactive/unauthorised. Toggle from the browser console:
-//   localStorage.setItem('pg-simulate-unauthorised', '1')  // on
-//   localStorage.removeItem('pg-simulate-unauthorised')    // off
-function unauthorisedSimulated(): boolean {
-  return (
-    typeof localStorage !== 'undefined' && localStorage.getItem('pg-simulate-unauthorised') === '1'
-  );
-}
+// Scheduled sends called off this session. The real API flips the record to
+// DRAFT; the fixtures are static, so hold the ids here and let the endpoints
+// below answer as the backend would — otherwise a cancelled post keeps
+// reporting SCHEDULED and the flow looks broken.
+const cancelledSchedules = new Set<number>();
 
 export const handlers = [
-  http.all(`${BASE}/*`, () => {
-    if (maintenanceSimulated()) return new HttpResponse(null, { status: 503 });
-    if (unauthorisedSimulated()) return new HttpResponse(null, { status: 401 });
-    return undefined; // fall through to the real handlers below
-  }),
   // ─── Announcements ──────────────────────────────────────────────────────────
   http.get(`${BASE}/announcements`, () => {
-    return HttpResponse.json(envelope(announcementsList));
+    return HttpResponse.json(
+      envelope(
+        announcementsList.map((a) =>
+          cancelledSchedules.has(a.postId) ? { ...a, status: 'DRAFT' as const } : a,
+        ),
+      ),
+    );
   }),
 
   http.get(`${BASE}/announcements/shared`, () => {
     return HttpResponse.json(envelope([]));
+  }),
+
+  // Admin-only "School Posts" oversight view — every announcement in the
+  // school, regardless of creator.
+  http.get(`${BASE}/announcements/schoolAdmins`, () => {
+    return HttpResponse.json(envelope(announcementsList));
   }),
 
   http.get(`${BASE}/announcements/drafts/:draftId`, () => {
@@ -88,6 +83,11 @@ export const handlers = [
     // postId 201 is the SCHEDULED fixture (drives reschedule/cancel flows);
     // everything else returns the default POSTED detail.
     const detail = params.postId === '201' ? scheduledAnnouncementDetail : announcementDetail;
+    if (cancelledSchedules.has(Number(params.postId))) {
+      return HttpResponse.json(
+        envelope([{ ...detail, status: 'DRAFT' as const, scheduledSendAt: null }]),
+      );
+    }
     return HttpResponse.json(envelope([detail]));
   }),
 
@@ -98,6 +98,12 @@ export const handlers = [
 
   http.get(`${BASE}/consentForms/shared`, () => {
     return HttpResponse.json(envelope([]));
+  }),
+
+  // Admin-only "School Posts" oversight view — every consent form in the
+  // school, regardless of creator.
+  http.get(`${BASE}/consentForms/schoolAdmins`, () => {
+    return HttpResponse.json(envelope([...consentFormsList, ...otherTeachersConsentFormsList]));
   }),
 
   http.get(`${BASE}/consentForms/drafts/:draftId`, () => {
@@ -295,7 +301,8 @@ export const handlers = [
   }),
 
   // Cancel a scheduled announcement draft — returns the post to DRAFT (U9).
-  http.post(`${BASE}/announcements/drafts/:draftId/cancelSchedule`, () => {
+  http.post(`${BASE}/announcements/drafts/:draftId/cancelSchedule`, ({ params }) => {
+    cancelledSchedules.add(Number(params.draftId));
     return new HttpResponse(null, { status: 204 });
   }),
 

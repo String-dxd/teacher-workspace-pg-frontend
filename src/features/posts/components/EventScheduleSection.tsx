@@ -4,7 +4,6 @@ import { useMemo, useState } from 'react';
 import {
   Calendar,
   Label,
-  outsideRange,
   Popover,
   PopoverContent,
   PopoverTrigger,
@@ -191,7 +190,7 @@ function EventScheduleSection({ value, onChange }: EventScheduleSectionProps) {
                   onSelect={(date) => {
                     if (date) handleStartDateChange(localDateToIso(date));
                   }}
-                  disabled={outsideRange(today)}
+                  disabled={{ before: today }}
                 />
               </PopoverContent>
             </Popover>
@@ -233,7 +232,7 @@ function EventScheduleSection({ value, onChange }: EventScheduleSectionProps) {
                   onSelect={(date) => {
                     if (date) handleEndDateChange(localDateToIso(date));
                   }}
-                  disabled={outsideRange(endMinDate)}
+                  disabled={{ before: endMinDate }}
                 />
               </PopoverContent>
             </Popover>

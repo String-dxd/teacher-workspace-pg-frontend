@@ -23,11 +23,6 @@ import {
   PopoverContent,
   PopoverTrigger,
   Separator,
-  Sheet,
-  SheetClose,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
 } from '~/components/ui';
 import { describeScheduledSendFailure, type Post } from '~/data/posts-registry';
 import {
@@ -78,7 +73,6 @@ import type {
   SelectedEntity as SelectorEntity,
 } from '~/features/posts/components/EntitySelector';
 import { EventScheduleSection } from '~/features/posts/components/EventScheduleSection';
-import { navigateOnMaintenance } from '~/features/posts/components/MaintenancePage';
 import { PostPreview } from '~/features/posts/components/PostPreview';
 import { PostTypePicker, type PostKind } from '~/features/posts/components/PostTypePicker';
 import { MAX_QUESTIONS, QuestionBuilder } from '~/features/posts/components/QuestionBuilder';
@@ -93,11 +87,9 @@ import { SendConfirmationDialog } from '~/features/posts/components/SendConfirma
 import { ShortcutsSection } from '~/features/posts/components/ShortcutsSection';
 import { StaffSearchSelector } from '~/features/posts/components/StaffSearchSelector';
 import { StudentRecipientSelector } from '~/features/posts/components/StudentRecipientSelector';
-import { navigateOnUnauthorised } from '~/features/posts/components/UnauthorisedPage';
 import { VenueSection } from '~/features/posts/components/VenueSection';
 import { WebsiteLinksSection } from '~/features/posts/components/WebsiteLinksSection';
 import { useAutoSave, type AutoSaveStatus } from '~/features/posts/hooks/useAutoSave';
-import { usePostsQuery } from '~/features/posts/hooks/usePostsQuery';
 import { useUnsavedChangesGuard } from '~/features/posts/hooks/useUnsavedChangesGuard';
 import { INITIAL_STATE, type SelectedEntity } from '~/features/posts/state/initial-state';
 import { formReducer } from '~/features/posts/state/reducer';
@@ -110,6 +102,7 @@ import {
   type PostKind as ValidationPostKind,
 } from '~/features/posts/validation/create-post-validation';
 import { textToTiptapDoc } from '~/helpers/tiptap';
+import { useQuery } from '~/hooks/useQuery';
 import { notify } from '~/lib/notify';
 import { cn, stripSalutation } from '~/lib/utils';
 import {
@@ -335,7 +328,7 @@ function CreatePostPageInner({ editId, postKind, draft }: CreatePostPageInnerPro
     isLoading,
     error,
     refetch,
-  } = usePostsQuery(() => {
+  } = useQuery(() => {
     let detailPromise: Promise<Post | null> = Promise.resolve(null);
     if (editId && /^\d+$/.test(editId)) {
       const numericId = Number(editId);
@@ -628,8 +621,6 @@ function CreatePostForm({ editId, loaderData }: CreatePostFormProps) {
       navigate('..');
     } catch (err) {
       setSaveState('idle');
-      if (navigateOnMaintenance(err, navigate)) return;
-      if (navigateOnUnauthorised(err, navigate)) return;
       if (err instanceof ValidationError) {
         const stamped = stampValidationError(err);
         if (!stamped) notify.error(reportValidationError(err));
@@ -655,8 +646,6 @@ function CreatePostForm({ editId, loaderData }: CreatePostFormProps) {
       navigate('..');
     } catch (err) {
       setSaveState('idle');
-      if (navigateOnMaintenance(err, navigate)) return;
-      if (navigateOnUnauthorised(err, navigate)) return;
       if (err instanceof ValidationError) {
         const stamped = stampValidationError(err);
         if (!stamped) notify.error(reportValidationError(err));
@@ -690,16 +679,13 @@ function CreatePostForm({ editId, loaderData }: CreatePostFormProps) {
       <div className="sticky top-0 z-10 border-b bg-white/95 px-6 py-3 backdrop-blur-sm">
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <Button
+            <button
               type="button"
-              variant="ghost"
-              size="icon-sm"
-              aria-label="Back"
               onClick={handleBackClick}
-              className="text-muted-foreground"
+              className="text-muted-foreground hover:text-foreground"
             >
-              <ArrowLeft className="size-5" />
-            </Button>
+              <ArrowLeft className="h-5 w-5" />
+            </button>
             <h1 className="text-xl font-semibold tracking-tight">
               {isEditing ? 'Edit Post' : 'New Post'}
             </h1>
@@ -790,16 +776,14 @@ function CreatePostForm({ editId, loaderData }: CreatePostFormProps) {
                   posting to avoid losing them.
                 </p>
               </div>
-              <Button
+              <button
                 type="button"
-                variant="ghost"
-                size="icon-xs"
                 onClick={() => setFileBannerDismissed(true)}
-                className="size-5 shrink-0 rounded-md text-amber-11 hover:bg-amber-4 hover:text-amber-12"
+                className="shrink-0 rounded p-0.5 text-amber-11 hover:bg-amber-4 hover:text-amber-12"
                 aria-label="Dismiss"
               >
-                <X className="size-3.5" />
-              </Button>
+                <X className="h-3.5 w-3.5" />
+              </button>
             </div>
           )}
 
@@ -1137,26 +1121,34 @@ function CreatePostForm({ editId, loaderData }: CreatePostFormProps) {
         )}
       </div>
 
-      {/* Mobile preview — a Sheet rather than a hand-built scrim + panel, so the
-          slide-over gets the focus trap, scroll lock and escape handling that
-          Base UI's dialog supplies. */}
-      <Sheet open={showPreview} onOpenChange={setShowPreview}>
-        <SheetContent
-          side="right"
-          showCloseButton={false}
-          className="w-[360px] overflow-y-auto sm:max-w-none lg:hidden"
+      {/* Mobile preview */}
+      <div
+        className={cn(
+          'fixed inset-0 z-50 transition-opacity duration-150 lg:hidden',
+          showPreview ? 'pointer-events-auto bg-black/50' : 'pointer-events-none bg-transparent',
+        )}
+        onClick={() => setShowPreview(false)}
+      >
+        <div
+          className={cn(
+            'absolute top-0 right-0 bottom-0 w-[360px] overflow-y-auto bg-white p-4 shadow-xl transition-transform duration-150',
+            showPreview ? 'translate-x-0' : 'translate-x-full',
+          )}
+          onClick={(e) => e.stopPropagation()}
         >
-          <SheetHeader className="mb-4 flex-row items-center justify-between">
-            <SheetTitle className="text-sm">Preview</SheetTitle>
-            <SheetClose render={<Button variant="ghost" size="sm" />}>Close</SheetClose>
-          </SheetHeader>
+          <div className="mb-4 flex items-center justify-between">
+            <p className="text-sm font-medium">Preview</p>
+            <Button variant="ghost" size="sm" onClick={() => setShowPreview(false)}>
+              Close
+            </Button>
+          </div>
           <PostPreview
             formState={deferredState}
             currentUserName={stripSalutation(session.staffName ?? 'Daniel Tan')}
             defaultEnquiryEmail={session.schoolEmailAddress ?? 'enquiry@school.edu.sg'}
           />
-        </SheetContent>
-      </Sheet>
+        </div>
+      </div>
 
       {/* Schedule step 1 — pick the release date and time. */}
       <SchedulePickerDialog

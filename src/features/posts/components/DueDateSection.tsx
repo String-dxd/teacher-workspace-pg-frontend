@@ -1,14 +1,7 @@
 import { CalendarIcon } from 'lucide-react';
 import { useMemo } from 'react';
 
-import {
-  Calendar,
-  Label,
-  outsideRange,
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '~/components/ui';
+import { Calendar, Label, Popover, PopoverContent, PopoverTrigger } from '~/components/ui';
 import { formatLocalDate } from '~/helpers/dateTime';
 
 interface DueDateSectionProps {
@@ -59,7 +52,7 @@ function DueDateSection({ value, onChange, required = false }: DueDateSectionPro
             onSelect={(date) => {
               if (date) onChange(localDateToIso(date));
             }}
-            disabled={outsideRange(today)}
+            disabled={{ before: today }}
           />
         </PopoverContent>
       </Popover>

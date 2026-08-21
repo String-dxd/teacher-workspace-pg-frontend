@@ -1,14 +1,7 @@
 import { CalendarIcon, Filter, RotateCcw } from 'lucide-react';
 import * as React from 'react';
 
-import {
-  Button,
-  Calendar,
-  outsideRange,
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '~/components/ui';
+import { Button, Calendar, Popover, PopoverContent, PopoverTrigger } from '~/components/ui';
 import { cn } from '~/lib/utils';
 
 export type PostStatusFilter = 'posted' | 'scheduled' | 'draft';
@@ -55,9 +48,19 @@ interface PostFilterPopoverProps {
   value: PostFilters;
   onChange: (next: PostFilters) => void;
   responseOptions?: { value: PostResponseFilter; label: string }[] | null;
+  /** Hide when the view can only ever show one bucket (e.g. School Posts, which is sent-only). */
+  showStatus?: boolean;
+  /** Hide when every row's ownership tag is meaningless (e.g. a whole-school view). */
+  showOwnership?: boolean;
 }
 
-function PostFilterPopover({ value, onChange, responseOptions }: PostFilterPopoverProps) {
+function PostFilterPopover({
+  value,
+  onChange,
+  responseOptions,
+  showStatus = true,
+  showOwnership = true,
+}: PostFilterPopoverProps) {
   const active = countActivePostFilters(value);
 
   function toggle<T extends string>(list: T[], item: T): T[] {
@@ -99,27 +102,33 @@ function PostFilterPopover({ value, onChange, responseOptions }: PostFilterPopov
           )}
         </div>
 
-        <FilterRow label="Status">
-          {STATUS_OPTIONS.map((opt) => (
-            <Chip
-              key={opt.value}
-              label={opt.label}
-              selected={value.status.includes(opt.value)}
-              onClick={() => onChange({ ...value, status: toggle(value.status, opt.value) })}
-            />
-          ))}
-        </FilterRow>
+        {showStatus && (
+          <FilterRow label="Status">
+            {STATUS_OPTIONS.map((opt) => (
+              <Chip
+                key={opt.value}
+                label={opt.label}
+                selected={value.status.includes(opt.value)}
+                onClick={() => onChange({ ...value, status: toggle(value.status, opt.value) })}
+              />
+            ))}
+          </FilterRow>
+        )}
 
-        <FilterRow label="Ownership">
-          {OWNERSHIP_OPTIONS.map((opt) => (
-            <Chip
-              key={opt.value}
-              label={opt.label}
-              selected={value.ownership.includes(opt.value)}
-              onClick={() => onChange({ ...value, ownership: toggle(value.ownership, opt.value) })}
-            />
-          ))}
-        </FilterRow>
+        {showOwnership && (
+          <FilterRow label="Ownership">
+            {OWNERSHIP_OPTIONS.map((opt) => (
+              <Chip
+                key={opt.value}
+                label={opt.label}
+                selected={value.ownership.includes(opt.value)}
+                onClick={() =>
+                  onChange({ ...value, ownership: toggle(value.ownership, opt.value) })
+                }
+              />
+            ))}
+          </FilterRow>
+        )}
 
         {responseOptions && responseOptions.length > 0 && (
           <FilterRow label="Response">
@@ -221,10 +230,9 @@ function DatePill({
   const display = value ? formatPillDate(value) : label;
   const selected = value ? new Date(`${value}T00:00:00`) : undefined;
 
-  const disabled = outsideRange(
-    min ? new Date(`${min}T00:00:00`) : undefined,
-    max ? new Date(`${max}T00:00:00`) : undefined,
-  );
+  const disabled: { before?: Date; after?: Date } = {};
+  if (min) disabled.before = new Date(`${min}T00:00:00`);
+  if (max) disabled.after = new Date(`${max}T00:00:00`);
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -255,7 +263,7 @@ function DatePill({
               setOpen(false);
             }
           }}
-          disabled={disabled}
+          disabled={Object.keys(disabled).length > 0 ? disabled : undefined}
         />
         {value && (
           <Button
