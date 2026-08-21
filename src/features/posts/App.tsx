@@ -4,6 +4,7 @@ import { Toaster } from 'sonner';
 import '~/index.css';
 
 import { MaintenancePage } from './components/MaintenancePage';
+import { PgOnboardingModal } from './components/PgOnboardingModal';
 import { PostsErrorBoundary } from './components/PostsErrorBoundary';
 import { UnauthorisedPage } from './components/UnauthorisedPage';
 import { CreatePostPage } from './pages/CreatePostPage';
@@ -15,6 +16,9 @@ function PostsLayout() {
     <PostsErrorBoundary>
       <Outlet />
       <Toaster />
+      {/* Sits at the layout, not the list page, so a teacher who deep-links
+          straight into a post or the create flow still gets the orientation. */}
+      <PgOnboardingModal />
     </PostsErrorBoundary>
   );
 }
