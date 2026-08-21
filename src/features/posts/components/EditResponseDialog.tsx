@@ -125,14 +125,7 @@ function EditResponseDialogContent({
                   ? { customQuestionId: q.id, answer: { choice: answer } }
                   : { customQuestionId: q.id, answer: { text: answer } };
               })
-            : questions
-                .filter((q) => recipient.questionAnswers?.[q.id])
-                .map((q) => {
-                  const answer = recipient.questionAnswers![q.id]!;
-                  return q.type === 'mcq'
-                    ? { customQuestionId: q.id, answer: { choice: answer } }
-                    : { customQuestionId: q.id, answer: { text: answer } };
-                }),
+            : [],
       });
 
       const updatedRecipient: ConsentFormRecipient = {
@@ -140,10 +133,7 @@ function EditResponseDialogContent({
         response: consentType,
         respondedAt: new Date().toISOString(),
         comments: comments || null,
-        // A "No" reply doesn't collect new answers (the fields are hidden above),
-        // but existing answers — e.g. allergy info — are still relevant and must
-        // survive the response change rather than being wiped to a dash.
-        questionAnswers: consentType === 'YES' ? answers : recipient.questionAnswers,
+        questionAnswers: consentType === 'YES' ? answers : undefined,
         replyByParent: actionBy,
         parentType: 'Staff',
         contactNumber: null,
