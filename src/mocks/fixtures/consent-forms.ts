@@ -175,6 +175,7 @@ export const consentFormDetail: ApiConsentFormDetail = {
         studentName: 'Ahmad bin Ibrahim',
         className: '4A',
         indexNumber: '01',
+        studentSex: 'M',
       },
     },
     {
@@ -196,6 +197,7 @@ export const consentFormDetail: ApiConsentFormDetail = {
         studentName: 'Chen Wei Jie',
         className: '4A',
         indexNumber: '05',
+        studentSex: 'M',
       },
     },
     {
@@ -214,6 +216,7 @@ export const consentFormDetail: ApiConsentFormDetail = {
         studentName: 'Priya Nair',
         className: '4B',
         indexNumber: '12',
+        studentSex: 'F',
       },
     },
     {
@@ -235,6 +238,7 @@ export const consentFormDetail: ApiConsentFormDetail = {
         studentName: 'Tan Li Ying',
         className: '4A',
         indexNumber: '08',
+        studentSex: 'F',
       },
     },
     {
@@ -256,6 +260,7 @@ export const consentFormDetail: ApiConsentFormDetail = {
         studentName: 'Arun Kumar',
         className: '4B',
         indexNumber: '03',
+        studentSex: 'M',
       },
     },
     {
@@ -274,6 +279,7 @@ export const consentFormDetail: ApiConsentFormDetail = {
         studentName: 'Siti Aminah',
         className: '4B',
         indexNumber: '15',
+        studentSex: 'F',
       },
     },
     {
@@ -295,6 +301,7 @@ export const consentFormDetail: ApiConsentFormDetail = {
         studentName: 'Lim Jia En',
         className: '4A',
         indexNumber: '06',
+        studentSex: 'F',
       },
     },
     {
@@ -314,6 +321,7 @@ export const consentFormDetail: ApiConsentFormDetail = {
         studentName: 'Wong Xin Yi',
         className: '4B',
         indexNumber: '18',
+        studentSex: 'F',
       },
     },
     {
@@ -325,13 +333,16 @@ export const consentFormDetail: ApiConsentFormDetail = {
       contactNumber: null,
       remarks: null,
       isIndividual: false,
-      onBoardedCategory: '',
+      // Custodian communicated verbally, cannot respond through the app —
+      // see the "cannot-respond" mapping assumption in mappers.ts.
+      onBoardedCategory: 'CANNOT_RESPOND',
       customQuestionReply: null,
       student: {
         studentId: 3009,
         studentName: 'Muhammad Irfan',
         className: '4A',
         indexNumber: '07',
+        studentSex: 'M',
       },
     },
     {
@@ -353,6 +364,7 @@ export const consentFormDetail: ApiConsentFormDetail = {
         studentName: 'Ong Wei Ming',
         className: '4B',
         indexNumber: '14',
+        studentSex: 'M',
       },
     },
   ],

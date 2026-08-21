@@ -105,12 +105,15 @@ export interface ConsentFormRecipient {
   studentName: string;
   classLabel: string;
   indexNumber?: string;
+  gender?: string;
   response: 'YES' | 'NO' | null;
   respondedAt: string | null;
   replyByParent?: string | null;
   parentType?: string | null;
   contactNumber?: string | null;
-  pgStatus: 'onboarded' | 'not-onboarded';
+  /** Comments visible to parents, set by whoever last replied (parent or staff on their behalf). */
+  comments?: string | null;
+  pgStatus: 'onboarded' | 'not-onboarded' | 'cannot-respond';
   /** Answers keyed by question id (`String(questionId)`). Missing key = no answer. */
   questionAnswers?: Record<string, string | null>;
 }
@@ -120,6 +123,18 @@ export interface ConsentFormStats {
   yesCount: number;
   noCount: number;
   pendingCount: number;
+}
+
+export function computeConsentFormStats(recipients: ConsentFormRecipient[]): ConsentFormStats {
+  const totalCount = recipients.length;
+  const yesCount = recipients.filter((r) => r.response === 'YES').length;
+  const noCount = recipients.filter((r) => r.response === 'NO').length;
+  return {
+    totalCount,
+    yesCount,
+    noCount,
+    pendingCount: Math.max(totalCount - yesCount - noCount, 0),
+  };
 }
 
 export type ConsentFormStatus = 'open' | 'closed' | 'posting' | 'scheduled' | 'draft';

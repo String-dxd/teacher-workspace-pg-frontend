@@ -114,7 +114,7 @@ describe('RecipientReadTable custom-question columns', () => {
     ).toBeInTheDocument();
   });
 
-  it('exports question columns after the Status column with answer values', async () => {
+  it('exports question columns after the Response column with answer values', async () => {
     renderFormTable();
 
     fireEvent.click(screen.getByRole('button', { name: 'Export to Excel' }));
@@ -122,7 +122,9 @@ describe('RecipientReadTable custom-question columns', () => {
 
     const [, input] = (downloadXlsx as ReturnType<typeof vi.fn>).mock.calls[0];
     const headers = input.columns.map((c: { header: string }) => c.header);
-    const statusIndex = headers.indexOf('Status');
+    // Yes/No forms label the response column "Response" (AC #35's column
+    // naming), distinct from the "Status" onboarding column later in the row.
+    const statusIndex = headers.indexOf('Response');
     expect(headers.slice(statusIndex + 1, statusIndex + 3)).toEqual([
       'Does your child have any food allergies?',
       'Preferred lunch option',

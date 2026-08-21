@@ -22,9 +22,15 @@ export type StatusFilter =
   | 'no'
   | 'no-response';
 
-export type PgStatusFilter = 'all' | 'onboarded' | 'not-onboarded';
+export type PgStatusFilter = 'all' | 'onboarded' | 'not-onboarded' | 'cannot-respond';
 
-export type ColumnKey = 'indexNumber' | 'timestamp' | 'parentGuardian' | 'pgStatus';
+export type ColumnKey =
+  | 'indexNumber'
+  | 'gender'
+  | 'comments'
+  | 'timestamp'
+  | 'parentGuardian'
+  | 'pgStatus';
 export interface ColumnVisibility extends Record<ColumnKey, boolean> {
   /** Visibility per custom question id. A question id missing from this map is visible. */
   questions: Record<string, boolean>;
@@ -46,6 +52,8 @@ export interface RecipientFilterValue {
 
 export const DEFAULT_COLUMN_VISIBILITY: ColumnVisibility = {
   indexNumber: false,
+  gender: true,
+  comments: true,
   timestamp: true,
   parentGuardian: true,
   pgStatus: true,
@@ -101,7 +109,7 @@ function RecipientFilterPopover({
             <SlidersHorizontal className="h-4 w-4" />
             Filter
             {active > 0 && (
-              <span className="ml-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[11px] font-medium text-primary-foreground">
+              <span className="ml-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-xs font-medium text-primary-foreground">
                 {active}
               </span>
             )}
@@ -126,7 +134,7 @@ function RecipientFilterPopover({
           </RadioGroup>
         </FilterSection>
 
-        <FilterSection label="Status">
+        <FilterSection label={responseType === 'yes-no' ? 'Response' : 'Status'}>
           <RadioGroup
             value={value.status}
             onValueChange={(v) => onChange({ ...value, status: v as StatusFilter })}
@@ -156,7 +164,7 @@ function RecipientFilterPopover({
         </FilterSection>
 
         {showPgStatus && (
-          <FilterSection label="Status">
+          <FilterSection label="Onboarding">
             <RadioGroup
               value={value.pg}
               onValueChange={(v) => onChange({ ...value, pg: v as PgStatusFilter })}
@@ -165,6 +173,7 @@ function RecipientFilterPopover({
               <RadioOption value="all" label="All" />
               <RadioOption value="onboarded" label="Onboarded" />
               <RadioOption value="not-onboarded" label="Not Onboarded" />
+              <RadioOption value="cannot-respond" label="Cannot Respond" />
             </RadioGroup>
           </FilterSection>
         )}
@@ -191,7 +200,11 @@ interface RecipientColumnPopoverProps {
   value: ColumnVisibility;
   onChange: (next: ColumnVisibility) => void;
   timestampLabel: string;
+  parentGuardianLabel?: string;
+  pgStatusLabel?: string;
   showParentGuardian?: boolean;
+  showGender?: boolean;
+  showComments?: boolean;
   questions?: QuestionColumn[];
 }
 
@@ -199,17 +212,27 @@ function RecipientColumnPopover({
   value,
   onChange,
   timestampLabel,
+  parentGuardianLabel = 'Parent/Guardian',
+  pgStatusLabel = 'Status',
   showParentGuardian = true,
+  showGender = false,
+  showComments = false,
   questions = [],
 }: RecipientColumnPopoverProps) {
   const columnDefs: { key: ColumnKey; label: string; show: boolean }[] = [
     { key: 'indexNumber', label: 'Index No.', show: true },
+    { key: 'gender', label: 'Gender', show: showGender },
+    { key: 'comments', label: 'Comments', show: showComments },
     { key: 'timestamp', label: timestampLabel, show: true },
-    { key: 'parentGuardian', label: 'Parent/Guardian', show: showParentGuardian },
-    { key: 'pgStatus', label: 'Status', show: true },
+    { key: 'parentGuardian', label: parentGuardianLabel, show: showParentGuardian },
+    { key: 'pgStatus', label: pgStatusLabel, show: true },
   ];
 
   const visibleDefs = columnDefs.filter((d) => d.show);
+  // Mirror the table's column order: Index No./Gender, then the question
+  // columns (which follow the response Status column), then the rest.
+  const beforeQuestions = visibleDefs.filter((d) => d.key === 'indexNumber' || d.key === 'gender');
+  const afterQuestions = visibleDefs.filter((d) => d.key !== 'indexNumber' && d.key !== 'gender');
 
   const allOn =
     visibleDefs.every((d) => value[d.key]) &&
@@ -245,9 +268,7 @@ function RecipientColumnPopover({
         </p>
 
         <div className="flex flex-col gap-2">
-          {/* Mirror the table's column order: Index No., then the question
-              columns (which follow the response Status column), then the rest. */}
-          {visibleDefs.slice(0, 1).map((def) => (
+          {beforeQuestions.map((def) => (
             <CheckboxOption
               key={def.key}
               label={def.label}
@@ -263,7 +284,7 @@ function RecipientColumnPopover({
               onCheckedChange={(checked) => setQuestion(q.id, checked)}
             />
           ))}
-          {visibleDefs.slice(1).map((def) => (
+          {afterQuestions.map((def) => (
             <CheckboxOption
               key={def.key}
               label={def.label}

@@ -374,6 +374,12 @@ export const handlers = [
     );
   }),
 
+  http.post(`${BASE}/consentForms/:formId/student/:studentId/reply`, () => {
+    // The UI patches its local state on success; this mock doesn't persist
+    // the reply server-side (see the decision record's tradeoffs).
+    return new HttpResponse(null, { status: 204 });
+  }),
+
   http.delete(`${BASE}/consentForms/:formId`, () => {
     return new HttpResponse(null, { status: 204 });
   }),

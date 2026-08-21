@@ -295,6 +295,16 @@ export interface ApiConsentFormDetail {
   targets?: ApiAnnouncementTarget[];
 }
 
+/** Body for `POST /consentForms/{formId}/student/{studentId}/reply` (edit on behalf). */
+export interface ApiConsentFormReplyPayload {
+  consentType: 'YES' | 'NO';
+  remarks?: string;
+  customQuestionReply: {
+    customQuestionId: string;
+    answer: { text?: string; choice?: string };
+  }[];
+}
+
 // ─── Consent form write payloads ────────────────────────────────────────────
 
 export interface ApiCreateConsentFormPayload {
