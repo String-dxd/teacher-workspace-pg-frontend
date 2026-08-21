@@ -93,6 +93,7 @@ import { SendConfirmationDialog } from '~/features/posts/components/SendConfirma
 import { ShortcutsSection } from '~/features/posts/components/ShortcutsSection';
 import { StaffSearchSelector } from '~/features/posts/components/StaffSearchSelector';
 import { StudentRecipientSelector } from '~/features/posts/components/StudentRecipientSelector';
+import { navigateOnUnauthorised } from '~/features/posts/components/UnauthorisedPage';
 import { VenueSection } from '~/features/posts/components/VenueSection';
 import { WebsiteLinksSection } from '~/features/posts/components/WebsiteLinksSection';
 import { useAutoSave, type AutoSaveStatus } from '~/features/posts/hooks/useAutoSave';
@@ -628,6 +629,7 @@ function CreatePostForm({ editId, loaderData }: CreatePostFormProps) {
     } catch (err) {
       setSaveState('idle');
       if (navigateOnMaintenance(err, navigate)) return;
+      if (navigateOnUnauthorised(err, navigate)) return;
       if (err instanceof ValidationError) {
         const stamped = stampValidationError(err);
         if (!stamped) notify.error(reportValidationError(err));
@@ -654,6 +656,7 @@ function CreatePostForm({ editId, loaderData }: CreatePostFormProps) {
     } catch (err) {
       setSaveState('idle');
       if (navigateOnMaintenance(err, navigate)) return;
+      if (navigateOnUnauthorised(err, navigate)) return;
       if (err instanceof ValidationError) {
         const stamped = stampValidationError(err);
         if (!stamped) notify.error(reportValidationError(err));

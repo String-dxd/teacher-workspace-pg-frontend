@@ -80,3 +80,15 @@ export class ServiceUnavailableError extends AppError {
     this.name = 'ServiceUnavailableError';
   }
 }
+
+/** PG returns a bare 401 when School Cockpit (the source of truth for staff
+ *  status) disagrees with EduPass — the staff member isn't authorised to use
+ *  PG right now (issue #129). Distinct from `SessionExpiredError`, which
+ *  covers PG's enveloped -401/-4012 session-expiry codes; callers render the
+ *  unauthorised page instead of toasts or retries. */
+export class UnauthorisedError extends AppError {
+  constructor(message = 'Not authorised to access Parents Gateway.') {
+    super(message, 401, 401);
+    this.name = 'UnauthorisedError';
+  }
+}
