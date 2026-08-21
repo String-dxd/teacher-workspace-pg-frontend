@@ -177,13 +177,16 @@ function Toolbar({
               className="inline-flex items-center gap-1 rounded-full border border-twblue-6 bg-twblue-3 px-2.5 py-0.5 text-xs font-medium text-twblue-11"
             >
               {chip.label}
-              <button
-                className="ml-0.5 cursor-pointer rounded-full hover:bg-twblue-4"
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-xs"
+                className="ml-0.5 size-4 rounded-full text-twblue-11 hover:bg-twblue-4 hover:text-twblue-11"
                 onClick={() => clearChip(chip.key)}
                 aria-label={`Remove ${chip.label} filter`}
               >
-                <X className="h-3 w-3" />
-              </button>
+                <X className="size-3" />
+              </Button>
             </span>
           ))}
         </div>

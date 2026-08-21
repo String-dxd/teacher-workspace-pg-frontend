@@ -170,12 +170,15 @@ function RecipientFilterPopover({
         )}
 
         {!isDefault && (
-          <button
-            className="cursor-pointer text-xs text-muted-foreground underline-offset-2 hover:underline"
+          <Button
+            type="button"
+            variant="link"
+            size="xs"
+            className="h-auto px-0 text-muted-foreground"
             onClick={() => onChange({ ...value, classId: 'all', status: 'all', pg: 'all' })}
           >
             Reset all filters
-          </button>
+          </Button>
         )}
       </PopoverContent>
     </Popover>
@@ -271,28 +274,37 @@ function RecipientColumnPopover({
         </div>
 
         <div className="flex items-center gap-2 border-t pt-2">
-          <button
-            className="cursor-pointer text-xs text-muted-foreground underline-offset-2 hover:underline disabled:opacity-40"
+          <Button
+            type="button"
+            variant="link"
+            size="xs"
+            className="h-auto px-0 text-muted-foreground disabled:opacity-40"
             disabled={allOn}
             onClick={() => setAll(true)}
           >
             Show all
-          </button>
+          </Button>
           <span className="text-muted-foreground/40">·</span>
-          <button
-            className="cursor-pointer text-xs text-muted-foreground underline-offset-2 hover:underline disabled:opacity-40"
+          <Button
+            type="button"
+            variant="link"
+            size="xs"
+            className="h-auto px-0 text-muted-foreground disabled:opacity-40"
             disabled={allOff}
             onClick={() => setAll(false)}
           >
             Hide all
-          </button>
+          </Button>
           <span className="text-muted-foreground/40">·</span>
-          <button
-            className="cursor-pointer text-xs text-muted-foreground underline-offset-2 hover:underline"
+          <Button
+            type="button"
+            variant="link"
+            size="xs"
+            className="h-auto px-0 text-muted-foreground"
             onClick={() => onChange(DEFAULT_COLUMN_VISIBILITY)}
           >
             Reset
-          </button>
+          </Button>
         </div>
       </PopoverContent>
     </Popover>

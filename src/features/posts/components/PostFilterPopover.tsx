@@ -1,7 +1,14 @@
 import { CalendarIcon, Filter, RotateCcw } from 'lucide-react';
 import * as React from 'react';
 
-import { Button, Calendar, Popover, PopoverContent, PopoverTrigger } from '~/components/ui';
+import {
+  Button,
+  Calendar,
+  outsideRange,
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '~/components/ui';
 import { cn } from '~/lib/utils';
 
 export type PostStatusFilter = 'posted' | 'scheduled' | 'draft';
@@ -214,9 +221,10 @@ function DatePill({
   const display = value ? formatPillDate(value) : label;
   const selected = value ? new Date(`${value}T00:00:00`) : undefined;
 
-  const disabled: { before?: Date; after?: Date } = {};
-  if (min) disabled.before = new Date(`${min}T00:00:00`);
-  if (max) disabled.after = new Date(`${max}T00:00:00`);
+  const disabled = outsideRange(
+    min ? new Date(`${min}T00:00:00`) : undefined,
+    max ? new Date(`${max}T00:00:00`) : undefined,
+  );
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -247,7 +255,7 @@ function DatePill({
               setOpen(false);
             }
           }}
-          disabled={Object.keys(disabled).length > 0 ? disabled : undefined}
+          disabled={disabled}
         />
         {value && (
           <Button
